@@ -8,45 +8,69 @@ datasource db {
 }
 
 model User {
-    id    String  @id @default(uuid())
-    email String  @unique
-    name  String?
+    id        String    @id @default(uuid())
+    email     String    @unique
+    name      String?
+    modules   Module[]
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    sessions  Session[]
+}
 
-    modules Module[]
+model Session {
+    id            String         @id @default(uuid())
+    userId        String
+    user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+    revokedAt     DateTime?
+    createdAt     DateTime       @default(now())
+    updatedAt     DateTime       @updatedAt
+    lastUsedAt    DateTime       @default(now())
+    refreshTokens RefreshToken[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    @@index([userId])
+}
+
+model RefreshToken {
+    id                String        @id @default(uuid())
+    sessionId         String
+    session           Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+    tokenHash         String        @unique
+    expiresAt         DateTime
+    usedAt            DateTime?
+    replacedByTokenId String?       @unique
+    replacedBy        RefreshToken? @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id])
+    replaces          RefreshToken? @relation("RefreshTokenReplacement")
+    revokedAt         DateTime?
+    createdAt         DateTime      @default(now())
+    updatedAt         DateTime      @updatedAt
+
+    @@index([sessionId])
+    @@index([expiresAt])
 }
 
 model Module {
-    id          String  @id @default(uuid())
+    id          String     @id @default(uuid())
     name        String
     description String?
-
-    userId String
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    documents Document[]
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    userId      String
+    user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+    documents   Document[]
+    createdAt   DateTime   @default(now())
+    updatedAt   DateTime   @updatedAt
 
     @@index([userId])
 }
 
 model Document {
-    id           String @id @default(uuid())
-    name         String
-    originalName String
-    mimeType     String
-
-    status DocumentStatus @default(PENDING)
-
+    id            String         @id @default(uuid())
+    name          String
+    originalName  String
+    mimeType      String
+    status        DocumentStatus @default(PENDING)
     storageKey    String?
     extractedText String?
-
-    moduleId String
-    module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+    moduleId      String
+    module        Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
