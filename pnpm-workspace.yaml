@@ -8,3 +8,5 @@ allowBuilds:
   lmdb: true
   msgpackr-extract: true
   nx: true
+  '@prisma/engines': true
+  prisma: true

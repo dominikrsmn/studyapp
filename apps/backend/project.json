@@ -6,6 +6,7 @@
   "tags": ["scope:api"],
   "targets": {
     "build": {
+      "dependsOn": ["prisma-generate"],
       "executor": "nx:run-commands",
       "options": {
         "command": "webpack-cli build",
@@ -68,6 +69,58 @@
     "test": {
       "options": {
         "passWithNoTests": true
+      }
+    },
+
+
+    "prisma-generate": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/prisma/schema.prisma",
+        "{projectRoot}/prisma.config.ts",
+        "{workspaceRoot}/package.json",
+        "{workspaceRoot}/pnpm-lock.yaml",
+        {
+          "externalDependencies": [
+            "prisma",
+            "@prisma/client"
+          ]
+        }
+      ],
+      "outputs": [
+        "{projectRoot}/src/database/generated"
+      ],
+      "options": {
+        "command": "prisma generate --config apps/backend/prisma.config.ts"
+      }
+    },
+    "prisma-migrate-dev": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "pnpm exec prisma migrate dev --config apps/backend/prisma.config.ts"
+      }
+    },
+    "prisma-migrate-deploy": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "pnpm exec prisma migrate deploy --config apps/backend/prisma.config.ts"
+      }
+    },
+    "prisma-seed": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "pnpm exec prisma db seed --config apps/backend/prisma.config.ts"
+      }
+    },
+    "prisma-studio": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "pnpm exec prisma studio --config apps/backend/prisma.config.ts"
       }
     }
   }
