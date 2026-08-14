@@ -37,7 +37,13 @@
               "maximumError": "8kb"
             }
           ],
-          "outputHashing": "all"
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/web/src/environments/environment.ts",
+              "with": "apps/web/src/environments/environment.production.ts"
+            }
+          ]
         },
         "development": {
           "buildOptimizer": false,
@@ -47,6 +53,7 @@
           "sourceMap": true,
           "namedChunks": true
         }
+        
       }
     },
     "serve": {
