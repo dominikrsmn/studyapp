@@ -48,6 +48,17 @@ model RefreshToken {
     @@index([expiresAt])
 }
 
+model MagicLinkToken {
+    id        String   @id @default(uuid())
+    email     String
+    tokenHash String   @unique
+    expiresAt DateTime
+    usedAt    DateTime?
+    createdAt DateTime @default(now())
+
+    @@index([expiresAt])
+}
+
 model Module {
     id          String     @id @default(uuid())
     name        String

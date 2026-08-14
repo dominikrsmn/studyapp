@@ -11,4 +11,18 @@ export class UsersService {
       where: { id },
     });
   }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.prisma.user.findUnique({
+      where: { email },
+    });
+  }
+
+  async findOrCreateByEmail(email: string): Promise<User> {
+    return this.prisma.user.upsert({
+      where: { email },
+      create: { email },
+      update: {},
+    });
+  }
 }

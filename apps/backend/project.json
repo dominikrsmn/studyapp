@@ -55,7 +55,10 @@
       "dependsOn": ["build"],
       "options": {
         "buildTarget": "backend:build",
-        "runBuildTargetDependencies": false
+        "runBuildTargetDependencies": false,
+        "buildTargetOptions": {
+          "format": "cjs"
+        }
       },
       "configurations": {
         "development": {
@@ -99,7 +102,8 @@
       "executor": "nx:run-commands",
       "cache": false,
       "options": {
-        "command": "pnpm exec prisma migrate dev --config apps/backend/prisma.config.ts"
+        "command": "pnpm exec prisma migrate dev --config apps/backend/prisma.config.ts",
+        "envFile": "apps/backend/.env"
       }
     },
     "prisma-migrate-deploy": {

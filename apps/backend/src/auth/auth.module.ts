@@ -6,10 +6,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Env } from '../config/env.schema';
 import { AuthGuard } from './auth.guard';
+import { APP_GUARD } from '@nestjs/core';
+import { PrismaModule } from '../database/prisma/prisma.module';
 
 @Module({
   imports: [
     UsersModule,
+    PrismaModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -23,9 +26,10 @@ import { AuthGuard } from './auth.guard';
   providers: [
     AuthService,
     {
-      provide: 'AUTH_GUARD',
+      provide: APP_GUARD,
       useClass: AuthGuard,
     },
   ],
+  exports: [AuthService],
 })
 export class AuthModule {}
