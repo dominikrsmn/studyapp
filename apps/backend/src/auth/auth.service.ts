@@ -1,4 +1,9 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID } from 'node:crypto';
@@ -14,6 +19,7 @@ import {
 const ACCESS_TOKEN_TTL_SECONDS = 60;
 const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 const MAGIC_LINK_TTL_SECONDS = 10 * 60;
+const REFRESH_ROTATION_GRACE_MS = 5_000;
 const JWT_ISSUER = 'studyapp';
 
 @Injectable()
@@ -51,8 +57,8 @@ export class AuthService {
 
     if (this.config.get('NODE_ENV', { infer: true }) === 'development') {
       const link = new URL(
-        '/api/auth/magic-link/verify',
-        this.config.get('API_URL', { infer: true }),
+        '/auth/verify',
+        this.config.get('WEB_URL', { infer: true }),
       );
       link.searchParams.set('token', token);
       this.logger.log(
@@ -127,8 +133,11 @@ export class AuthService {
     }
 
     if (storedToken.usedAt || storedToken.revokedAt) {
-      await this.revokeSession(storedToken.sessionId, now);
-      throw new UnauthorizedException('Refresh token has already been used');
+      return this.rejectReusedRefreshToken(
+        storedToken.id,
+        storedToken.sessionId,
+        now,
+      );
     }
 
     const nextTokenId = randomUUID();
@@ -168,7 +177,11 @@ export class AuthService {
       });
     } catch (error) {
       if (error instanceof UnauthorizedException) {
-        await this.revokeSession(storedToken.sessionId, now);
+        return this.rejectReusedRefreshToken(
+          storedToken.id,
+          storedToken.sessionId,
+          now,
+        );
       }
       throw error;
     }
@@ -272,6 +285,28 @@ export class AuthService {
         data: { revokedAt },
       }),
     ]);
+  }
+
+  private async rejectReusedRefreshToken(
+    tokenId: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<never> {
+    const currentToken = await this.prisma.refreshToken.findUnique({
+      where: { id: tokenId },
+      select: { usedAt: true, revokedAt: true },
+    });
+
+    if (
+      currentToken?.usedAt &&
+      !currentToken.revokedAt &&
+      now.getTime() - currentToken.usedAt.getTime() <= REFRESH_ROTATION_GRACE_MS
+    ) {
+      throw new ConflictException('Refresh token was just rotated');
+    }
+
+    await this.revokeSession(sessionId, now);
+    throw new UnauthorizedException('Refresh token has already been used');
   }
 
   private hashToken(token: string): string {

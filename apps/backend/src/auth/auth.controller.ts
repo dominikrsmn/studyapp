@@ -2,23 +2,46 @@ import {
   BadRequestException,
   Body,
   Controller,
-  Get,
+  Header,
   HttpCode,
   HttpStatus,
   Post,
-  Query,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Request, Response } from 'express';
 import { z } from 'zod';
+import { Env } from '../config/env.schema';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
+import {
+  clearRefreshTokenCookieOptions,
+  REFRESH_TOKEN_COOKIE,
+  refreshTokenCookieOptions,
+} from './refresh-token.cookie';
+import { TrustedOriginGuard } from './trusted-origin.guard';
 
 const emailSchema = z.object({ email: z.email() });
 const tokenSchema = z.object({ token: z.string().min(1) });
-const refreshTokenSchema = z.object({ refreshToken: z.string().min(1) });
+
+interface AccessTokenResponse {
+  accessToken: string;
+}
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  private readonly isProduction: boolean;
+
+  constructor(
+    private readonly authService: AuthService,
+    config: ConfigService<Env, true>,
+  ) {
+    this.isProduction =
+      config.get('NODE_ENV', { infer: true }) === 'production';
+  }
 
   @Public()
   @HttpCode(HttpStatus.ACCEPTED)
@@ -32,39 +55,75 @@ export class AuthController {
   }
 
   @Public()
-  @Get('magic-link/verify')
-  verifyMagicLink(@Query('token') token: unknown) {
-    const input = tokenSchema.safeParse({ token });
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(HttpStatus.OK)
+  @Post('magic-link/verify')
+  async verifyMagicLink(
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AccessTokenResponse> {
+    const input = tokenSchema.safeParse(body);
     if (!input.success) {
       throw new BadRequestException(z.treeifyError(input.error));
     }
-    return this.authService.verifyMagicLink(input.data.token);
+
+    const tokens = await this.authService.verifyMagicLink(input.data.token);
+    this.setRefreshTokenCookie(response, tokens.refreshToken);
+    return { accessToken: tokens.accessToken };
   }
 
   @Public()
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(TrustedOriginGuard)
   @Post('refresh')
-  refresh(@Body() body: unknown) {
-    const input = refreshTokenSchema.safeParse(body);
-    if (!input.success) {
-      throw new BadRequestException(z.treeifyError(input.error));
+  async refresh(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AccessTokenResponse> {
+    const refreshToken = request.cookies?.[REFRESH_TOKEN_COOKIE];
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token provided');
     }
-    return this.authService.refresh(input.data.refreshToken);
+
+    const tokens = await this.authService.refresh(refreshToken);
+    this.setRefreshTokenCookie(response, tokens.refreshToken);
+    return { accessToken: tokens.accessToken };
   }
 
   @Public()
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(TrustedOriginGuard)
   @Post('logout')
-  async logout(@Body() body: unknown): Promise<void> {
-    const input = refreshTokenSchema.safeParse(body);
-    if (!input.success) {
-      throw new BadRequestException(z.treeifyError(input.error));
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const refreshToken = request.cookies?.[REFRESH_TOKEN_COOKIE];
+    response.clearCookie(
+      REFRESH_TOKEN_COOKIE,
+      clearRefreshTokenCookieOptions(this.isProduction),
+    );
+
+    if (refreshToken) {
+      await this.authService.logout(refreshToken);
     }
-    await this.authService.logout(input.data.refreshToken);
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('protected')
   protectedRoute() {
     return { message: 'You have access to this protected route.' };
+  }
+
+  private setRefreshTokenCookie(
+    response: Response,
+    refreshToken: string,
+  ): void {
+    response.cookie(
+      REFRESH_TOKEN_COOKIE,
+      refreshToken,
+      refreshTokenCookieOptions(this.isProduction),
+    );
   }
 }

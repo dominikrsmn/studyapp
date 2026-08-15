@@ -7,7 +7,7 @@ export const envSchema = z.object({
 
   DATABASE_URL: z.url(),
   JWT_SECRET: z.string().length(32),
-  API_URL: z.url().default('http://localhost:3000'),
+  WEB_URL: z.url().default('http://localhost:4200'),
 });
 
 export type Env = z.infer<typeof envSchema>;

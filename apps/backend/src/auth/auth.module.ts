@@ -8,6 +8,7 @@ import { Env } from '../config/env.schema';
 import { AuthGuard } from './auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from '../database/prisma/prisma.module';
+import { TrustedOriginGuard } from './trusted-origin.guard';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PrismaModule } from '../database/prisma/prisma.module';
   controllers: [AuthController],
   providers: [
     AuthService,
+    TrustedOriginGuard,
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
