@@ -27,8 +27,8 @@ import {
   refreshTokenCookieOptions,
 } from './refresh-token.cookie';
 import { TrustedOriginGuard } from './trusted-origin.guard';
-import { CurrentUser } from './current-user.decorator';
-import type { AccessTokenPayload, AuthSession } from './auth.types';
+import type { AuthSession } from './auth.types';
+import type { AuthenticatedRequest } from './authenticated-request';
 
 const emailSchema = z.object({ email: z.email() });
 const tokenSchema = z.object({ token: z.string().min(1) });
@@ -113,21 +113,19 @@ export class AuthController {
   }
 
   @Get('sessions')
-  findSessions(
-    @CurrentUser() user: AccessTokenPayload,
-  ): Promise<AuthSession[]> {
-    return this.authService.findSessions(user.sub, user.sessionId);
+  findSessions(@Req() request: AuthenticatedRequest): Promise<AuthSession[]> {
+    return this.authService.findSessions(request.userId, request.sessionId);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)
   @Delete('sessions/:sessionId')
   async revokeSession(
-    @CurrentUser() user: AccessTokenPayload,
+    @Req() request: AuthenticatedRequest,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    await this.authService.revokeUserSession(user.sub, sessionId);
-    if (sessionId === user.sessionId) {
+    await this.authService.revokeUserSession(request.userId, sessionId);
+    if (sessionId === request.sessionId) {
       response.clearCookie(
         REFRESH_TOKEN_COOKIE,
         clearRefreshTokenCookieOptions(this.isProduction),

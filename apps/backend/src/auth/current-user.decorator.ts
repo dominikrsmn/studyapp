@@ -1,10 +1,20 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { Request } from 'express';
-import type { AccessTokenPayload } from './auth.types';
+import type { User } from '../database/generated/client';
+import type { AuthenticatedUserRequest } from './authenticated-request';
 
-type AuthenticatedRequest = Request & { user: AccessTokenPayload };
+export const CURRENT_USER_REQUIRED_KEY = 'auth:current-user-required';
+
+const requireCurrentUser: ParameterDecorator = (target, propertyKey) => {
+  if (propertyKey === undefined) {
+    return;
+  }
+
+  const handler = (target as Record<string | symbol, object>)[propertyKey];
+  Reflect.defineMetadata(CURRENT_USER_REQUIRED_KEY, true, handler);
+};
 
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, context: ExecutionContext): AccessTokenPayload =>
-    context.switchToHttp().getRequest<AuthenticatedRequest>().user,
+  (_data: unknown, context: ExecutionContext): User =>
+    context.switchToHttp().getRequest<AuthenticatedUserRequest>().currentUser,
+  [requireCurrentUser],
 );

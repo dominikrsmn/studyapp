@@ -6,12 +6,15 @@ import { Request } from 'express';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import type { AccessTokenPayload } from './auth.types';
+import { UsersService } from '../users/users.service';
+import { CURRENT_USER_REQUIRED_KEY } from './current-user.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private reflector: Reflector,
+    private readonly usersService: UsersService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,7 +43,22 @@ export class AuthGuard implements CanActivate {
       ) {
         throw new UnauthorizedException('Invalid token');
       }
-      Object.assign(request, { user: payload });
+      request.userId = payload.sub;
+      request.sessionId = payload.sessionId;
+
+      const shouldLoadCurrentUser = this.reflector.getAllAndOverride<boolean>(
+        CURRENT_USER_REQUIRED_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+      if (shouldLoadCurrentUser) {
+        const user = await this.usersService.findOne(payload.sub);
+        if (!user) {
+          throw new UnauthorizedException(
+            'Authenticated user no longer exists',
+          );
+        }
+        request.currentUser = user;
+      }
     } catch {
       throw new UnauthorizedException('Invalid token');
     }

@@ -7,8 +7,8 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
-  Query,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { ModulesService } from './modules.service';
 import {
@@ -17,36 +17,42 @@ import {
   updateModuleSchema,
 } from '@study/contracts';
 import { z } from 'zod';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 
 @Controller('modules')
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 
   @Post()
-  create(@Body() body: unknown): Promise<ModuleDto> {
+  create(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<ModuleDto> {
     const result = createModuleSchema.safeParse(body);
 
     if (!result.success) {
       throw new BadRequestException(z.treeifyError(result.error));
     }
 
-    return this.modulesService.create(result.data);
+    return this.modulesService.create(request.userId, result.data);
   }
 
   @Get()
-  findAll(
-    @Query('userId', ParseUUIDPipe) userId: string,
-  ): Promise<ModuleDto[]> {
-    return this.modulesService.findAll({ userId });
+  findAll(@Req() request: AuthenticatedRequest): Promise<ModuleDto[]> {
+    return this.modulesService.findAll(request.userId);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<ModuleDto> {
-    return this.modulesService.findOne(id);
+  findOne(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ModuleDto> {
+    return this.modulesService.findOne(request.userId, id);
   }
 
   @Patch(':id')
   update(
+    @Req() request: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ModuleDto> {
@@ -56,11 +62,14 @@ export class ModulesController {
       throw new BadRequestException(z.treeifyError(result.error));
     }
 
-    return this.modulesService.update(id, result.data);
+    return this.modulesService.update(request.userId, id, result.data);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<ModuleDto> {
-    return this.modulesService.remove(id);
+  remove(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ModuleDto> {
+    return this.modulesService.remove(request.userId, id);
   }
 }

@@ -6,6 +6,7 @@ import { Env } from '../config/env.schema';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { REFRESH_TOKEN_COOKIE } from './refresh-token.cookie';
+import type { AuthenticatedRequest } from './authenticated-request';
 
 describe('AuthController', () => {
   const authService = {
@@ -96,24 +97,40 @@ describe('AuthController', () => {
 
   it('clears the refresh cookie when revoking the current session', async () => {
     authService.revokeUserSession.mockResolvedValue(undefined);
-    const user = {
-      sub: 'user-id',
-      sessionId: 'e86db06e-1386-48c6-9b6b-b9d568607091',
-      email: 'user@example.com',
-      type: 'access' as const,
-      exp: 1_800_000_000,
-    };
+    const currentSessionId = 'e86db06e-1386-48c6-9b6b-b9d568607091';
     const response = { clearCookie: jest.fn() } as unknown as Response;
 
-    await controller.revokeSession(user, user.sessionId, response);
+    await controller.revokeSession(
+      {
+        userId: 'user-id',
+        sessionId: currentSessionId,
+      } as AuthenticatedRequest,
+      currentSessionId,
+      response,
+    );
 
     expect(authService.revokeUserSession).toHaveBeenCalledWith(
       'user-id',
-      user.sessionId,
+      currentSessionId,
     );
     expect(response.clearCookie).toHaveBeenCalledWith(
       REFRESH_TOKEN_COOKIE,
       expect.any(Object),
+    );
+  });
+
+  it('lists sessions using the authenticated request ids', async () => {
+    authService.findSessions.mockResolvedValue([]);
+
+    await expect(
+      controller.findSessions({
+        userId: 'user-id',
+        sessionId: 'current-session-id',
+      } as AuthenticatedRequest),
+    ).resolves.toEqual([]);
+    expect(authService.findSessions).toHaveBeenCalledWith(
+      'user-id',
+      'current-session-id',
     );
   });
 });

@@ -12,7 +12,7 @@ describe('ModulesService', () => {
   const moduleDelegate = {
     create: jest.fn(),
     findMany: jest.fn(),
-    findUnique: jest.fn(),
+    findFirst: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
   };
@@ -40,8 +40,8 @@ describe('ModulesService', () => {
     const request = {
       name: 'Mathematics',
       description: 'Exam preparation',
-      userId: '2e5c9c12-a0bd-455b-8411-9564e38e81d6',
     };
+    const userId = '2e5c9c12-a0bd-455b-8411-9564e38e81d6';
     const createdModule = {
       id: '9e3c2355-5874-4980-a9a5-b4fe8b153cc9',
       name: request.name,
@@ -49,26 +49,33 @@ describe('ModulesService', () => {
     };
     moduleDelegate.create.mockResolvedValue(createdModule);
 
-    await expect(service.create(request)).resolves.toEqual(createdModule);
+    await expect(service.create(userId, request)).resolves.toEqual(
+      createdModule,
+    );
     expect(moduleDelegate.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: request }),
+      expect.objectContaining({ data: { ...request, userId } }),
     );
   });
 
   it('lists modules for one user', async () => {
     moduleDelegate.findMany.mockResolvedValue([]);
 
-    await expect(service.findAll({ userId: 'user-id' })).resolves.toEqual([]);
+    await expect(service.findAll('user-id')).resolves.toEqual([]);
     expect(moduleDelegate.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: 'user-id' } }),
     );
   });
 
   it('throws when a module does not exist', async () => {
-    moduleDelegate.findUnique.mockResolvedValue(null);
+    moduleDelegate.findFirst.mockResolvedValue(null);
 
-    await expect(service.findOne('missing-id')).rejects.toBeInstanceOf(
-      NotFoundException,
+    await expect(
+      service.findOne('user-id', 'missing-id'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(moduleDelegate.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'missing-id', userId: 'user-id' },
+      }),
     );
   });
 
@@ -79,12 +86,17 @@ describe('ModulesService', () => {
       description: null,
     };
     const updatedModule = { ...existingModule, name: 'New name' };
-    moduleDelegate.findUnique.mockResolvedValue(existingModule);
+    moduleDelegate.findFirst.mockResolvedValue(existingModule);
     moduleDelegate.update.mockResolvedValue(updatedModule);
 
     await expect(
-      service.update('module-id', { name: 'New name' }),
+      service.update('user-id', 'module-id', { name: 'New name' }),
     ).resolves.toEqual(updatedModule);
+    expect(moduleDelegate.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'module-id', userId: 'user-id' },
+      }),
+    );
     expect(moduleDelegate.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'module-id' },
@@ -99,10 +111,17 @@ describe('ModulesService', () => {
       name: 'Mathematics',
       description: null,
     };
-    moduleDelegate.findUnique.mockResolvedValue(existingModule);
+    moduleDelegate.findFirst.mockResolvedValue(existingModule);
     moduleDelegate.delete.mockResolvedValue(existingModule);
 
-    await expect(service.remove('module-id')).resolves.toEqual(existingModule);
+    await expect(service.remove('user-id', 'module-id')).resolves.toEqual(
+      existingModule,
+    );
+    expect(moduleDelegate.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'module-id', userId: 'user-id' },
+      }),
+    );
     expect(moduleDelegate.delete).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'module-id' } }),
     );
