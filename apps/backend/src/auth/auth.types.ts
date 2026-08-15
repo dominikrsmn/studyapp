@@ -3,6 +3,7 @@ export interface AccessTokenPayload {
   sessionId: string;
   email: string;
   type: 'access';
+  exp: number;
 }
 
 export interface RefreshTokenPayload {
@@ -22,4 +23,13 @@ export interface MagicLinkTokenPayload {
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
+  refreshTokenExpiresAt: Date;
+}
+
+export interface AuthSession {
+  id: string;
+  createdAt: Date;
+  lastUsedAt: Date;
+  refreshTokenExpiresAt: Date;
+  isCurrent: boolean;
 }

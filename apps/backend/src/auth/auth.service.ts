@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +13,7 @@ import { PrismaService } from '../database/prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import {
   MagicLinkTokenPayload,
+  AuthSession,
   RefreshTokenPayload,
   TokenPair,
 } from './auth.types';
@@ -104,7 +106,7 @@ export class AuthService {
             create: {
               id: refreshTokenId,
               tokenHash: this.hashToken(tokens.refreshToken),
-              expiresAt: this.expiresAt(REFRESH_TOKEN_TTL_SECONDS),
+              expiresAt: tokens.refreshTokenExpiresAt,
             },
           },
         },
@@ -155,7 +157,7 @@ export class AuthService {
             id: nextTokenId,
             sessionId: storedToken.sessionId,
             tokenHash: this.hashToken(tokens.refreshToken),
-            expiresAt: this.expiresAt(REFRESH_TOKEN_TTL_SECONDS),
+            expiresAt: tokens.refreshTokenExpiresAt,
           },
         });
 
@@ -192,6 +194,70 @@ export class AuthService {
   async logout(refreshToken: string): Promise<void> {
     const payload = await this.verifyRefreshToken(refreshToken);
     await this.revokeSession(payload.sessionId, new Date());
+  }
+
+  async findSessions(
+    userId: string,
+    currentSessionId: string,
+  ): Promise<AuthSession[]> {
+    const now = new Date();
+    const sessions = await this.prisma.session.findMany({
+      where: {
+        userId,
+        revokedAt: null,
+        refreshTokens: {
+          some: {
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: { gt: now },
+          },
+        },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        lastUsedAt: true,
+        refreshTokens: {
+          where: {
+            usedAt: null,
+            revokedAt: null,
+            expiresAt: { gt: now },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { expiresAt: true },
+        },
+      },
+      orderBy: { lastUsedAt: 'desc' },
+    });
+
+    return sessions.flatMap((session) => {
+      const activeRefreshToken = session.refreshTokens[0];
+      return activeRefreshToken
+        ? [
+            {
+              id: session.id,
+              createdAt: session.createdAt,
+              lastUsedAt: session.lastUsedAt,
+              refreshTokenExpiresAt: activeRefreshToken.expiresAt,
+              isCurrent: session.id === currentSessionId,
+            },
+          ]
+        : [];
+    });
+  }
+
+  async revokeUserSession(userId: string, sessionId: string): Promise<void> {
+    const session = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId, revokedAt: null },
+      select: { id: true },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session was not found');
+    }
+
+    await this.revokeSession(session.id, new Date());
   }
 
   private async verifyMagicToken(
@@ -268,6 +334,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
+      refreshTokenExpiresAt: this.expiresAt(REFRESH_TOKEN_TTL_SECONDS),
     };
   }
 

@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { environment } from '../environments/environment';
 
 @Component({
   imports: [RouterModule],
@@ -8,8 +7,4 @@ import { environment } from '../environments/environment';
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
-export class App {
-  public readonly isProd = environment.production
-    ? 'Production'
-    : 'Development';
-}
+export class App {}

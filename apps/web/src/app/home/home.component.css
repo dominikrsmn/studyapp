@@ -1,0 +1,105 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f5f6f8;
+  color: #202124;
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  display: grid;
+  place-items: start center;
+  padding: 4rem 1rem;
+}
+
+.card {
+  width: min(42rem, 100%);
+  padding: 2rem;
+  border: 1px solid #dfe1e5;
+  border-radius: 0.75rem;
+  background: white;
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 8%);
+}
+
+form,
+.account-details,
+.sessions,
+.sessions li,
+.sessions li > div {
+  display: grid;
+  gap: 0.75rem;
+}
+
+input,
+button {
+  min-height: 2.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+input {
+  border: 1px solid #9aa0a6;
+}
+
+button {
+  border: 0;
+  background: #1a73e8;
+  color: white;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+button.secondary {
+  background: #e8f0fe;
+  color: #174ea6;
+}
+
+.account-details > div {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) 2fr;
+  gap: 1rem;
+}
+
+dt {
+  font-weight: 600;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.sessions {
+  padding: 0;
+  list-style: none;
+}
+
+.sessions li {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #dfe1e5;
+  border-radius: 0.5rem;
+}
+
+.sessions span {
+  color: #5f6368;
+  font-size: 0.875rem;
+}
+
+.error {
+  margin: 0;
+  color: #b3261e;
+}
+
+@media (max-width: 36rem) {
+  .account-details > div,
+  .sessions li {
+    grid-template-columns: 1fr;
+  }
+}

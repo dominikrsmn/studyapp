@@ -15,6 +15,7 @@ import { environment } from '../../environments/environment';
 const modulesUrl = `${environment.apiUrl}/modules`;
 const documentsUrl = `${environment.apiUrl}/documents`;
 const refreshUrl = `${environment.apiUrl}/auth/refresh`;
+const sessionUrl = `${environment.apiUrl}/auth/session`;
 
 describe('authInterceptor', () => {
   let authTokens: AuthTokenService;
@@ -52,6 +53,25 @@ describe('authInterceptor', () => {
     request.flush([]);
   });
 
+  it('exposes identity and expiry claims from the access token', () => {
+    const expiresAt = Math.floor(Date.now() / 1000) + 60;
+    const payload = globalThis.btoa(
+      JSON.stringify({
+        sub: 'user-id',
+        sessionId: 'session-id',
+        email: 'user@example.com',
+        type: 'access',
+        exp: expiresAt,
+      }),
+    );
+
+    authTokens.setAccessToken(`e30.${payload}.signature`);
+
+    expect(authTokens.isAuthenticated()).toBe(true);
+    expect(authTokens.email()).toBe('user@example.com');
+    expect(authTokens.accessTokenExpiresAt()?.getTime()).toBe(expiresAt * 1000);
+  });
+
   it('refreshes once and retries concurrent unauthorized requests', () => {
     authTokens.setAccessToken('expired-access-token');
 
@@ -72,6 +92,7 @@ describe('authInterceptor', () => {
     expect(refresh.request.withCredentials).toBe(true);
     refresh.flush({
       accessToken: 'new-access-token',
+      refreshTokenExpiresAt: '2026-09-14T12:00:00.000Z',
     });
 
     const moduleRetry = httpTesting.expectOne(modulesUrl);
@@ -86,6 +107,9 @@ describe('authInterceptor', () => {
     documentRetry.flush([]);
 
     expect(authTokens.getAccessToken()).toBe('new-access-token');
+    expect(authTokens.refreshTokenExpiresAt()?.toISOString()).toBe(
+      '2026-09-14T12:00:00.000Z',
+    );
   });
 
   it('retries refresh when another tab just rotated the cookie', async () => {
@@ -103,8 +127,46 @@ describe('authInterceptor', () => {
 
     httpTesting.expectOne(refreshUrl).flush({
       accessToken: 'access-token-from-rotated-cookie',
+      refreshTokenExpiresAt: '2026-09-14T12:00:00.000Z',
     });
 
     expect(refreshedTokens).toEqual(['access-token-from-rotated-cookie']);
   });
+
+  it('does not refresh on startup when no refresh cookie exists', async () => {
+    const restoration = authTokens.restoreSession();
+
+    httpTesting.expectOne(sessionUrl).flush({ hasSession: false });
+    await restoration;
+
+    httpTesting.expectNone(refreshUrl);
+    expect(authTokens.isAuthenticated()).toBe(false);
+  });
+
+  it('restores the session when the refresh cookie exists', async () => {
+    const restoration = authTokens.restoreSession();
+
+    httpTesting.expectOne(sessionUrl).flush({ hasSession: true });
+    await Promise.resolve();
+    httpTesting.expectOne(refreshUrl).flush({
+      accessToken: createAccessToken(),
+      refreshTokenExpiresAt: '2026-09-14T12:00:00.000Z',
+    });
+    await restoration;
+
+    expect(authTokens.isAuthenticated()).toBe(true);
+  });
 });
+
+function createAccessToken(): string {
+  const payload = globalThis.btoa(
+    JSON.stringify({
+      sub: 'user-id',
+      sessionId: 'session-id',
+      email: 'user@example.com',
+      type: 'access',
+      exp: Math.floor(Date.now() / 1000) + 60,
+    }),
+  );
+  return `e30.${payload}.signature`;
+}

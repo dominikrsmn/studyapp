@@ -22,6 +22,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     `${environment.apiUrl}/auth/logout`,
     `${environment.apiUrl}/auth/magic-link`,
     `${environment.apiUrl}/auth/magic-link/verify`,
+    `${environment.apiUrl}/auth/session`,
   ];
 
   if (!isApiRequest || unauthenticatedAuthUrls.includes(url)) {

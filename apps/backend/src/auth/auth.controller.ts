@@ -2,10 +2,14 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
+  Get,
   Header,
   HttpCode,
   HttpStatus,
   Post,
+  Param,
+  ParseUUIDPipe,
   Req,
   Res,
   UnauthorizedException,
@@ -23,12 +27,15 @@ import {
   refreshTokenCookieOptions,
 } from './refresh-token.cookie';
 import { TrustedOriginGuard } from './trusted-origin.guard';
+import { CurrentUser } from './current-user.decorator';
+import type { AccessTokenPayload, AuthSession } from './auth.types';
 
 const emailSchema = z.object({ email: z.email() });
 const tokenSchema = z.object({ token: z.string().min(1) });
 
 interface AccessTokenResponse {
   accessToken: string;
+  refreshTokenExpiresAt: string;
 }
 
 @Controller('auth')
@@ -69,7 +76,10 @@ export class AuthController {
 
     const tokens = await this.authService.verifyMagicLink(input.data.token);
     this.setRefreshTokenCookie(response, tokens.refreshToken);
-    return { accessToken: tokens.accessToken };
+    return {
+      accessToken: tokens.accessToken,
+      refreshTokenExpiresAt: tokens.refreshTokenExpiresAt.toISOString(),
+    };
   }
 
   @Public()
@@ -88,7 +98,41 @@ export class AuthController {
 
     const tokens = await this.authService.refresh(refreshToken);
     this.setRefreshTokenCookie(response, tokens.refreshToken);
-    return { accessToken: tokens.accessToken };
+    return {
+      accessToken: tokens.accessToken,
+      refreshTokenExpiresAt: tokens.refreshTokenExpiresAt.toISOString(),
+    };
+  }
+
+  @Public()
+  @Get('session')
+  sessionAvailability(@Req() request: Request): { hasSession: boolean } {
+    return {
+      hasSession: Boolean(request.cookies?.[REFRESH_TOKEN_COOKIE]),
+    };
+  }
+
+  @Get('sessions')
+  findSessions(
+    @CurrentUser() user: AccessTokenPayload,
+  ): Promise<AuthSession[]> {
+    return this.authService.findSessions(user.sub, user.sessionId);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete('sessions/:sessionId')
+  async revokeSession(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.authService.revokeUserSession(user.sub, sessionId);
+    if (sessionId === user.sessionId) {
+      response.clearCookie(
+        REFRESH_TOKEN_COOKIE,
+        clearRefreshTokenCookieOptions(this.isProduction),
+      );
+    }
   }
 
   @Public()

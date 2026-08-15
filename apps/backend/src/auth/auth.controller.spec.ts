@@ -12,6 +12,8 @@ describe('AuthController', () => {
     verifyMagicLink: jest.fn(),
     refresh: jest.fn(),
     logout: jest.fn(),
+    findSessions: jest.fn(),
+    revokeUserSession: jest.fn(),
   };
   const config = {
     get: jest.fn().mockReturnValue('development'),
@@ -27,15 +29,20 @@ describe('AuthController', () => {
   });
 
   it('sets the refresh cookie without returning the refresh token', async () => {
+    const refreshTokenExpiresAt = new Date('2026-09-14T12:00:00.000Z');
     authService.verifyMagicLink.mockResolvedValue({
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
+      refreshTokenExpiresAt,
     });
     const response = { cookie: jest.fn() } as unknown as Response;
 
     await expect(
       controller.verifyMagicLink({ token: 'magic-token' }, response),
-    ).resolves.toEqual({ accessToken: 'access-token' });
+    ).resolves.toEqual({
+      accessToken: 'access-token',
+      refreshTokenExpiresAt: refreshTokenExpiresAt.toISOString(),
+    });
     expect(response.cookie).toHaveBeenCalledWith(
       REFRESH_TOKEN_COOKIE,
       'refresh-token',
@@ -48,9 +55,11 @@ describe('AuthController', () => {
   });
 
   it('reads and rotates the refresh-token cookie', async () => {
+    const refreshTokenExpiresAt = new Date('2026-09-14T12:00:00.000Z');
     authService.refresh.mockResolvedValue({
       accessToken: 'new-access-token',
       refreshToken: 'new-refresh-token',
+      refreshTokenExpiresAt,
     });
     const request = {
       cookies: { [REFRESH_TOKEN_COOKIE]: 'current-refresh-token' },
@@ -59,6 +68,7 @@ describe('AuthController', () => {
 
     await expect(controller.refresh(request, response)).resolves.toEqual({
       accessToken: 'new-access-token',
+      refreshTokenExpiresAt: refreshTokenExpiresAt.toISOString(),
     });
     expect(authService.refresh).toHaveBeenCalledWith('current-refresh-token');
     expect(response.cookie).toHaveBeenCalledWith(
@@ -81,6 +91,29 @@ describe('AuthController', () => {
     expect(response.clearCookie).toHaveBeenCalledWith(
       REFRESH_TOKEN_COOKIE,
       expect.objectContaining({ path: '/api/auth' }),
+    );
+  });
+
+  it('clears the refresh cookie when revoking the current session', async () => {
+    authService.revokeUserSession.mockResolvedValue(undefined);
+    const user = {
+      sub: 'user-id',
+      sessionId: 'e86db06e-1386-48c6-9b6b-b9d568607091',
+      email: 'user@example.com',
+      type: 'access' as const,
+      exp: 1_800_000_000,
+    };
+    const response = { clearCookie: jest.fn() } as unknown as Response;
+
+    await controller.revokeSession(user, user.sessionId, response);
+
+    expect(authService.revokeUserSession).toHaveBeenCalledWith(
+      'user-id',
+      user.sessionId,
+    );
+    expect(response.clearCookie).toHaveBeenCalledWith(
+      REFRESH_TOKEN_COOKIE,
+      expect.any(Object),
     );
   });
 });
