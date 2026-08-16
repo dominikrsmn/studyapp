@@ -8,13 +8,15 @@ datasource db {
 }
 
 model User {
-    id        String    @id @default(uuid())
-    email     String    @unique
+    id        String     @id @default(uuid())
+    email     String     @unique
     name      String?
-    modules   Module[]
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
-    sessions  Session[]
+    semesters Semester[]
+
+    sessions Session[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 model Session {
@@ -49,49 +51,178 @@ model RefreshToken {
 }
 
 model MagicLinkToken {
-    id        String   @id @default(uuid())
+    id        String    @id @default(uuid())
     email     String
-    tokenHash String   @unique
+    tokenHash String    @unique
     expiresAt DateTime
     usedAt    DateTime?
-    createdAt DateTime @default(now())
+    createdAt DateTime  @default(now())
 
     @@index([expiresAt])
 }
 
-model Module {
-    id          String     @id @default(uuid())
-    name        String
-    description String?
-    userId      String
-    user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-    documents   Document[]
-    createdAt   DateTime   @default(now())
-    updatedAt   DateTime   @updatedAt
+model Semester {
+    id        String   @id @default(uuid())
+    startDate DateTime
+    endDate   DateTime
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    modules Module[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
     @@index([userId])
 }
 
-model Document {
-    id            String         @id @default(uuid())
-    name          String
-    originalName  String
-    mimeType      String
-    status        DocumentStatus @default(PENDING)
-    storageKey    String?
-    extractedText String?
-    moduleId      String
-    module        Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+model Module {
+    id          String    @id @default(uuid())
+    name        String
+    description String?
+    examDate    DateTime?
+
+    semesterId String
+    semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+
+    sources   Source[]
+    topics    Topic[]
+    exercises Exercise[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([semesterId])
+}
+
+model Source {
+    id         String       @id @default(uuid())
+    name       String
+    type       SourceType
+    mimeType   String
+    status     SourceStatus @default(PENDING)
+    storageKey String?
+
+    moduleId String
+    module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+    chunks    SourceChunk[]
+    exercises Exercise[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
     @@index([moduleId])
+    @@index([status])
 }
 
-enum DocumentStatus {
+model SourceChunk {
+    id      String @id @default(uuid())
+    content String
+
+    pageNumber Int?
+
+    //embedding Unsupported("vector")?
+
+    sourceId String
+    source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+
+    @@index([sourceId])
+}
+
+model Topic {
+    id    String @id @default(uuid())
+    title String
+
+    moduleId String
+    module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+    parentId String?
+    parent   Topic?  @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+    children Topic[] @relation("TopicHierarchy")
+
+    exercises Exercise[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([moduleId])
+    @@index([parentId])
+}
+
+model Exercise {
+    id            String         @id @default(uuid())
+    title         String?
+    content       String
+    type          ExerciseType
+    origin        ExerciseOrigin
+    estimatedTime Int?
+
+    moduleId String
+    module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+    sourceId   String?
+    source     Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+    sourcePage Int?
+
+    topics   Topic[]
+    attempts ExerciseAttempt[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([moduleId])
+    @@index([sourceId])
+}
+
+model ExerciseAttempt {
+    id String @id @default(uuid())
+
+    exerciseId String
+    exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+    answer String?
+
+    startedAt   DateTime  @default(now())
+    submittedAt DateTime?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([exerciseId])
+}
+
+enum SourceStatus {
     PENDING
     PROCESSING
     READY
     FAILED
+}
+
+enum SourceType {
+    DOCUMENT
+    IMAGE
+    AUDIO
+    TEXT
+    WEB
+}
+
+enum ExerciseOrigin {
+    MANUAL
+    SOURCE
+    GENERATED
+}
+
+enum ExerciseType {
+    EXERCISE
+    QUESTION
+}
+
+enum ExerciseAttemptResult {
+    CORRENT
+    PARTIALLY_CORRENT
+    INCORRECT
 }

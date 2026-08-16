@@ -13,30 +13,30 @@ export class ModulesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(
-    userId: string,
+    semesterId: string,
     createModuleRequest: CreateModule,
   ): Promise<ModuleDto> {
     return this.prisma.module.create({
       data: {
         name: createModuleRequest.name,
         description: createModuleRequest.description,
-        userId,
+        semesterId,
       },
       select: moduleSelect,
     });
   }
 
-  async findAll(userId: string): Promise<ModuleDto[]> {
+  async findAll(semesterId: string): Promise<ModuleDto[]> {
     return this.prisma.module.findMany({
-      where: { userId },
+      where: { semesterId },
       select: moduleSelect,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(userId: string, id: string): Promise<ModuleDto> {
+  async findOne(semesterId: string, id: string): Promise<ModuleDto> {
     const module = await this.prisma.module.findFirst({
-      where: { id, userId },
+      where: { id, semesterId },
       select: moduleSelect,
     });
 
@@ -48,11 +48,11 @@ export class ModulesService {
   }
 
   async update(
-    userId: string,
+    semesterId: string,
     id: string,
     updateModuleRequest: UpdateModule,
   ): Promise<ModuleDto> {
-    await this.findOne(userId, id);
+    await this.findOne(semesterId, id);
 
     return this.prisma.module.update({
       where: { id },
@@ -61,8 +61,8 @@ export class ModulesService {
     });
   }
 
-  async remove(userId: string, id: string): Promise<ModuleDto> {
-    await this.findOne(userId, id);
+  async remove(semesterId: string, id: string): Promise<ModuleDto> {
+    await this.findOne(semesterId, id);
 
     return this.prisma.module.delete({
       where: { id },

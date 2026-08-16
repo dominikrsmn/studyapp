@@ -41,7 +41,7 @@ describe('ModulesService', () => {
       name: 'Mathematics',
       description: 'Exam preparation',
     };
-    const userId = '2e5c9c12-a0bd-455b-8411-9564e38e81d6';
+    const semesterId = '2e5c9c12-a0bd-455b-8411-9564e38e81d6';
     const createdModule = {
       id: '9e3c2355-5874-4980-a9a5-b4fe8b153cc9',
       name: request.name,
@@ -49,20 +49,20 @@ describe('ModulesService', () => {
     };
     moduleDelegate.create.mockResolvedValue(createdModule);
 
-    await expect(service.create(userId, request)).resolves.toEqual(
+    await expect(service.create(semesterId, request)).resolves.toEqual(
       createdModule,
     );
     expect(moduleDelegate.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { ...request, userId } }),
+      expect.objectContaining({ data: { ...request, semesterId } }),
     );
   });
 
-  it('lists modules for one user', async () => {
+  it('lists modules for one semester', async () => {
     moduleDelegate.findMany.mockResolvedValue([]);
 
     await expect(service.findAll('user-id')).resolves.toEqual([]);
     expect(moduleDelegate.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: 'user-id' } }),
+      expect.objectContaining({ where: { semesterId: 'user-id' } }),
     );
   });
 
@@ -74,7 +74,7 @@ describe('ModulesService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(moduleDelegate.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'missing-id', userId: 'user-id' },
+        where: { id: 'missing-id', semesterId: 'user-id' },
       }),
     );
   });
@@ -94,7 +94,7 @@ describe('ModulesService', () => {
     ).resolves.toEqual(updatedModule);
     expect(moduleDelegate.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'module-id', userId: 'user-id' },
+        where: { id: 'module-id', semesterId: 'user-id' },
       }),
     );
     expect(moduleDelegate.update).toHaveBeenCalledWith(
@@ -119,7 +119,7 @@ describe('ModulesService', () => {
     );
     expect(moduleDelegate.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'module-id', userId: 'user-id' },
+        where: { id: 'module-id', semesterId: 'user-id' },
       }),
     );
     expect(moduleDelegate.delete).toHaveBeenCalledWith(
