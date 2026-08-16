@@ -6,6 +6,7 @@ import { envSchema } from '../config/env.schema';
 import { ModulesModule } from '../modules/modules.module';
 import { AuthModule } from '../auth/auth.module';
 import { SourceModule } from '../source/source.module';
+import { SemestersModule } from '../semesters/semesters.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { SourceModule } from '../source/source.module';
     AuthModule,
     ModulesModule,
     SourceModule,
+    SemestersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

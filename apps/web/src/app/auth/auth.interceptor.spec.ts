@@ -16,6 +16,7 @@ const modulesUrl = `${environment.apiUrl}/modules`;
 const documentsUrl = `${environment.apiUrl}/documents`;
 const refreshUrl = `${environment.apiUrl}/auth/refresh`;
 const sessionUrl = `${environment.apiUrl}/auth/session`;
+const sourceUploadUrl = `${environment.apiUrl}/source/upload`;
 
 describe('authInterceptor', () => {
   let authTokens: AuthTokenService;
@@ -51,6 +52,23 @@ describe('authInterceptor', () => {
       'Bearer access-token',
     );
     request.flush([]);
+  });
+
+  it('adds the access token to multipart source uploads', () => {
+    authTokens.setAccessToken('access-token');
+    const formData = new FormData();
+    formData.append('moduleId', 'module-id');
+    formData.append('file', new File(['pdf'], 'script.pdf'));
+
+    TestBed.inject(HttpClient).post(sourceUploadUrl, formData).subscribe();
+
+    const request = httpTesting.expectOne(sourceUploadUrl);
+    expect(request.request.headers.get('Authorization')).toBe(
+      'Bearer access-token',
+    );
+    expect(request.request.headers.has('Content-Type')).toBe(false);
+    expect(request.request.body).toBe(formData);
+    request.flush({});
   });
 
   it('exposes identity and expiry claims from the access token', () => {

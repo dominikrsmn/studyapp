@@ -3,7 +3,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceController } from './source.controller';
 import { SourceService } from './source.service';
-import type { SourceUploadFile } from './source.types';
 
 jest.mock('./source.service', () => ({
   SourceService: class SourceService {
@@ -85,9 +84,17 @@ describe('SourceController', () => {
 function createFile(
   originalName = 'notes.pdf',
   mimetype = 'application/pdf',
-): SourceUploadFile {
+): Express.Multer.File {
   return {
+    fieldname: 'file',
     originalname: originalName,
+    encoding: '7bit',
     mimetype,
-  };
+    size: 3,
+    buffer: Buffer.from('pdf'),
+    stream: undefined as never,
+    destination: '',
+    filename: originalName,
+    path: '',
+  } as Express.Multer.File;
 }

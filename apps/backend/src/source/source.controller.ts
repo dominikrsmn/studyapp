@@ -2,12 +2,13 @@ import {
   BadRequestException,
   Body,
   Controller,
-  FileTypeValidator,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
-  MaxFileSizeValidator,
-  ParseFilePipe,
+  Param,
   ParseFilePipeBuilder,
+  ParseUUIDPipe,
   Post,
   Req,
   UploadedFile,
@@ -18,7 +19,6 @@ import { uploadSourceSchema, type SourceDto } from '@study/contracts';
 import { z } from 'zod';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceService } from './source.service';
-import { Public } from '../auth/public.decorator';
 
 @Controller('source')
 export class SourceController {
@@ -26,7 +26,6 @@ export class SourceController {
 
   @HttpCode(HttpStatus.CREATED)
   @Post('upload')
-  @Public()
   @UseInterceptors(FileInterceptor('file'))
   uploadSource(
     @Req() request: AuthenticatedRequest,
@@ -38,8 +37,8 @@ export class SourceController {
           errorMessage: 'File must be a PDF',
         })
         .addMaxSizeValidator({
-          maxSize: 50_000_000, // 5 MB
-          errorMessage: "File size can't be >5 MB",
+          maxSize: 50_000_000, // 50 MB
+          errorMessage: "File size can't be >50 MB",
         })
         .build({
           errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -57,5 +56,26 @@ export class SourceController {
       input.data.moduleId,
       file,
     );
+  }
+
+  @Delete(':id')
+  deleteSource(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SourceDto> {
+    return this.sourceService.remove(request.userId, id);
+  }
+}
+
+@Controller('modules/:moduleId/sources')
+export class ModuleSourcesController {
+  constructor(private readonly sourceService: SourceService) {}
+
+  @Get()
+  findAll(
+    @Req() request: AuthenticatedRequest,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+  ): Promise<SourceDto[]> {
+    return this.sourceService.findAll(request.userId, moduleId);
   }
 }
