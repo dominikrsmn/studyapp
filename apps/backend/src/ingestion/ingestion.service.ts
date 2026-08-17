@@ -24,6 +24,15 @@ export class IngestionService {
       },
       select: {
         storageKey: true,
+        module: {
+          select: {
+            semester: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -38,7 +47,13 @@ export class IngestionService {
     const chunks = pages.flatMap((page) => this.textChunker.chunk(page.text));
 
     const embeddings = chunks.flatMap((chunk) =>
-      this.embeddingService.embed(sourceId, chunk),
+      this.embeddingService.embed(
+        {
+          id: sourceId,
+          userId: source.module.semester.userId,
+        },
+        chunk,
+      ),
     );
   }
 }
