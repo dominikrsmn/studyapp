@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { FileStorageService } from '../filestorage/filestorage.service';
+import { IngestionService } from '../ingestion/ingestion.service';
 
 const sourceSelect = {
   id: true,
@@ -20,6 +21,7 @@ export class SourceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileStorageService: FileStorageService,
+    private readonly ingestionService: IngestionService,
   ) {}
 
   async uploadSource(
@@ -56,6 +58,8 @@ export class SourceService {
       await this.fileStorageService.delete(sourceId);
       throw error;
     }
+
+    this.ingestionService.ingest(sourceId);
 
     return uploadedMetadata;
   }

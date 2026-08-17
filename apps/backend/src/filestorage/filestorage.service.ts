@@ -4,18 +4,24 @@ import { join } from 'path';
 
 @Injectable()
 export class FileStorageService {
-  private UPLOAD_DIR: string = join(process.cwd + '/uploads');
-
   async save(buffer: Buffer, key: string): Promise<void> {
-    await mkdir(this.UPLOAD_DIR, { recursive: true });
-    await writeFile(join(this.UPLOAD_DIR, '/', key, '/original.pdf'), buffer);
+    await mkdir(this.fileDir(key), { recursive: true });
+    await writeFile(this.filePath(key), buffer);
   }
 
   async read(key: string): Promise<Buffer> {
-    return await readFile(join(this.UPLOAD_DIR, '/', key, '/original.pdf'));
+    return await readFile(this.filePath(key));
   }
 
   async delete(key: string): Promise<void> {
-    return await unlink(join(join(this.UPLOAD_DIR, '/', key, '/original.pdf')));
+    return await unlink(this.filePath(key));
+  }
+
+  private fileDir(key: string) {
+    return join(process.cwd(), '/uploads/', key);
+  }
+
+  private filePath(key: string) {
+    return join(this.fileDir(key), '/original.pdf');
   }
 }

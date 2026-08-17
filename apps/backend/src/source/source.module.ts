@@ -3,9 +3,10 @@ import { SourceService } from './source.service';
 import { ModuleSourcesController, SourceController } from './source.controller';
 import { PrismaModule } from '../database/prisma/prisma.module';
 import { FileStorageModule } from '../filestorage/filestorage.module';
+import { IngestionModule } from '../ingestion/ingestion.module';
 
 @Module({
-  imports: [PrismaModule, FileStorageModule],
+  imports: [PrismaModule, FileStorageModule, IngestionModule],
   providers: [SourceService],
   controllers: [SourceController, ModuleSourcesController],
 })
