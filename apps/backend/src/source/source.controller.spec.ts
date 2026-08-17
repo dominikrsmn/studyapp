@@ -1,100 +1,73 @@
-import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { SourceController } from './source.controller';
+import {
+  ModuleSourcesController,
+  SourcesController,
+} from './source.controller';
 import { SourceService } from './source.service';
 
-jest.mock('./source.service', () => ({
-  SourceService: class SourceService {
-    uploadSource = jest.fn();
-  },
-}));
-
-describe('SourceController', () => {
-  let controller: SourceController;
+describe('Source controllers', () => {
+  let moduleSourcesController: ModuleSourcesController;
+  let sourcesController: SourcesController;
   const request = { userId: 'user-id' } as AuthenticatedRequest;
   const sourceService = {
     uploadSource: jest.fn(),
+    findAll: jest.fn(),
+    remove: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [SourceController],
-      providers: [
-        {
-          provide: SourceService,
-          useValue: sourceService,
-        },
-      ],
+      controllers: [ModuleSourcesController, SourcesController],
+      providers: [{ provide: SourceService, useValue: sourceService }],
     }).compile();
 
-    controller = module.get<SourceController>(SourceController);
+    moduleSourcesController = module.get(ModuleSourcesController);
+    sourcesController = module.get(SourcesController);
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
-  it('uploads a pdf source for the authenticated user', async () => {
-    const file = createFile('notes.pdf', 'application/pdf');
+  it('uploads a source to the module from the URL', async () => {
+    const file = createFile();
     sourceService.uploadSource.mockResolvedValue({ id: 'source-id' });
 
-    await controller.uploadSource(
-      request,
-      { moduleId: '2e5c9c12-a0bd-455b-8411-9564e38e81d6' },
-      file,
-    );
+    await moduleSourcesController.uploadSource(request, 'module-id', file);
 
     expect(sourceService.uploadSource).toHaveBeenCalledWith(
       'user-id',
-      '2e5c9c12-a0bd-455b-8411-9564e38e81d6',
+      'module-id',
       file,
     );
   });
 
-  it('rejects missing file upload', () => {
-    expect(() =>
-      controller.uploadSource(request, {
-        moduleId: '2e5c9c12-a0bd-455b-8411-9564e38e81d6',
-      }),
-    ).toThrow(BadRequestException);
-    expect(sourceService.uploadSource).not.toHaveBeenCalled();
+  it('lists sources belonging to a module', async () => {
+    sourceService.findAll.mockResolvedValue([]);
+
+    await moduleSourcesController.findAll(request, 'module-id');
+
+    expect(sourceService.findAll).toHaveBeenCalledWith('user-id', 'module-id');
   });
 
-  it('rejects non-pdf uploads', () => {
-    expect(() =>
-      controller.uploadSource(
-        request,
-        { moduleId: '2e5c9c12-a0bd-455b-8411-9564e38e81d6' },
-        createFile('notes.txt', 'text/plain'),
-      ),
-    ).toThrow(BadRequestException);
-    expect(sourceService.uploadSource).not.toHaveBeenCalled();
-  });
+  it('deletes a source by id', async () => {
+    sourceService.remove.mockResolvedValue({ id: 'source-id' });
 
-  it('rejects invalid payloads', () => {
-    expect(() =>
-      controller.uploadSource(request, { moduleId: 'not-a-uuid' }, createFile()),
-    ).toThrow(BadRequestException);
-    expect(sourceService.uploadSource).not.toHaveBeenCalled();
+    await sourcesController.deleteSource(request, 'source-id');
+
+    expect(sourceService.remove).toHaveBeenCalledWith('user-id', 'source-id');
   });
 });
 
-function createFile(
-  originalName = 'notes.pdf',
-  mimetype = 'application/pdf',
-): Express.Multer.File {
+function createFile(): Express.Multer.File {
   return {
     fieldname: 'file',
-    originalname: originalName,
+    originalname: 'notes.pdf',
     encoding: '7bit',
-    mimetype,
+    mimetype: 'application/pdf',
     size: 3,
     buffer: Buffer.from('pdf'),
     stream: undefined as never,
     destination: '',
-    filename: originalName,
+    filename: 'notes.pdf',
     path: '',
   } as Express.Multer.File;
 }

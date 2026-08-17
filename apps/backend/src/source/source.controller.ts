@@ -1,6 +1,4 @@
 import {
-  BadRequestException,
-  Body,
   Controller,
   Delete,
   Get,
@@ -15,21 +13,33 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { uploadSourceSchema, type SourceDto } from '@study/contracts';
-import { z } from 'zod';
+import type { SourceDto } from '@study/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceService } from './source.service';
 
-@Controller('source')
-export class SourceController {
+@Controller('sources')
+export class SourcesController {
+  constructor(private readonly sourceService: SourceService) {}
+
+  @Delete(':id')
+  deleteSource(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SourceDto> {
+    return this.sourceService.remove(request.userId, id);
+  }
+}
+
+@Controller('modules/:moduleId/sources')
+export class ModuleSourcesController {
   constructor(private readonly sourceService: SourceService) {}
 
   @HttpCode(HttpStatus.CREATED)
-  @Post('upload')
+  @Post()
   @UseInterceptors(FileInterceptor('file'))
   uploadSource(
     @Req() request: AuthenticatedRequest,
-    @Body() body: unknown,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
@@ -46,30 +56,8 @@ export class SourceController {
     )
     file: Express.Multer.File,
   ): Promise<SourceDto> {
-    const input = uploadSourceSchema.safeParse(body);
-    if (!input.success) {
-      throw new BadRequestException(z.treeifyError(input.error));
-    }
-
-    return this.sourceService.uploadSource(
-      request.userId,
-      input.data.moduleId,
-      file,
-    );
+    return this.sourceService.uploadSource(request.userId, moduleId, file);
   }
-
-  @Delete(':id')
-  deleteSource(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<SourceDto> {
-    return this.sourceService.remove(request.userId, id);
-  }
-}
-
-@Controller('modules/:moduleId/sources')
-export class ModuleSourcesController {
-  constructor(private readonly sourceService: SourceService) {}
 
   @Get()
   findAll(

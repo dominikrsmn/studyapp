@@ -41,9 +41,7 @@ export class StudyApiService {
   }
 
   deleteSemester(semesterId: string): Observable<Semester> {
-    return this.http.delete<Semester>(
-      `${this.apiUrl}/semesters/${semesterId}`,
-    );
+    return this.http.delete<Semester>(`${this.apiUrl}/semesters/${semesterId}`);
   }
 
   findModules(semesterId: string): Observable<StudyModule[]> {
@@ -63,10 +61,7 @@ export class StudyApiService {
     );
   }
 
-  deleteModule(
-    semesterId: string,
-    moduleId: string,
-  ): Observable<StudyModule> {
+  deleteModule(semesterId: string, moduleId: string): Observable<StudyModule> {
     return this.http.delete<StudyModule>(
       `${this.apiUrl}/semesters/${semesterId}/modules/${moduleId}`,
     );
@@ -80,12 +75,14 @@ export class StudyApiService {
 
   uploadSource(moduleId: string, file: File): Observable<Source> {
     const body = new FormData();
-    body.append('moduleId', moduleId);
     body.append('file', file);
-    return this.http.post<Source>(`${this.apiUrl}/source/upload`, body);
+    return this.http.post<Source>(
+      `${this.apiUrl}/modules/${moduleId}/sources`,
+      body,
+    );
   }
 
   deleteSource(sourceId: string): Observable<Source> {
-    return this.http.delete<Source>(`${this.apiUrl}/source/${sourceId}`);
+    return this.http.delete<Source>(`${this.apiUrl}/sources/${sourceId}`);
   }
 }

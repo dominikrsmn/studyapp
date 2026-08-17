@@ -16,7 +16,7 @@ const modulesUrl = `${environment.apiUrl}/modules`;
 const documentsUrl = `${environment.apiUrl}/documents`;
 const refreshUrl = `${environment.apiUrl}/auth/refresh`;
 const sessionUrl = `${environment.apiUrl}/auth/session`;
-const sourceUploadUrl = `${environment.apiUrl}/source/upload`;
+const sourceUploadUrl = `${environment.apiUrl}/modules/module-id/sources`;
 
 describe('authInterceptor', () => {
   let authTokens: AuthTokenService;
@@ -57,7 +57,6 @@ describe('authInterceptor', () => {
   it('adds the access token to multipart source uploads', () => {
     authTokens.setAccessToken('access-token');
     const formData = new FormData();
-    formData.append('moduleId', 'module-id');
     formData.append('file', new File(['pdf'], 'script.pdf'));
 
     TestBed.inject(HttpClient).post(sourceUploadUrl, formData).subscribe();
