@@ -17,19 +17,6 @@ import type { SourceDto } from '@study/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceService } from './source.service';
 
-@Controller('sources')
-export class SourcesController {
-  constructor(private readonly sourceService: SourceService) {}
-
-  @Delete(':id')
-  deleteSource(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<SourceDto> {
-    return this.sourceService.remove(request.userId, id);
-  }
-}
-
 @Controller('modules/:moduleId/sources')
 export class ModuleSourcesController {
   constructor(private readonly sourceService: SourceService) {}
@@ -57,6 +44,15 @@ export class ModuleSourcesController {
     file: Express.Multer.File,
   ): Promise<SourceDto> {
     return this.sourceService.uploadSource(request.userId, moduleId, file);
+  }
+
+  @Delete(':id')
+  deleteSource(
+    @Req() request: AuthenticatedRequest,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SourceDto> {
+    return this.sourceService.remove(request.userId, id);
   }
 
   @Get()
