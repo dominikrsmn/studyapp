@@ -4,6 +4,7 @@ import { PrismaService } from '../database/prisma/prisma.service';
 import { join } from 'node:path';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { FileStorageService } from '../filestorage/filestorage.service';
 
 const sourceSelect = {
   id: true,
@@ -16,7 +17,10 @@ const sourceSelect = {
 
 @Injectable()
 export class SourceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
   async uploadSource(
     userId: string,
@@ -31,25 +35,25 @@ export class SourceService {
     if (!module) {
       throw new NotFoundException(`Module with id "${moduleId}" was not found`);
     }
-    const uploadDir = join(process.cwd(), 'uploads');
-    const storageKey = `${randomUUID()}.pdf`;
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(join(uploadDir, storageKey), source.buffer);
+    const sourceId = randomUUID();
+
+    this.fileStorageService.save(source.buffer, sourceId);
 
     let uploadedMetadata: SourceDto;
     try {
       uploadedMetadata = await this.prisma.source.create({
         data: {
+          id: sourceId,
           name: source.originalname,
           type: 'DOCUMENT',
           mimeType: source.mimetype,
           moduleId,
-          storageKey,
+          storageKey: sourceId,
         },
         select: sourceSelect,
       });
     } catch (error) {
-      await unlink(join(uploadDir, storageKey)).catch(() => undefined);
+      await this.fileStorageService.delete(sourceId);
       throw error;
     }
 

@@ -8,6 +8,8 @@ export const envSchema = z.object({
   DATABASE_URL: z.url(),
   JWT_SECRET: z.string().length(32),
   WEB_URL: z.url().default('http://localhost:4200'),
+
+  OPENAI_API_KEY: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;

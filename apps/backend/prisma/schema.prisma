@@ -11,23 +11,21 @@ model User {
     id        String     @id @default(uuid())
     email     String     @unique
     name      String?
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
     semesters Semester[]
-
-    sessions Session[]
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    sessions  Session[]
 }
 
 model Session {
     id            String         @id @default(uuid())
     userId        String
-    user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
     revokedAt     DateTime?
     createdAt     DateTime       @default(now())
     updatedAt     DateTime       @updatedAt
     lastUsedAt    DateTime       @default(now())
     refreshTokens RefreshToken[]
+    user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@index([userId])
 }
@@ -35,16 +33,16 @@ model Session {
 model RefreshToken {
     id                String        @id @default(uuid())
     sessionId         String
-    session           Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
     tokenHash         String        @unique
     expiresAt         DateTime
     usedAt            DateTime?
     replacedByTokenId String?       @unique
-    replacedBy        RefreshToken? @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id])
-    replaces          RefreshToken? @relation("RefreshTokenReplacement")
     revokedAt         DateTime?
     createdAt         DateTime      @default(now())
     updatedAt         DateTime      @updatedAt
+    replacedBy        RefreshToken? @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id])
+    replaces          RefreshToken? @relation("RefreshTokenReplacement")
+    session           Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
     @@index([sessionId])
     @@index([expiresAt])
@@ -65,132 +63,109 @@ model Semester {
     id        String   @id @default(uuid())
     startDate DateTime
     endDate   DateTime
-
-    userId String
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    modules Module[]
-
+    userId    String
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    modules   Module[]
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@index([userId])
 }
 
 model Module {
-    id          String    @id @default(uuid())
+    id          String     @id @default(uuid())
     name        String
     description String?
+    createdAt   DateTime   @default(now())
+    updatedAt   DateTime   @updatedAt
     examDate    DateTime?
-
-    semesterId String
-    semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
-
-    sources   Source[]
-    topics    Topic[]
-    exercises Exercise[]
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    semesterId  String
+    exercises   Exercise[]
+    semester    Semester   @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+    sources     Source[]
+    topics      Topic[]
 
     @@index([semesterId])
 }
 
 model Source {
-    id         String       @id @default(uuid())
+    id         String        @id @default(uuid())
     name       String
     type       SourceType
     mimeType   String
-    status     SourceStatus @default(PENDING)
+    status     SourceStatus  @default(PENDING)
     storageKey String?
-
-    moduleId String
-    module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-
-    chunks    SourceChunk[]
-    exercises Exercise[]
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    moduleId   String
+    createdAt  DateTime      @default(now())
+    updatedAt  DateTime      @updatedAt
+    exercises  Exercise[]
+    module     Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+    chunks     SourceChunk[]
 
     @@index([moduleId])
     @@index([status])
 }
 
 model SourceChunk {
-    id      String @id @default(uuid())
-    content String
-
-    pageNumber Int?
-
-    //embedding Unsupported("vector")?
-
-    sourceId String
-    source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-    createdAt DateTime @default(now())
+    id         String                 @id @default(uuid())
+    content    String
+    sourceId   String
+    createdAt  DateTime               @default(now())
+    chunkIndex Int
+    pageEnd    Int?
+    pageStart  Int?
+    embedding  Unsupported("vector")?
+    source     Source                 @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
     @@index([sourceId])
 }
 
 model Topic {
-    id    String @id @default(uuid())
-    title String
-
-    moduleId String
-    module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-
-    parentId String?
-    parent   Topic?  @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-    children Topic[] @relation("TopicHierarchy")
-
-    exercises Exercise[]
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    id        String     @id @default(uuid())
+    title     String
+    moduleId  String
+    parentId  String?
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
+    module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+    parent    Topic?     @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+    children  Topic[]    @relation("TopicHierarchy")
+    exercises Exercise[] @relation("ExerciseToTopic")
 
     @@index([moduleId])
     @@index([parentId])
 }
 
 model Exercise {
-    id            String         @id @default(uuid())
+    id            String            @id @default(uuid())
     title         String?
     content       String
     type          ExerciseType
     origin        ExerciseOrigin
     estimatedTime Int?
-
-    moduleId String
-    module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-
-    sourceId   String?
-    source     Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-    sourcePage Int?
-
-    topics   Topic[]
-    attempts ExerciseAttempt[]
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    moduleId      String
+    sourceId      String?
+    sourcePage    Int?
+    createdAt     DateTime          @default(now())
+    updatedAt     DateTime          @updatedAt
+    module        Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+    source        Source?           @relation(fields: [sourceId], references: [id])
+    attempts      ExerciseAttempt[]
+    topics        Topic[]           @relation("ExerciseToTopic")
 
     @@index([moduleId])
     @@index([sourceId])
 }
 
 model ExerciseAttempt {
-    id String @id @default(uuid())
-
-    exerciseId String
-    exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
-
-    answer String?
-
+    id          String    @id @default(uuid())
+    exerciseId  String
+    answer      String?
     startedAt   DateTime  @default(now())
     submittedAt DateTime?
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+    exercise    Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
     @@index([exerciseId])
 }
