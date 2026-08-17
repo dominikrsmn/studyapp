@@ -10,7 +10,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { authInterceptor } from './auth.interceptor';
 import { AuthTokenService } from './auth-token.service';
-import { environment } from '../../environments/environment';
+import { environment } from '../../../environments/environment';
 
 const modulesUrl = `${environment.apiUrl}/modules`;
 const documentsUrl = `${environment.apiUrl}/documents`;
