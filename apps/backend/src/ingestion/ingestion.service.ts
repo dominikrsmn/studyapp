@@ -12,13 +12,13 @@ import { PageTextResult } from 'pdf-parse';
 import { PrismaService } from '../database/prisma/prisma.service';
 
 export type Chunk = {
-  index: number;
   content: string;
   page: number;
 };
 
 export type EmbeddedChunk = Chunk & {
   embedding: number[];
+  index: number;
 };
 @Injectable()
 export class IngestionService {
@@ -74,9 +74,8 @@ export class IngestionService {
 
       for (let j = 0; j < pageChunks.length; j++) {
         chunks.push({
-          index: j,
           page: page.num,
-          content: pageChunks[i],
+          content: pageChunks[j],
         });
       }
     }

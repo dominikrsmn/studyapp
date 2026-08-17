@@ -34,6 +34,7 @@ export class EmbeddingService {
 
     const embeddedChunks: EmbeddedChunk[] = response.data.map((item) => ({
       ...chunks[item.index],
+      index: item.index,
       embedding: item.embedding,
     }));
 
