@@ -1,6 +1,6 @@
 <main>
   <section class="card">
-    <h1>Study app</h1>
+    <h1 class="text-3xl font-bold underline">Study App!</h1>
 
     @if (!isAuthenticated()) {
       <form (submit)="requestMagicLink($event)">
@@ -70,27 +70,55 @@
       <hr />
       <section class="study-section">
         <div class="section-heading">
-          <div><span class="eyebrow">Backend test platform</span><h2>Semester</h2></div>
+          <div>
+            <span class="eyebrow">Backend test platform</span>
+            <h2>Semester</h2>
+          </div>
           <span class="token-badge">● Access Token aktiv</span>
         </div>
         <form class="inline-form" (submit)="createSemester($event)">
-          <label>Start<input type="date" [formControl]="startDateControl" /></label>
-          <label>Ende<input type="date" [formControl]="endDateControl" /></label>
-          <button type="submit" [disabled]="isStudyRequestPending()">Anlegen</button>
+          <label
+            >Start<input type="date" [formControl]="startDateControl"
+          /></label>
+          <label
+            >Ende<input type="date" [formControl]="endDateControl"
+          /></label>
+          <button type="submit" [disabled]="isStudyRequestPending()">
+            Anlegen
+          </button>
         </form>
-        @if (startDateControl.value && endDateControl.value && startDateControl.value > endDateControl.value) {
+        @if (
+          startDateControl.value &&
+          endDateControl.value &&
+          startDateControl.value > endDateControl.value
+        ) {
           <p class="error">Das Enddatum muss nach dem Startdatum liegen.</p>
         }
         <ul class="resource-list">
           @for (semester of semesters(); track semester.id) {
             <li [class.selected]="selectedSemesterId() === semester.id">
-              <button type="button" class="resource-select" (click)="selectSemester(semester.id)">
-                <strong>{{ semester.startDate | date: 'dd.MM.yyyy' }} – {{ semester.endDate | date: 'dd.MM.yyyy' }}</strong>
+              <button
+                type="button"
+                class="resource-select"
+                (click)="selectSemester(semester.id)"
+              >
+                <strong
+                  >{{ semester.startDate | date: 'dd.MM.yyyy' }} –
+                  {{ semester.endDate | date: 'dd.MM.yyyy' }}</strong
+                >
                 <small>{{ semester.id }}</small>
               </button>
-              <button type="button" class="danger" (click)="deleteSemester(semester)">Löschen</button>
+              <button
+                type="button"
+                class="danger"
+                (click)="deleteSemester(semester)"
+              >
+                Löschen
+              </button>
             </li>
-          } @empty { <li class="empty">Noch keine Semester vorhanden.</li> }
+          } @empty {
+            <li class="empty">Noch keine Semester vorhanden.</li>
+          }
         </ul>
       </section>
 
@@ -98,20 +126,43 @@
         <section class="study-section">
           <h2>Module</h2>
           <form (submit)="createModule($event)">
-            <label>Name<input [formControl]="moduleNameControl" placeholder="z. B. Mathematik I" /></label>
-            <label>Beschreibung<textarea [formControl]="moduleDescriptionControl" placeholder="Optional"></textarea></label>
-            <button type="submit" [disabled]="isStudyRequestPending()">Modul anlegen</button>
+            <label
+              >Name<input
+                [formControl]="moduleNameControl"
+                placeholder="z. B. Mathematik I"
+            /></label>
+            <label
+              >Beschreibung<textarea
+                [formControl]="moduleDescriptionControl"
+                placeholder="Optional"
+              ></textarea>
+            </label>
+            <button type="submit" [disabled]="isStudyRequestPending()">
+              Modul anlegen
+            </button>
           </form>
           <ul class="resource-list">
             @for (studyModule of modules(); track studyModule.id) {
               <li [class.selected]="selectedModuleId() === studyModule.id">
-                <button type="button" class="resource-select" (click)="selectModule(studyModule.id)">
+                <button
+                  type="button"
+                  class="resource-select"
+                  (click)="selectModule(studyModule.id)"
+                >
                   <strong>{{ studyModule.name }}</strong>
                   <small>{{ studyModule.description || studyModule.id }}</small>
                 </button>
-                <button type="button" class="danger" (click)="deleteModule(studyModule)">Löschen</button>
+                <button
+                  type="button"
+                  class="danger"
+                  (click)="deleteModule(studyModule)"
+                >
+                  Löschen
+                </button>
               </li>
-            } @empty { <li class="empty">Dieses Semester hat noch keine Module.</li> }
+            } @empty {
+              <li class="empty">Dieses Semester hat noch keine Module.</li>
+            }
           </ul>
         </section>
       }
@@ -120,16 +171,38 @@
         <section class="study-section">
           <h2>Sources</h2>
           <form class="upload-form" (submit)="uploadSource($event)">
-            <label>PDF auswählen<input id="source-file" type="file" accept="application/pdf,.pdf" (change)="chooseSource($event)" /></label>
-            <button type="submit" [disabled]="!sourceFile() || isStudyRequestPending()">Hochladen</button>
+            <label
+              >PDF auswählen<input
+                id="source-file"
+                type="file"
+                accept="application/pdf,.pdf"
+                (change)="chooseSource($event)"
+            /></label>
+            <button
+              type="submit"
+              [disabled]="!sourceFile() || isStudyRequestPending()"
+            >
+              Hochladen
+            </button>
           </form>
           <ul class="resource-list">
             @for (source of sources(); track source.id) {
               <li>
-                <div class="resource-select"><strong>{{ source.name }}</strong><small>{{ source.status }} · {{ source.mimeType }}</small></div>
-                <button type="button" class="danger" (click)="deleteSource(source)">Löschen</button>
+                <div class="resource-select">
+                  <strong>{{ source.name }}</strong
+                  ><small>{{ source.status }} · {{ source.mimeType }}</small>
+                </div>
+                <button
+                  type="button"
+                  class="danger"
+                  (click)="deleteSource(source)"
+                >
+                  Löschen
+                </button>
               </li>
-            } @empty { <li class="empty">Noch keine Sources hochgeladen.</li> }
+            } @empty {
+              <li class="empty">Noch keine Sources hochgeladen.</li>
+            }
           </ul>
         </section>
       }
