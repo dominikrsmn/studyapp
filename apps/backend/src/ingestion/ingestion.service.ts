@@ -10,6 +10,9 @@ import { TextChunkerService } from './text-chunker/text-chunker.service';
 import { EmbeddingService } from './embedding/embedding.service';
 import { PageTextResult } from 'pdf-parse';
 import { PrismaService } from '../database/prisma/prisma.service';
+import { Sql } from '@prisma/client/runtime/client';
+import { Prisma } from '../database/generated/client';
+import { randomUUID } from 'node:crypto';
 
 export type Chunk = {
   content: string;
@@ -33,7 +36,6 @@ export class IngestionService {
   ) {}
 
   async ingest(sourceId: string): Promise<void> {
-    this.logger.log('Starting Ingestion of sourceId ' + sourceId);
     const source = await this.prismaService.source.findUnique({
       where: {
         id: sourceId,
@@ -56,16 +58,58 @@ export class IngestionService {
       throw new NotFoundException('Source was not found');
     }
 
-    this.logger.log('Found source of user ' + source.module.semester.userId);
-
     const file: Buffer = await this.fileStorageService.read(source.storageKey);
-
-    this.logger.log('Loaded file ' + source.storageKey + ' in memory');
 
     const pages: PageTextResult[] = await this.pdfTextExtractor.extract(file);
 
-    this.logger.log('Extracted text of ' + pages.length + ' pages');
+    const chunks: Chunk[] = this.chunkPages(pages);
 
+    const embeddedChunks = await this.embeddingService.embed(
+      {
+        id: sourceId,
+        userId: source.module.semester.userId,
+      },
+      chunks,
+    );
+
+    await this.persistChunks(embeddedChunks, sourceId);
+
+    this.logger.log(
+      'successfully created ' +
+        embeddedChunks.length +
+        ' embeddings in the DB. Ingestion finished',
+    );
+  }
+
+  private async persistChunks(
+    embeddedChunks: EmbeddedChunk[],
+    sourceId: string,
+  ) {
+    const rows: Sql[] = [];
+    for (let i = 0; i < embeddedChunks.length; i++) {
+      const embeddedChunk = embeddedChunks[i];
+      const vector = `[${embeddedChunk.embedding.join(',')}]`;
+      rows.push(Prisma.sql`
+        (
+        ${randomUUID()},
+        ${embeddedChunk.content},
+        ${sourceId},
+        ${embeddedChunk.index},
+        ${embeddedChunk.page},
+        ${embeddedChunk.page},
+        ${vector}::vector
+    )
+        `);
+    }
+
+    await this.prismaService.$executeRaw`
+  INSERT INTO "SourceChunk"
+    ("id", "content", "sourceId", "chunkIndex", "pageEnd", "pageStart", "embedding")
+  VALUES ${Prisma.join(rows, ',')}
+    `;
+  }
+
+  private chunkPages(pages: PageTextResult[]) {
     const chunks: Chunk[] = [];
 
     for (let i = 0; i < pages.length; i++) {
@@ -79,21 +123,6 @@ export class IngestionService {
         });
       }
     }
-
-    this.logger.log('Text divided into ' + chunks.length + ' chunks');
-
-    const embeddings = await this.embeddingService.embed(
-      {
-        id: sourceId,
-        userId: source.module.semester.userId,
-      },
-      chunks,
-    );
-
-    this.logger.log(
-      'successfully created ' +
-        embeddings +
-        ' embeddings in the DB. Ingestion finished',
-    );
+    return chunks;
   }
 }
