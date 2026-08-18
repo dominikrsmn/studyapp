@@ -58,7 +58,7 @@ vitest.config.*.timestamp*
 .nx/migrate-runs
 
 # Prisma
-/apps/backend/src/database/generated
+/apps/backend/src/infrastructure/database/generated
 
 
 uploads/*
