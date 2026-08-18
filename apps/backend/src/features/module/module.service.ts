@@ -2,11 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateModule, ModuleDto, UpdateModule } from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 
-const moduleSelect = {
-  id: true,
-  name: true,
-  description: true,
-} as const;
 
 @Injectable()
 export class ModuleService {
@@ -22,14 +17,12 @@ export class ModuleService {
         description: createModuleRequest.description,
         semesterId,
       },
-      select: moduleSelect,
     });
   }
 
   async findAll(semesterId: string): Promise<ModuleDto[]> {
     return this.prisma.module.findMany({
       where: { semesterId },
-      select: moduleSelect,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -37,7 +30,6 @@ export class ModuleService {
   async findOne(semesterId: string, id: string): Promise<ModuleDto> {
     const module = await this.prisma.module.findFirst({
       where: { id, semesterId },
-      select: moduleSelect,
     });
 
     if (!module) {
@@ -57,7 +49,6 @@ export class ModuleService {
     return this.prisma.module.update({
       where: { id },
       data: updateModuleRequest,
-      select: moduleSelect,
     });
   }
 
@@ -66,7 +57,6 @@ export class ModuleService {
 
     return this.prisma.module.delete({
       where: { id },
-      select: moduleSelect,
     });
   }
 }

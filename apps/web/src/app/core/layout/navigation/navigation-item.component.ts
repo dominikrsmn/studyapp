@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { NgIcon } from '@ng-icons/core';
 
-import { ZardButtonComponent } from '@study/shared/components/button';
-import { mergeClasses } from '@study/shared/utils/merge-classes';
+import { ZardButtonComponent } from '../../../shared/components/button/button.component';
+import { mergeClasses } from '../../../shared/utils/merge-classes';
+import { IconDirective } from '../../../shared/icons/icon.directive';
 
 @Component({
   selector: 'app-navigation-item',
-  imports: [NgIcon, ZardButtonComponent],
+  imports: [ZardButtonComponent, IconDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
@@ -18,7 +18,7 @@ import { mergeClasses } from '@study/shared/utils/merge-classes';
       [class]="classes()"
       [attr.aria-current]="active() ? 'page' : null"
     >
-      <ng-icon [name]="icon()" aria-hidden="true" />
+      <span [appIcon]="icon()" aria-hidden="true"></span>
       <span class="min-w-0 truncate">{{ label() }}</span>
     </button>
   `,

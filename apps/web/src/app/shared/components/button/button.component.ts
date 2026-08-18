@@ -11,9 +11,6 @@ import {
   ViewEncapsulation,
   booleanAttribute,
 } from '@angular/core';
-
-import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLoaderCircle } from '@ng-icons/lucide';
 import type { ClassValue } from 'clsx';
 
 import { mergeClasses } from '@study/shared/utils/merge-classes';
@@ -24,27 +21,29 @@ import {
   type ZardButtonSizeVariants,
   type ZardButtonTypeVariants,
 } from './button.variants';
+import { IconDirective } from '@study/shared/icons/icon.directive';
 
 @Component({
   selector: 'z-button, button[z-button], a[z-button]',
-  imports: [NgIcon],
+  imports: [IconDirective],
   template: `
     @if (zLoading()) {
-      <ng-icon name="lucideLoaderCircle" class="animate-spin duration-2000" />
+      <span appIcon="loader" class="animate-spin duration-2000"></span>
     }
     <ng-content />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  viewProviders: [provideIcons({ lucideLoaderCircle })],
   host: {
     'data-slot': 'button',
     '[class]': 'classes()',
-    '[attr.data-disabled]': 'isNotInsideOfButtonOrLink() && zDisabled() || null',
+    '[attr.data-disabled]':
+      'isNotInsideOfButtonOrLink() && zDisabled() || null',
     '[attr.data-icon-only]': 'iconOnly() || null',
     '[attr.data-size]': 'zSize()',
     '[attr.data-variant]': 'zType()',
-    '[attr.aria-disabled]': 'isNotInsideOfButtonOrLink() && zDisabled() || null',
+    '[attr.aria-disabled]':
+      'isNotInsideOfButtonOrLink() && zDisabled() || null',
     '[attr.disabled]': 'isNotInsideOfButtonOrLink() && zDisabled() ? "" : null',
     '[attr.role]': 'isNotInsideOfButtonOrLink() ? "button" : null',
     '[attr.tabindex]': 'isNotInsideOfButtonOrLink() ? "0" : null',
@@ -68,7 +67,10 @@ export class ZardButtonComponent implements OnDestroy {
 
   constructor() {
     afterNextRender(() => {
-      if (typeof window === 'undefined' || typeof MutationObserver === 'undefined') {
+      if (
+        typeof window === 'undefined' ||
+        typeof MutationObserver === 'undefined'
+      ) {
         return;
       }
 
@@ -76,7 +78,7 @@ export class ZardButtonComponent implements OnDestroy {
         const el = this.elementRef.nativeElement;
         const hasIcon = el.querySelector('ng-icon') !== null;
         const children = Array.from<Node>(el.childNodes);
-        const hasText = children.some(node => {
+        const hasText = children.some((node) => {
           if (node.nodeType === 3) {
             return node.textContent?.trim() !== '';
           }

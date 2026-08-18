@@ -1,14 +1,15 @@
 <nav
   aria-label="Primary navigation"
-  class="flex h-screen w-72 shrink-0 flex-col justify-between bg-sage-100 py-8 text-sage-900"
+  class="flex h-screen w-64 shrink-0 flex-col justify-between bg-sage-100 py-8 text-sage-900"
 >
-  <div>
-    <div class="mb-12 flex items-center gap-3 px-8">
+  <div class="px-2">
+    <div class="mb-12 flex items-center gap-3 px-">
       <span class="text-lg font-semibold tracking-tight text-sage-950">study app</span>
     </div>
 
-    <app-navigation-section label="Workspace" headingId="workspace-navigation" class="mb-10">
-      @for (item of workspaceItems; track item.label) {
+    <app-navigation-section headingId="workspace-navigation">
+
+    @for (item of workspaceItems; track item.label) {
         <app-navigation-item
           [label]="item.label"
           [icon]="item.icon"
@@ -16,14 +17,13 @@
         />
       }
     </app-navigation-section>
-
     <app-navigation-section label="Semester" headingId="semester-navigation">
-      @for (item of semesterItems; track item.label) {
+      @for (item of semesterItems(); track item.label) {
         <app-navigation-item [label]="item.label" [icon]="item.icon" />
       }
 
       <div class="mt-2 pt-4">
-        <app-navigation-item label="New Module" icon="lucidePlus" [muted]="true" />
+        <app-navigation-item label="New Module" icon="plus" [muted]="true" />
       </div>
     </app-navigation-section>
   </div>

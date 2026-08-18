@@ -19,7 +19,6 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
     "@ng-icons/fluent-ui": "^35.0.1",
-    "@ng-icons/lucide": "^35.0.1",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@tailwindcss/postcss": "^4.3.3",
