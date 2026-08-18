@@ -12,11 +12,11 @@ import {
 import { createSemesterSchema, type SemesterDto } from '@study/contracts';
 import { z } from 'zod';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { SemestersService } from './semesters.service';
+import { SemesterService } from './semester.service';
 
 @Controller('semesters')
-export class SemestersController {
-  constructor(private readonly semestersService: SemestersService) {}
+export class SemesterController {
+  constructor(private readonly semestersService: SemesterService) {}
 
   @Get()
   findAll(@Req() request: AuthenticatedRequest): Promise<SemesterDto[]> {

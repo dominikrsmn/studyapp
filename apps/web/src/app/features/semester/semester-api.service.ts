@@ -5,9 +5,9 @@ import { Observable } from 'rxjs';
 import { CreateSemester, SemesterDto } from '@study/contracts';
 
 @Service()
-export class SemestersApiService {
+export class SemesterApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.apiUrl}/semesters`;
+  private readonly baseUrl = `${environment.apiUrl}/semester`;
 
   findAll(): Observable<SemesterDto[]> {
     return this.http.get<SemesterDto[]>(this.baseUrl);

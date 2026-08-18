@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { envSchema } from './infrastructure/config/env.schema';
-import { ModulesModule } from './features/modules/modules.module';
+import { ModuleModule } from './features/module/module.module';
 import { AuthModule } from './features/auth/auth.module';
 import { SourceModule } from './features/source/source.module';
-import { SemestersModule } from './features/semesters/semesters.module';
+import { SemesterModule } from './features/semester/semester.module';
 
 @Module({
   imports: [
@@ -13,9 +13,9 @@ import { SemestersModule } from './features/semesters/semesters.module';
       validate: (config) => envSchema.parse(config),
     }),
     AuthModule,
-    ModulesModule,
+    ModuleModule,
     SourceModule,
-    SemestersModule,
+    SemesterModule,
   ],
 })
 export class AppModule {}

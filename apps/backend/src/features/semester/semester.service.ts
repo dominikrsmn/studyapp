@@ -6,7 +6,7 @@ import { Semester } from '../../infrastructure/database/generated/client';
 const semesterSelect = { id: true, startDate: true, endDate: true } as const;
 
 @Injectable()
-export class SemestersService {
+export class SemesterService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, input: CreateSemester): Promise<SemesterDto> {

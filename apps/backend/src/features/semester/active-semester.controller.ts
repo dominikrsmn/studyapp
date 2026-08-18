@@ -9,13 +9,13 @@ import {
 } from '@nestjs/common';
 import { type SemesterDto } from '@study/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { SemestersService } from './semesters.service';
+import { SemesterService } from './semester.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../infrastructure/database/generated/client';
 
 @Controller('active-semester')
 export class ActiveSemestersController {
-  constructor(private readonly semestersService: SemestersService) {}
+  constructor(private readonly semestersService: SemesterService) {}
 
 
   @Get()
