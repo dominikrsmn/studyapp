@@ -5,7 +5,7 @@ import { CreateModule, ModuleDto, UpdateModule } from '@study/contracts';
 import { Observable } from 'rxjs';
 
 @Service()
-export class ModulesApiService {
+export class ModuleApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/modules`;
 

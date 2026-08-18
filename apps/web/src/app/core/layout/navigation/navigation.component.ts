@@ -15,7 +15,7 @@ import {
 import { NavigationItemComponent } from './navigation-item.component';
 import type { NavigationItem } from './navigation.models';
 import { NavigationSectionComponent } from './navigation-section.component';
-import { ModulesApiService } from '@study/features/module/modules-api-service';
+import { ModuleApiService } from '@study/features/module/module-api-service';
 
 @Component({
   selector: 'app-navigation',
@@ -37,7 +37,7 @@ import { ModulesApiService } from '@study/features/module/modules-api-service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NavigationComponent {
-  private readonly modulesApiService = inject(ModulesApiService);
+  private readonly moduleApiService = inject(ModuleApiService);
 
   protected readonly workspaceItems: readonly NavigationItem[] = [
     { label: 'Home', icon: 'lucideHome', active: true },
@@ -45,7 +45,7 @@ export class NavigationComponent {
   ];
 
   protected readonly semesterItems: readonly NavigationItem[] = () => {
-    this.modulesApiService.findAll(/*activeSemesterId vom User*/)
+    this.moduleApiService.findAll(/*activeSemesterId vom User*/)
   };
 
   protected readonly accountItems: readonly NavigationItem[] = [
