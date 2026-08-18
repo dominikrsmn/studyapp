@@ -17,7 +17,7 @@
         />
       }
     </app-navigation-section>
-    <app-navigation-section label="Semester" headingId="semester-navigation">
+    <app-navigation-section [label]="semesterLabel()" headingId="semester-navigation">
       @for (item of semesterItems(); track item.label) {
         <app-navigation-item [label]="item.label" [icon]="item.icon" />
       }

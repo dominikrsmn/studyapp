@@ -10,13 +10,7 @@ export class UserService {
   private readonly userApi = inject(UserApiService);
 
   readonly user = toSignal(
-    this.userApi.getMe().pipe(
-      tap({
-        next: (user) => console.log('HTTP USER:', user),
-        error: (error) => console.error('HTTP ERROR:', error),
-        complete: () => console.log('HTTP COMPLETE'),
-      }),
-    ),
+    this.userApi.getMe()
   );
 
   readonly activeSemesterId = computed(
@@ -33,9 +27,4 @@ export class UserService {
     return user.name ?? user.email;
   });
 
-  constructor() {
-    effect(() => {
-      console.log('USER SIGNAL:', this.user());
-    });
-  }
 }

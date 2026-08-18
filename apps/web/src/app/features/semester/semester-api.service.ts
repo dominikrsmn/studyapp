@@ -8,6 +8,11 @@ import { CreateSemester, SemesterDto } from '@study/contracts';
 export class SemesterApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/semester`;
+  private readonly activeUrl = `${environment.apiUrl}/active-semester`;
+
+  getActive(): Observable<SemesterDto> {
+    return this.http.get<SemesterDto>(this.activeUrl);
+  }
 
   findAll(): Observable<SemesterDto[]> {
     return this.http.get<SemesterDto[]>(this.baseUrl);

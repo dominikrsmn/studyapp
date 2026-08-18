@@ -8,6 +8,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ModuleDto } from '@study/contracts';
 import { IconDirective } from '../../../shared/icons/icon.directive';
 import { UserService } from '../../user/user.service';
+import { SemesterService } from '@study/features/semester/semester.service';
+import { SemesterApiService } from '@study/features/semester/semester-api.service';
 
 @Component({
   selector: 'app-navigation',
@@ -18,10 +20,12 @@ import { UserService } from '../../user/user.service';
 export class NavigationComponent {
   private readonly moduleApiService = inject(ModuleApiService);
   private readonly userService = inject(UserService);
+  private readonly semesterService = inject(SemesterService)
 
   protected readonly modules = toSignal(this.moduleApiService.findAll(), {
     initialValue: [],
   });
+
 
   protected readonly semesterItems = computed<readonly NavigationItem[]>(() =>
     this.modules().map((module: ModuleDto): NavigationItem => ({
@@ -39,4 +43,22 @@ export class NavigationComponent {
     { label: 'Settings', icon: 'settings' },
     { label: this.userService.name(), icon: 'user' },
   ]);
+
+  protected readonly semesterLabel = computed<string>(() => {
+    const semester = this.semesterService.activeSemester()
+    if(!semester) {
+      return "Semester";
+    }
+    const start = new Date(semester.startDate);
+    const end = new Date(semester.endDate);
+
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+
+    if (startYear === endYear) {
+      return `SoSe ${startYear}`;
+    }
+
+    return `WiSe ${String(startYear).slice(-2)}/${String(endYear).slice(-2)}`;
+  })
 }
