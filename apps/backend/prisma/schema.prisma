@@ -80,6 +80,7 @@ model Module {
   id          String     @id @default(uuid())
   name        String
   description String?
+  icon        String     @default("featherBook")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   examDate    DateTime?

@@ -10,3 +10,4 @@ allowBuilds:
   nx: true
   '@prisma/engines': true
   prisma: true
+  core-js: true
