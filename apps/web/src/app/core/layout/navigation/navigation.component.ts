@@ -15,7 +15,7 @@ import {
 import { NavigationItemComponent } from './navigation-item.component';
 import type { NavigationItem } from './navigation.models';
 import { NavigationSectionComponent } from './navigation-section.component';
-import { ModuleApiService } from '@study/features/module/module-api-service';
+import { ModuleApiService } from '../../../features/module/module-api-service';
 
 @Component({
   selector: 'app-navigation',

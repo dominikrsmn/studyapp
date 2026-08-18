@@ -12,7 +12,7 @@ import { authInterceptor } from './auth.interceptor';
 import { AuthTokenService } from './auth-token.service';
 import { environment } from '../../../environments/environment';
 
-const modulesUrl = `${environment.apiUrl}/modules`;
+const modulesUrl = `${environment.apiUrl}/module`;
 const documentsUrl = `${environment.apiUrl}/documents`;
 const refreshUrl = `${environment.apiUrl}/auth/refresh`;
 const sessionUrl = `${environment.apiUrl}/auth/session`;

@@ -9,7 +9,7 @@ const moduleSelect = {
 } as const;
 
 @Injectable()
-export class ModulesService {
+export class ModuleService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(

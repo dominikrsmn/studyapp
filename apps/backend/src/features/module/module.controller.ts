@@ -10,7 +10,7 @@ import {
   BadRequestException,
   Req,
 } from '@nestjs/common';
-import { ModulesService } from './modules.service';
+import { ModuleService } from './module.service';
 import {
   createModuleSchema,
   ModuleDto,
@@ -22,11 +22,11 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../infrastructure/database/generated/client';
 import { ActiveSemesterId, RequireActiveSemester } from '../auth/active-semester.decorator';
 
-@Controller('modules')
+@Controller('module')
 @RequireActiveSemester()
-export class ModulesController {
+export class ModuleController {
   constructor(
-    private readonly modulesService: ModulesService,
+    private readonly moduleService: ModuleService,
   ) {}
 
   @Post()
@@ -42,7 +42,7 @@ export class ModulesController {
       throw new BadRequestException(z.treeifyError(result.error));
     }
 
-    return this.modulesService.create(semesterId, result.data);
+    return this.moduleService.create(semesterId, result.data);
   }
 
   @Get()
@@ -51,7 +51,7 @@ export class ModulesController {
     @ActiveSemesterId() semesterId: string,
     @CurrentUser() user: User
   ): Promise<ModuleDto[]> {
-    return this.modulesService.findAll(semesterId);
+    return this.moduleService.findAll(semesterId);
   }
 
   @Get(':id')
@@ -60,7 +60,7 @@ export class ModulesController {
     @ActiveSemesterId() semesterId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ModuleDto> {
-    return this.modulesService.findOne(semesterId, id);
+    return this.moduleService.findOne(semesterId, id);
   }
 
   @Patch(':id')
@@ -76,7 +76,7 @@ export class ModulesController {
       throw new BadRequestException(z.treeifyError(result.error));
     }
 
-    return this.modulesService.update(semesterId, id, result.data);
+    return this.moduleService.update(semesterId, id, result.data);
   }
 
   @Delete(':id')
@@ -85,7 +85,7 @@ export class ModulesController {
     @ActiveSemesterId() semesterId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ModuleDto> {
-    return this.modulesService.remove(semesterId, id);
+    return this.moduleService.remove(semesterId, id);
   }
 
 }

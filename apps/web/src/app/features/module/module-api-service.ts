@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 @Service()
 export class ModuleApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.apiUrl}/modules`;
+  private readonly baseUrl = `${environment.apiUrl}/module`;
 
   findAll(): Observable<ModuleDto[]> {
     return this.http.get<ModuleDto[]>(this.baseUrl);

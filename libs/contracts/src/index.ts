@@ -1,6 +1,6 @@
-export * from './modules/module.schema';
-export * from './modules/create-module.schema';
-export * from './modules/update-module.schema';
+export * from './module/module.schema';
+export * from './module/create-module.schema';
+export * from './module/update-module.schema';
 
 export * from './sources/source.schema';
 export * from './sources/create-source.schema';
