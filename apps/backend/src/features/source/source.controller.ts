@@ -17,7 +17,7 @@ import type { SourceDto } from '@study/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceService } from './source.service';
 
-@Controller('modules/:moduleId/sources')
+@Controller('module/:moduleId/sources')
 export class SourcesController {
   constructor(private readonly sourceService: SourceService) {}
 

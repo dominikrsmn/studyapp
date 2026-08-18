@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ConflictException,
+  ExecutionContext,
+  Injectable,
+} from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common/exceptions';
@@ -8,6 +13,7 @@ import { IS_PUBLIC_KEY } from './public.decorator';
 import type { AccessTokenPayload } from './auth.types';
 import { UsersService } from '../users/users.service';
 import { CURRENT_USER_REQUIRED_KEY } from './current-user.decorator';
+import { ACTIVE_SEMESTER_REQUIRED_KEY } from './active-semester.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -50,12 +56,21 @@ export class AuthGuard implements CanActivate {
         CURRENT_USER_REQUIRED_KEY,
         [context.getHandler(), context.getClass()],
       );
-      if (shouldLoadCurrentUser) {
+
+      const activeSemesterRequired = this.reflector.getAllAndOverride<boolean>(
+        ACTIVE_SEMESTER_REQUIRED_KEY,
+       [context.getHandler(), context.getClass()],
+      )
+
+      if (shouldLoadCurrentUser || activeSemesterRequired) {
         const user = await this.usersService.findOne(payload.sub);
         if (!user) {
           throw new UnauthorizedException(
             'Authenticated user no longer exists',
           );
+        }
+        if (activeSemesterRequired && !user.activeSemesterId) {
+          throw new ConflictException('No active semester is set');
         }
         request.currentUser = user;
       }

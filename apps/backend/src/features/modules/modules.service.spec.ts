@@ -57,7 +57,7 @@ describe('ModulesService', () => {
     );
   });
 
-  it('lists modules for one semester', async () => {
+  it('lists module for one semester', async () => {
     moduleDelegate.findMany.mockResolvedValue([]);
 
     await expect(service.findAll('user-id')).resolves.toEqual([]);

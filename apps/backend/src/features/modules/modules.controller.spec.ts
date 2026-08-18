@@ -48,7 +48,7 @@ describe('ModulesController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('delegates listing modules with the semester id', async () => {
+  it('delegates listing module with the semester id', async () => {
     modulesService.findAll.mockResolvedValue([]);
 
     await expect(controller.findAll(request, semesterId)).resolves.toEqual([]);
@@ -118,7 +118,7 @@ describe('ModulesController', () => {
     });
   });
 
-  it('does not access modules when the user does not own the semester', async () => {
+  it('does not access module when the user does not own the semester', async () => {
     semesterDelegate.findFirst.mockResolvedValue(null);
 
     await expect(

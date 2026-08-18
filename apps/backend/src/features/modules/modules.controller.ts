@@ -8,7 +8,6 @@ import {
   Delete,
   ParseUUIDPipe,
   BadRequestException,
-  NotFoundException,
   Req,
 } from '@nestjs/common';
 import { ModulesService } from './modules.service';
@@ -19,23 +18,24 @@ import {
 } from '@study/contracts';
 import { z } from 'zod';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { User } from '../../infrastructure/database/generated/client';
+import { ActiveSemesterId, RequireActiveSemester } from '../auth/active-semester.decorator';
 
-@Controller('semesters/:semesterId/modules')
+@Controller('modules')
+@RequireActiveSemester()
 export class ModulesController {
   constructor(
     private readonly modulesService: ModulesService,
-    private readonly prisma: PrismaService,
   ) {}
 
   @Post()
   async create(
     @Req() request: AuthenticatedRequest,
-    @Param('semesterId', ParseUUIDPipe) semesterId: string,
+    @CurrentUser() user: User,
+    @ActiveSemesterId() semesterId: string,
     @Body() body: unknown,
   ): Promise<ModuleDto> {
-    await this.assertSemesterOwnership(request.userId, semesterId);
-
     const result = createModuleSchema.safeParse(body);
 
     if (!result.success) {
@@ -48,33 +48,28 @@ export class ModulesController {
   @Get()
   async findAll(
     @Req() request: AuthenticatedRequest,
-    @Param('semesterId', ParseUUIDPipe) semesterId: string,
+    @ActiveSemesterId() semesterId: string,
+    @CurrentUser() user: User
   ): Promise<ModuleDto[]> {
-    await this.assertSemesterOwnership(request.userId, semesterId);
-
     return this.modulesService.findAll(semesterId);
   }
 
   @Get(':id')
   async findOne(
     @Req() request: AuthenticatedRequest,
-    @Param('semesterId', ParseUUIDPipe) semesterId: string,
+    @ActiveSemesterId() semesterId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ModuleDto> {
-    await this.assertSemesterOwnership(request.userId, semesterId);
-
     return this.modulesService.findOne(semesterId, id);
   }
 
   @Patch(':id')
   async update(
     @Req() request: AuthenticatedRequest,
-    @Param('semesterId', ParseUUIDPipe) semesterId: string,
+    @ActiveSemesterId() semesterId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
   ): Promise<ModuleDto> {
-    await this.assertSemesterOwnership(request.userId, semesterId);
-
     const result = updateModuleSchema.safeParse(body);
 
     if (!result.success) {
@@ -87,27 +82,10 @@ export class ModulesController {
   @Delete(':id')
   async remove(
     @Req() request: AuthenticatedRequest,
-    @Param('semesterId', ParseUUIDPipe) semesterId: string,
+    @ActiveSemesterId() semesterId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ModuleDto> {
-    await this.assertSemesterOwnership(request.userId, semesterId);
-
     return this.modulesService.remove(semesterId, id);
   }
 
-  private async assertSemesterOwnership(
-    userId: string,
-    semesterId: string,
-  ): Promise<void> {
-    const semester = await this.prisma.semester.findFirst({
-      where: { id: semesterId, userId },
-      select: { id: true },
-    });
-
-    if (!semester) {
-      throw new NotFoundException(
-        `Semester with id "${semesterId}" was not found`,
-      );
-    }
-  }
 }
