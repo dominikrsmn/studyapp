@@ -6,7 +6,8 @@ import { NavigationSectionComponent } from './navigation-section.component';
 import { ModuleApiService } from '../../../features/module/module-api-service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ModuleDto } from '@study/contracts';
-import { IconDirective } from '@study/shared/icons/icon.directive';
+import { IconDirective } from '../../../shared/icons/icon.directive';
+import { UserService } from '../../user/user.service';
 
 @Component({
   selector: 'app-navigation',
@@ -16,6 +17,7 @@ import { IconDirective } from '@study/shared/icons/icon.directive';
 })
 export class NavigationComponent {
   private readonly moduleApiService = inject(ModuleApiService);
+  private readonly userService = inject(UserService);
 
   protected readonly modules = toSignal(this.moduleApiService.findAll(), {
     initialValue: [],
@@ -33,8 +35,8 @@ export class NavigationComponent {
     { label: 'Search', icon: 'search' },
   ];
 
-  protected readonly accountItems: readonly NavigationItem[] = [
+  protected readonly accountItems = computed<readonly NavigationItem[]>(() => [
     { label: 'Settings', icon: 'settings' },
-    { label: 'username', icon: 'user' },
-  ];
+    { label: this.userService.name(), icon: 'user' },
+  ]);
 }

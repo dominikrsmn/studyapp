@@ -3,11 +3,6 @@ import { MagicLinkVerificationComponent } from './core/auth/magic-link-verificat
 
 export const appRoutes: Route[] = [
   {
-    path: '',
-    pathMatch: 'full',
-    //    component: HomeComponent,
-  },
-  {
     path: 'auth/verify',
     component: MagicLinkVerificationComponent,
   },

@@ -1,4 +1,4 @@
-jest.mock('../users/users.service', () => ({
+jest.mock('../user/user.service', () => ({
   UsersService: class UsersService {},
 }));
 
@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { AuthGuard } from './auth.guard';
-import { UsersService } from '../users/users.service';
+import { UserService } from '../user/user.service';
 
 describe('AuthGuard', () => {
   const jwtService = { verifyAsync: jest.fn() };
@@ -21,7 +21,7 @@ describe('AuthGuard', () => {
     guard = new AuthGuard(
       jwtService as unknown as JwtService,
       reflector as unknown as Reflector,
-      usersService as unknown as UsersService,
+      usersService as unknown as UserService,
     );
   });
 

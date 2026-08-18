@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID } from 'node:crypto';
 import { Env } from '../../infrastructure/config/env.schema';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
-import { UsersService } from '../users/users.service';
+import { UserService } from '../user/user.service';
 import {
   MagicLinkTokenPayload,
   AuthSession,
@@ -29,7 +29,7 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly usersService: UsersService,
+    private readonly usersService: UserService,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,

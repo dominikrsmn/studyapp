@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { UsersModule } from '../users/users.module';
+import { UserModule } from '../user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Env } from '../../infrastructure/config/env.schema';
@@ -12,7 +12,7 @@ import { TrustedOriginGuard } from './trusted-origin.guard';
 
 @Module({
   imports: [
-    UsersModule,
+    UserModule,
     PrismaModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

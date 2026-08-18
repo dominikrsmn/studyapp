@@ -5,6 +5,7 @@ import { ModuleModule } from './features/module/module.module';
 import { AuthModule } from './features/auth/auth.module';
 import { SourceModule } from './features/source/source.module';
 import { SemesterModule } from './features/semester/semester.module';
+import { UserModule } from './features/user/user.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { SemesterModule } from './features/semester/semester.module';
     ModuleModule,
     SourceModule,
     SemesterModule,
+    UserModule
   ],
 })
 export class AppModule {}

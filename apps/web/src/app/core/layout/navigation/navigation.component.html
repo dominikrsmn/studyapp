@@ -29,7 +29,7 @@
   </div>
 
   <div class="space-y-1 px-5">
-    @for (item of accountItems; track item.label) {
+    @for (item of accountItems(); track item.label) {
       <app-navigation-item [label]="item.label" [icon]="item.icon" />
     }
   </div>

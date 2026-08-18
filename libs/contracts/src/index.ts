@@ -7,3 +7,5 @@ export * from './sources/create-source.schema';
 
 export * from './semester/semester.schema';
 export * from './semester/create-semester.schema';
+
+export * from './user/user.schema';

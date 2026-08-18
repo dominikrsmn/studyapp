@@ -11,7 +11,7 @@ import { Request } from 'express';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import type { AccessTokenPayload } from './auth.types';
-import { UsersService } from '../users/users.service';
+import { UserService } from '../user/user.service';
 import { CURRENT_USER_REQUIRED_KEY } from './current-user.decorator';
 import { ACTIVE_SEMESTER_REQUIRED_KEY } from './active-semester.decorator';
 
@@ -20,7 +20,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private reflector: Reflector,
-    private readonly usersService: UsersService,
+    private readonly usersService: UserService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

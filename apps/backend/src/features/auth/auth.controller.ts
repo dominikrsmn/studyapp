@@ -152,11 +152,6 @@ export class AuthController {
     }
   }
 
-  @HttpCode(HttpStatus.OK)
-  @Post('protected')
-  protectedRoute() {
-    return { message: 'You have access to this protected route.' };
-  }
 
   private setRefreshTokenCookie(
     response: Response,
