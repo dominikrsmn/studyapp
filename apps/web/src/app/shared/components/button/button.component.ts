@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import type { ClassValue } from 'clsx';
 
-import { mergeClasses } from '@study/shared/utils/merge-classes';
+import { mergeClasses } from '../../utils/merge-classes';
 
 import {
   buttonVariants,
@@ -21,7 +21,7 @@ import {
   type ZardButtonSizeVariants,
   type ZardButtonTypeVariants,
 } from './button.variants';
-import { IconDirective } from '@study/shared/icons/icon.directive';
+import { IconDirective } from '../../icons/icon.directive';
 
 @Component({
   selector: 'z-button, button[z-button], a[z-button]',
