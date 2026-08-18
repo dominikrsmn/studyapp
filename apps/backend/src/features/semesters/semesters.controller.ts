@@ -23,6 +23,11 @@ export class SemestersController {
     return this.semestersService.findAll(request.userId);
   }
 
+  @Get(':id')
+  findOne(@Req() request: AuthenticatedRequest, @Param('id', ParseUUIDPipe) id: string): Promise<SemesterDto> {
+    return this.semestersService.findOne(request.userId, id)
+  }
+
   @Post()
   create(
     @Req() request: AuthenticatedRequest,
