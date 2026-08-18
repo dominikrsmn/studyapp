@@ -1,0 +1,36 @@
+<nav
+  aria-label="Primary navigation"
+  class="flex h-screen w-72 shrink-0 flex-col justify-between bg-sage-100 py-8 text-sage-900"
+>
+  <div>
+    <div class="mb-12 flex items-center gap-3 px-8">
+      <span class="text-lg font-semibold tracking-tight text-sage-950">study app</span>
+    </div>
+
+    <app-navigation-section label="Workspace" headingId="workspace-navigation" class="mb-10">
+      @for (item of workspaceItems; track item.label) {
+        <app-navigation-item
+          [label]="item.label"
+          [icon]="item.icon"
+          [active]="item.active ?? false"
+        />
+      }
+    </app-navigation-section>
+
+    <app-navigation-section label="Semester" headingId="semester-navigation">
+      @for (item of semesterItems; track item.label) {
+        <app-navigation-item [label]="item.label" [icon]="item.icon" />
+      }
+
+      <div class="mt-2 pt-4">
+        <app-navigation-item label="New Module" icon="lucidePlus" [muted]="true" />
+      </div>
+    </app-navigation-section>
+  </div>
+
+  <div class="space-y-1 px-5">
+    @for (item of accountItems; track item.label) {
+      <app-navigation-item [label]="item.label" [icon]="item.icon" />
+    }
+  </div>
+</nav>

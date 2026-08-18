@@ -10,13 +10,24 @@
     "importHelpers": true,
     "target": "es2015",
     "module": "esnext",
-    "lib": ["es2020", "dom"],
+    "lib": [
+      "es2020",
+      "dom"
+    ],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "checkJs": true,
     "paths": {
-      "@study/contracts": ["./libs/contracts/src/index.ts"]
+      "@study/contracts": [
+        "./libs/contracts/src/index.ts"
+      ],
+      "@study/*": [
+        "./apps/web/src/app/*"
+      ]
     }
   },
-  "exclude": ["node_modules", "tmp"]
+  "exclude": [
+    "node_modules",
+    "tmp"
+  ]
 }

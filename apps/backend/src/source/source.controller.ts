@@ -18,7 +18,7 @@ import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceService } from './source.service';
 
 @Controller('modules/:moduleId/sources')
-export class ModuleSourcesController {
+export class SourcesController {
   constructor(private readonly sourceService: SourceService) {}
 
   @HttpCode(HttpStatus.CREATED)
