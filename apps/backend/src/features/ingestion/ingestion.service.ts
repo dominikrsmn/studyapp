@@ -1,7 +1,6 @@
 import {
   Injectable,
   Logger,
-  LoggerService,
   NotFoundException,
 } from '@nestjs/common';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';

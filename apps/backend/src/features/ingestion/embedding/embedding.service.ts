@@ -1,10 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { Chunk, EmbeddedChunk } from '../ingestion.service';
-import { randomUUID } from 'node:crypto';
-import { Prisma } from '../../../infrastructure/database/generated/client';
-import { Sql } from '@prisma/client/runtime/client';
 
 type SourceIdWithUserId = {
   id: string;
@@ -28,12 +24,10 @@ export class EmbeddingService {
       user: source.userId,
     });
 
-    const embeddedChunks: EmbeddedChunk[] = response.data.map((item) => ({
+    return response.data.map((item) => ({
       ...chunks[item.index],
       index: item.index,
       embedding: item.embedding,
     }));
-
-    return embeddedChunks;
   }
 }
