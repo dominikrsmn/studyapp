@@ -11,7 +11,6 @@
 
       @for (item of workspaceItems; track item.label) {
         <app-navigation-item
-          [active]="item.active ?? false"
           [item]="item"
         />
       }
@@ -19,7 +18,6 @@
     <app-navigation-section [label]="semesterLabel()" headingId="semester-navigation">
       @for (item of semesterItems(); track item.label) {
         <app-navigation-item
-          [active]="item.active ?? false"
           [item]="item" />
       }
 
@@ -33,7 +31,6 @@
   <div class="space-y-1 px-5">
     @for (item of accountItems(); track item.label) {
       <app-navigation-item
-        [active]="item.active ?? false"
         [item]="item" />
     }
   </div>

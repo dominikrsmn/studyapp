@@ -27,7 +27,6 @@ export class NavigationComponent {
       route: '/workspace',
       label: 'Workspace',
       icon: 'compass',
-      active: true,
     },
     {
       type: 'action',
@@ -36,6 +35,12 @@ export class NavigationComponent {
       icon: 'search',
     },
   ];
+  protected readonly newModuleItem: NavigationItem = {
+    type: 'action',
+    action: () => console.log('new module'),
+    label: 'New module',
+    icon: 'plus',
+  };
   protected readonly semesterItems = computed<readonly NavigationItem[]>(() =>
     this.modules().map((module: ModuleDto): NavigationItem => ({
       type: 'route',
@@ -45,12 +50,6 @@ export class NavigationComponent {
       muted: true,
     })),
   );
-  protected readonly newModuleItem: NavigationItem = {
-    type: 'action',
-    action: () => console.log('new module'),
-    label: 'New module',
-    icon: 'plus',
-  };
   private readonly moduleApiService = inject(ModuleApiService);
   protected readonly modules = toSignal(this.moduleApiService.findAll(), {
     initialValue: [],
