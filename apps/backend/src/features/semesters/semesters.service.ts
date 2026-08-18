@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { CreateSemester, SemesterDto } from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { Semester } from '../../infrastructure/database/generated/client';
 
 const semesterSelect = { id: true, startDate: true, endDate: true } as const;
 
@@ -29,6 +30,17 @@ export class SemestersService {
     return semesters.map((semester) => this.toDto(semester));
   }
 
+  async findOne(userId: string, id: string): Promise<SemesterDto> {
+    const semester = await this.prisma.semester.findUnique({
+      where: { userId, id },
+      select: semesterSelect
+      });
+    if (!semester) {
+      throw new NotFoundException(`Semester with id "${id}" was not found`);
+    }
+    return this.toDto(semester)
+  }
+
   async remove(userId: string, id: string): Promise<SemesterDto> {
     const semester = await this.prisma.semester.findFirst({
       where: { id, userId },
@@ -39,6 +51,27 @@ export class SemestersService {
     }
     await this.prisma.semester.delete({ where: { id } });
     return this.toDto(semester);
+  }
+
+  async setActiveSemester(userId: string, id: string): Promise<SemesterDto> {
+    const semester: Semester | null = await this.prisma.semester.findFirst({
+      where: {
+        id,
+        userId,
+      },
+    });
+
+    if (!semester) {
+      throw new NotFoundException(`Semester with id "${id}" was not found`);
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        activeSemesterId: id
+      }
+    })
+    return this.toDto(semester)
   }
 
   private toDto(semester: {

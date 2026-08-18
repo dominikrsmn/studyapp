@@ -1,203 +1,207 @@
 generator client {
-    provider = "prisma-client"
-    output   = "../src/database/generated"
+  provider = "prisma-client"
+  output   = "../src/infrastructure/database/generated"
 }
 
 datasource db {
-    provider = "postgresql"
+  provider = "postgresql"
 }
 
 model User {
-    id        String     @id @default(uuid())
-    email     String     @unique
-    name      String?
-    createdAt DateTime   @default(now())
-    updatedAt DateTime   @updatedAt
-    semesters Semester[]
-    sessions  Session[]
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  semesters Semester[] @relation("UserSemesters")
+  sessions  Session[]
+
+  activeSemesterId String?   @unique
+  activeSemester   Semester? @relation("ActiveSemester", fields: [activeSemesterId], references: [id])
 }
 
 model Session {
-    id            String         @id @default(uuid())
-    userId        String
-    revokedAt     DateTime?
-    createdAt     DateTime       @default(now())
-    updatedAt     DateTime       @updatedAt
-    lastUsedAt    DateTime       @default(now())
-    refreshTokens RefreshToken[]
-    user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String         @id @default(uuid())
+  userId        String
+  revokedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  lastUsedAt    DateTime       @default(now())
+  refreshTokens RefreshToken[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@index([userId])
+  @@index([userId])
 }
 
 model RefreshToken {
-    id                String        @id @default(uuid())
-    sessionId         String
-    tokenHash         String        @unique
-    expiresAt         DateTime
-    usedAt            DateTime?
-    replacedByTokenId String?       @unique
-    revokedAt         DateTime?
-    createdAt         DateTime      @default(now())
-    updatedAt         DateTime      @updatedAt
-    replacedBy        RefreshToken? @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id])
-    replaces          RefreshToken? @relation("RefreshTokenReplacement")
-    session           Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id                String        @id @default(uuid())
+  sessionId         String
+  tokenHash         String        @unique
+  expiresAt         DateTime
+  usedAt            DateTime?
+  replacedByTokenId String?       @unique
+  revokedAt         DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  replacedBy        RefreshToken? @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id])
+  replaces          RefreshToken? @relation("RefreshTokenReplacement")
+  session           Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-    @@index([sessionId])
-    @@index([expiresAt])
+  @@index([sessionId])
+  @@index([expiresAt])
 }
 
 model MagicLinkToken {
-    id        String    @id @default(uuid())
-    email     String
-    tokenHash String    @unique
-    expiresAt DateTime
-    usedAt    DateTime?
-    createdAt DateTime  @default(now())
+  id        String    @id @default(uuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
-    @@index([expiresAt])
+  @@index([expiresAt])
 }
 
 model Semester {
-    id        String   @id @default(uuid())
-    startDate DateTime
-    endDate   DateTime
-    userId    String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    modules   Module[]
-    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  startDate     DateTime
+  endDate       DateTime
+  userId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  modules       Module[]
+  user          User     @relation("UserSemesters", fields: [userId], references: [id], onDelete: Cascade)
+  activeForUser User?    @relation("ActiveSemester")
 
-    @@index([userId])
+  @@index([userId])
 }
 
 model Module {
-    id          String     @id @default(uuid())
-    name        String
-    description String?
-    createdAt   DateTime   @default(now())
-    updatedAt   DateTime   @updatedAt
-    examDate    DateTime?
-    semesterId  String
-    exercises   Exercise[]
-    semester    Semester   @relation(fields: [semesterId], references: [id], onDelete: Cascade)
-    sources     Source[]
-    topics      Topic[]
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  examDate    DateTime?
+  semesterId  String
+  exercises   Exercise[]
+  semester    Semester   @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  sources     Source[]
+  topics      Topic[]
 
-    @@index([semesterId])
+  @@index([semesterId])
 }
 
 model Source {
-    id         String        @id @default(uuid())
-    name       String
-    type       SourceType
-    mimeType   String
-    status     SourceStatus  @default(PENDING)
-    storageKey String?
-    moduleId   String
-    createdAt  DateTime      @default(now())
-    updatedAt  DateTime      @updatedAt
-    exercises  Exercise[]
-    module     Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-    chunks     SourceChunk[]
+  id         String        @id @default(uuid())
+  name       String
+  type       SourceType
+  mimeType   String
+  status     SourceStatus  @default(PENDING)
+  storageKey String?
+  moduleId   String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  exercises  Exercise[]
+  module     Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  chunks     SourceChunk[]
 
-    @@index([moduleId])
-    @@index([status])
+  @@index([moduleId])
+  @@index([status])
 }
 
 model SourceChunk {
-    id         String                 @id @default(uuid())
-    content    String
-    sourceId   String
-    createdAt  DateTime               @default(now())
-    chunkIndex Int
-    pageEnd    Int?
-    pageStart  Int?
-    embedding  Unsupported("vector")?
-    source     Source                 @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  id         String                 @id @default(uuid())
+  content    String
+  sourceId   String
+  createdAt  DateTime               @default(now())
+  chunkIndex Int
+  pageEnd    Int?
+  pageStart  Int?
+  embedding  Unsupported("vector")?
+  source     Source                 @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
-    @@index([sourceId])
+  @@index([sourceId])
 }
 
 model Topic {
-    id        String     @id @default(uuid())
-    title     String
-    moduleId  String
-    parentId  String?
-    createdAt DateTime   @default(now())
-    updatedAt DateTime   @updatedAt
-    module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-    parent    Topic?     @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-    children  Topic[]    @relation("TopicHierarchy")
-    exercises Exercise[] @relation("ExerciseToTopic")
+  id        String     @id @default(uuid())
+  title     String
+  moduleId  String
+  parentId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  parent    Topic?     @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Topic[]    @relation("TopicHierarchy")
+  exercises Exercise[] @relation("ExerciseToTopic")
 
-    @@index([moduleId])
-    @@index([parentId])
+  @@index([moduleId])
+  @@index([parentId])
 }
 
 model Exercise {
-    id            String            @id @default(uuid())
-    title         String?
-    content       String
-    type          ExerciseType
-    origin        ExerciseOrigin
-    estimatedTime Int?
-    moduleId      String
-    sourceId      String?
-    sourcePage    Int?
-    createdAt     DateTime          @default(now())
-    updatedAt     DateTime          @updatedAt
-    module        Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-    source        Source?           @relation(fields: [sourceId], references: [id])
-    attempts      ExerciseAttempt[]
-    topics        Topic[]           @relation("ExerciseToTopic")
+  id            String            @id @default(uuid())
+  title         String?
+  content       String
+  type          ExerciseType
+  origin        ExerciseOrigin
+  estimatedTime Int?
+  moduleId      String
+  sourceId      String?
+  sourcePage    Int?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  module        Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  source        Source?           @relation(fields: [sourceId], references: [id])
+  attempts      ExerciseAttempt[]
+  topics        Topic[]           @relation("ExerciseToTopic")
 
-    @@index([moduleId])
-    @@index([sourceId])
+  @@index([moduleId])
+  @@index([sourceId])
 }
 
 model ExerciseAttempt {
-    id          String    @id @default(uuid())
-    exerciseId  String
-    answer      String?
-    startedAt   DateTime  @default(now())
-    submittedAt DateTime?
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @updatedAt
-    exercise    Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  exerciseId  String
+  answer      String?
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
-    @@index([exerciseId])
+  @@index([exerciseId])
 }
 
 enum SourceStatus {
-    PENDING
-    PROCESSING
-    READY
-    FAILED
+  PENDING
+  PROCESSING
+  READY
+  FAILED
 }
 
 enum SourceType {
-    DOCUMENT
-    IMAGE
-    AUDIO
-    TEXT
-    WEB
+  DOCUMENT
+  IMAGE
+  AUDIO
+  TEXT
+  WEB
 }
 
 enum ExerciseOrigin {
-    MANUAL
-    SOURCE
-    GENERATED
+  MANUAL
+  SOURCE
+  GENERATED
 }
 
 enum ExerciseType {
-    EXERCISE
-    QUESTION
+  EXERCISE
+  QUESTION
 }
 
 enum ExerciseAttemptResult {
-    CORRENT
-    PARTIALLY_CORRENT
-    INCORRECT
+  CORRENT
+  PARTIALLY_CORRENT
+  INCORRECT
 }
