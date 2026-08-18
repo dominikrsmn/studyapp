@@ -6,14 +6,12 @@ import { NavigationSectionComponent } from './navigation-section.component';
 import { ModuleApiService } from '../../../features/module/module-api-service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ModuleDto } from '@study/contracts';
-import { IconDirective } from '../../../shared/icons/icon.directive';
 import { UserService } from '../../user/user.service';
-import { SemesterService } from '@study/features/semester/semester.service';
-import { SemesterApiService } from '@study/features/semester/semester-api.service';
+import { SemesterService } from '../../../features/semester/semester.service';
 
 @Component({
   selector: 'app-navigation',
-  imports: [NavigationItemComponent, NavigationSectionComponent, IconDirective],
+  imports: [NavigationItemComponent, NavigationSectionComponent],
   templateUrl: './navigation.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
