@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+} from '@angular/core';
 
 import { NavigationItemComponent } from './navigation-item.component';
 import type { NavigationItem } from './navigation.models';
@@ -16,36 +21,54 @@ import { SemesterService } from '../../../features/semester/semester.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NavigationComponent {
+  protected readonly workspaceItems: readonly NavigationItem[] = [
+    {
+      type: 'route',
+      route: '/workspace',
+      label: 'Workspace',
+      icon: 'compass',
+      active: true,
+    },
+    {
+      type: 'action',
+      action: () => console.log('suche'),
+      label: 'Search',
+      icon: 'search',
+    },
+  ];
+  protected readonly semesterItems = computed<readonly NavigationItem[]>(() =>
+    this.modules().map((module: ModuleDto): NavigationItem => ({
+      type: 'route',
+      route: `/module/${module.id}`,
+      label: module.name,
+      icon: module.icon,
+      muted: true,
+    })),
+  );
+  protected readonly newModuleItem: NavigationItem = {
+    type: 'action',
+    action: () => console.log('new module'),
+    label: 'New module',
+    icon: 'plus',
+  };
   private readonly moduleApiService = inject(ModuleApiService);
-  private readonly userService = inject(UserService);
-  private readonly semesterService = inject(SemesterService)
-
   protected readonly modules = toSignal(this.moduleApiService.findAll(), {
     initialValue: [],
   });
-
-
-  protected readonly semesterItems = computed<readonly NavigationItem[]>(() =>
-    this.modules().map((module: ModuleDto): NavigationItem => ({
-      label: module.name,
-      icon: module.icon,
-    })),
-  );
-
-  protected readonly workspaceItems: readonly NavigationItem[] = [
-    { label: 'Workspace', icon: 'compass', active: true },
-    { label: 'Search', icon: 'search' },
-  ];
-
+  private readonly userService = inject(UserService);
   protected readonly accountItems = computed<readonly NavigationItem[]>(() => [
-    { label: 'Settings', icon: 'settings' },
-    { label: this.userService.name(), icon: 'user' },
+    {
+      type: 'action',
+      action: () => console.log('user'),
+      label: this.userService.name(),
+      icon: 'user',
+    },
   ]);
-
+  private readonly semesterService = inject(SemesterService);
   protected readonly semesterLabel = computed<string>(() => {
-    const semester = this.semesterService.activeSemester()
-    if(!semester) {
-      return "Semester";
+    const semester = this.semesterService.activeSemester();
+    if (!semester) {
+      return 'Semester';
     }
     const start = new Date(semester.startDate);
     const end = new Date(semester.endDate);
@@ -58,5 +81,5 @@ export class NavigationComponent {
     }
 
     return `WiSe ${String(startYear).slice(-2)}/${String(endYear).slice(-2)}`;
-  })
+  });
 }

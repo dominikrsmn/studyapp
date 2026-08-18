@@ -9,28 +9,32 @@
 
     <app-navigation-section headingId="workspace-navigation">
 
-    @for (item of workspaceItems; track item.label) {
+      @for (item of workspaceItems; track item.label) {
         <app-navigation-item
-          [label]="item.label"
-          [icon]="item.icon"
           [active]="item.active ?? false"
+          [item]="item"
         />
       }
     </app-navigation-section>
     <app-navigation-section [label]="semesterLabel()" headingId="semester-navigation">
       @for (item of semesterItems(); track item.label) {
-        <app-navigation-item [label]="item.label" [icon]="item.icon" />
+        <app-navigation-item
+          [active]="item.active ?? false"
+          [item]="item" />
       }
 
       <div class="mt-2 pt-4">
-        <app-navigation-item label="New Module" icon="plus" [muted]="true" />
+        <app-navigation-item
+          [item]="newModuleItem" />
       </div>
     </app-navigation-section>
   </div>
 
   <div class="space-y-1 px-5">
     @for (item of accountItems(); track item.label) {
-      <app-navigation-item [label]="item.label" [icon]="item.icon" />
+      <app-navigation-item
+        [active]="item.active ?? false"
+        [item]="item" />
     }
   </div>
 </nav>
