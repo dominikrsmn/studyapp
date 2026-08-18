@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, input, Service } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { Observable } from 'rxjs';
 import { CreateSemester, SemesterDto } from '@study/contracts';

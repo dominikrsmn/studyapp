@@ -1,7 +1,6 @@
-import { computed, effect, inject, Injectable, Signal } from '@angular/core';
+import { computed, inject, Injectable } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UserApiService } from './user-api.service';
-import { tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
