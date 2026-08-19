@@ -13,7 +13,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ModuleDto } from '@study/contracts';
 import { UserService } from '../../user/user.service';
 import { SemesterService } from '../../../features/semester/semester.service';
-import { formatSemesterLabel } from '@study/features/semester/semester.label';
+import { formatSemesterLabel } from '../../../features/semester/semester.label';
+import { CreateModuleService } from '../../../features/module/create-module/create-module.service';
 
 @Component({
   selector: 'app-navigation',
@@ -23,6 +24,7 @@ import { formatSemesterLabel } from '@study/features/semester/semester.label';
 })
 export class NavigationComponent {
   private readonly semesterService = inject(SemesterService);
+  private readonly newModuleDialog = inject(CreateModuleService);
 
   protected readonly workspaceItems: readonly NavigationItem[] = [
     {
@@ -40,7 +42,7 @@ export class NavigationComponent {
   ];
   protected readonly newModuleItem: NavigationItem = {
     type: 'action',
-    action: () => console.log('new module'),
+    action: () => this.newModuleDialog.open(),
     label: 'New module',
     icon: 'plus',
   };

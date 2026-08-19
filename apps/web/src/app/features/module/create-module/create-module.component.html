@@ -1,0 +1,71 @@
+<form [formGroup]="form" class="grid gap-5">
+
+  <!-- Title -->
+  <div class="grid gap-2">
+    <label
+      for="title"
+      class="text-sm leading-none font-medium select-none"
+    >
+      Title
+    </label>
+
+    <input
+      z-input
+      id="title"
+      formControlName="title"
+      placeholder="e.g. Mathematics II"
+    />
+
+    <p class="text-muted-foreground text-xs">
+      The name that will be displayed throughout your workspace.
+    </p>
+  </div>
+
+  <!-- Description -->
+  <div class="grid gap-2">
+    <label
+      for="description"
+      class="text-sm leading-none font-medium select-none"
+    >
+      Description
+    </label>
+
+    <textarea
+      z-input
+      id="description"
+      formControlName="description"
+      placeholder="Add a short description..."
+      rows="3"
+      class="resize-none"
+    ></textarea>
+
+    <p class="text-muted-foreground text-xs">
+      Optional context or notes about the module.
+    </p>
+  </div>
+
+  <!-- Exam date -->
+  <div class="grid gap-2">
+    <label
+      for="exam-date"
+      class="text-sm leading-none font-medium select-none"
+    >
+      Exam date
+    </label>
+
+    <z-date-picker
+      zId="exam-date"
+      formControlName="examDate"
+      zPlaceholder="Select exam date"
+      zFormat="MMM d, y"
+      zIcon="calendar"
+      zCaptionLayout="dropdown"
+      class="w-full"
+    />
+
+    <p class="text-muted-foreground text-xs">
+      Optional. You can change this later.
+    </p>
+  </div>
+
+</form>
