@@ -9,12 +9,20 @@
       Title
     </label>
 
-    <input
-      z-input
-      id="title"
-      formControlName="title"
-      placeholder="e.g. Mathematics II"
-    />
+    <div class="flex items-center gap-2">
+      <app-icon-picker
+        [value]="form.controls.icon.value"
+        (valueChange)="form.controls.icon.setValue($event)"
+      />
+
+      <input
+        z-input
+        id="title"
+        formControlName="title"
+        placeholder="e.g. Mathematics II"
+        class="flex-1"
+      />
+    </div>
 
     <p class="text-muted-foreground text-xs">
       The name that will be displayed throughout your workspace.
@@ -31,7 +39,7 @@
     </label>
 
     <textarea
-      z-input
+      z-textarea
       id="description"
       formControlName="description"
       placeholder="Add a short description..."

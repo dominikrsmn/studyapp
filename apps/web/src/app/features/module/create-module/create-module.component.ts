@@ -5,18 +5,32 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { FeatherIconNames } from 'feather-icons';
+
+import { CreateModule } from '@study/contracts';
 import { ZardDatePickerComponent } from '../../../shared/components/date-picker';
 import { ZardInputComponent } from '../../../shared/components/input';
-import { CreateModule } from '@study/contracts';
+import { IconPickerComponent } from '../../../shared/components/icon-picker/icon-picker.component';
+import { ZardTextareaComponent } from '../../../shared/components/textarea';
 
 @Component({
   selector: 'app-create-module',
-  imports: [ReactiveFormsModule, ZardInputComponent, ZardDatePickerComponent],
+  imports: [
+    ReactiveFormsModule,
+    ZardInputComponent,
+    ZardDatePickerComponent,
+    ZardTextareaComponent,
+    IconPickerComponent,
+  ],
   templateUrl: './create-module.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CreateModuleComponent {
   readonly form = new FormGroup({
+    icon: new FormControl<FeatherIconNames>('book-open', {
+      nonNullable: true,
+    }),
+
     title: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.maxLength(100)],
@@ -31,14 +45,17 @@ export class CreateModuleComponent {
   });
 
   getValue(): CreateModule {
-    const { title, description, examDate } = this.form.getRawValue();
+    const { icon, title, description, examDate } = this.form.getRawValue();
 
     return {
+      icon,
       name: title.trim(),
       description: description.trim(),
-      icon: 'zap',
       examDate: examDate
-        ? `${examDate.getFullYear()}-${String(examDate.getMonth() + 1).padStart(2, '0')}-${String(examDate.getDate()).padStart(2, '0')}`
+        ? `${examDate.getFullYear()}-${String(examDate.getMonth() + 1).padStart(
+            2,
+            '0',
+          )}-${String(examDate.getDate()).padStart(2, '0')}`
         : undefined,
     };
   }

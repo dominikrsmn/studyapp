@@ -14,4 +14,10 @@ interface NavigationActionItem extends NavigationItemBase {
   readonly action: () => void;
 }
 
-export type NavigationItem = NavigationRouteItem | NavigationActionItem;
+interface NavigationPopoverItem extends NavigationItemBase {
+  readonly type: 'popover';
+  readonly items: NavigationItem[];
+}
+
+export type NavigationItem =
+  NavigationRouteItem | NavigationActionItem | NavigationPopoverItem;
