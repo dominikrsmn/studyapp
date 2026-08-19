@@ -1,58 +1,27 @@
-import { computed, inject, Service, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
+import { Observable, tap } from 'rxjs';
 import { CreateModule, ModuleDto, UpdateModule } from '@study/contracts';
-import { Observable, of, tap } from 'rxjs';
 import { ModuleApiService } from './module-api-service';
 
-@Service()
+@Injectable({
+  providedIn: 'root',
+})
 export class ModuleService {
   private readonly moduleApiService = inject(ModuleApiService);
 
-  private readonly _modules = signal<readonly ModuleDto[]>([]);
-  private readonly _loaded = signal(false);
+  private readonly _modules = signal<ModuleDto[]>([]);
 
   readonly modules = this._modules.asReadonly();
-  readonly loaded = this._loaded.asReadonly();
 
-  readonly count = computed(() => this._modules().length);
-
-  loadAll(force = false): Observable<readonly ModuleDto[]> {
-    if (this._loaded() && !force) {
-      return of(this._modules());
-    }
-
-    return this.moduleApiService.findAll().pipe(
-      tap((modules) => {
-        this._modules.set(modules);
-        this._loaded.set(true);
-      }),
-    );
-  }
-
-  getById(id: string): ModuleDto | undefined {
-    return this._modules().find((module) => module.id === id);
-  }
-
-  findOne(id: string, force = false): Observable<ModuleDto> {
-    const cached = this.getById(id);
-
-    if (cached && !force) {
-      return of(cached);
-    }
-
+  loadAll(): Observable<ModuleDto[]> {
     return this.moduleApiService
-      .findOne(id)
-      .pipe(tap((module) => this.upsert(module)));
+      .findAll()
+      .pipe(tap((modules) => this._modules.set(modules)));
   }
 
   create(input: CreateModule): Observable<ModuleDto> {
     return this.moduleApiService
       .create(input)
-      .pipe(tap((module) => this.upsert(module)));
-  }
-
-  update(id: string, input: UpdateModule): Observable<ModuleDto> {
-    return this.moduleApiService
-      .update(id, input)
       .pipe(tap((module) => this.upsert(module)));
   }
 
@@ -66,13 +35,14 @@ export class ModuleService {
     );
   }
 
-  refresh(): Observable<readonly ModuleDto[]> {
-    return this.loadAll(true);
+  update(id: string, input: UpdateModule): Observable<ModuleDto> {
+    return this.moduleApiService
+      .update(id, input)
+      .pipe(tap((module) => this.upsert(module)));
   }
 
-  clear(): void {
-    this._modules.set([]);
-    this._loaded.set(false);
+  findById(id: string): ModuleDto | undefined {
+    return this._modules().find((module) => module.id === id);
   }
 
   private upsert(module: ModuleDto): void {

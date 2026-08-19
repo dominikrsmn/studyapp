@@ -6,6 +6,5 @@ import { NavigationComponent } from './navigation/navigation.component';
   selector: 'app-layout',
   imports: [RouterModule, NavigationComponent],
   templateUrl: './layout.component.html',
-  styleUrl: './layout.component.css',
 })
 export class LayoutComponent {}

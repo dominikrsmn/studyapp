@@ -1,13 +1,13 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  ParseUUIDPipe,
   BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
   Req,
 } from '@nestjs/common';
 import { ModuleService } from './module.service';
@@ -20,14 +20,15 @@ import { z } from 'zod';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../../infrastructure/database/generated/client';
-import { ActiveSemesterId, RequireActiveSemester } from '../auth/active-semester.decorator';
+import {
+  ActiveSemesterId,
+  RequireActiveSemester,
+} from '../auth/active-semester.decorator';
 
 @Controller('module')
 @RequireActiveSemester()
 export class ModuleController {
-  constructor(
-    private readonly moduleService: ModuleService,
-  ) {}
+  constructor(private readonly moduleService: ModuleService) {}
 
   @Post()
   async create(
@@ -49,7 +50,7 @@ export class ModuleController {
   async findAll(
     @Req() request: AuthenticatedRequest,
     @ActiveSemesterId() semesterId: string,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<ModuleDto[]> {
     return this.moduleService.findAll(semesterId);
   }
@@ -87,5 +88,4 @@ export class ModuleController {
   ): Promise<ModuleDto> {
     return this.moduleService.remove(semesterId, id);
   }
-
 }

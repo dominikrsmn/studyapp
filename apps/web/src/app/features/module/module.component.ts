@@ -1,7 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { switchMap } from 'rxjs';
 import { formatSemesterLabel } from '../semester/semester.label';
 import { SemesterService } from '../semester/semester.service';
 import { ModuleService } from './module.service';
@@ -17,10 +15,8 @@ export default class ModuleComponent {
   private moduleService = inject(ModuleService);
   private semesterService = inject(SemesterService);
 
-  protected readonly module = toSignal(
-    toObservable(this.moduleId).pipe(
-      switchMap((id) => this.moduleService.findOne(id)),
-    ),
+  protected readonly module = computed(() =>
+    this.moduleService.findById(this.moduleId()),
   );
 
   protected readonly semesterLabel = computed(() => {

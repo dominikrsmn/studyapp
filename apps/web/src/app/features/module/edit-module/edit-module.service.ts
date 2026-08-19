@@ -2,10 +2,12 @@ import { inject, Service } from '@angular/core';
 import { ZardDialogService } from '../../../shared/components/dialog';
 import { EditModuleComponent } from './edit-module.component';
 import { ModuleDto } from '@study/contracts';
+import { ModuleService } from '../module.service';
 
 @Service()
 export class EditModuleService {
   private readonly dialogService = inject(ZardDialogService);
+  private readonly moduleService = inject(ModuleService);
 
   open(module: ModuleDto): void {
     this.dialogService.create({
@@ -21,8 +23,7 @@ export class EditModuleService {
         }
 
         const value = component.getValue();
-
-        console.log(value);
+        this.moduleService.update(module.id, value).subscribe();
       },
     });
   }

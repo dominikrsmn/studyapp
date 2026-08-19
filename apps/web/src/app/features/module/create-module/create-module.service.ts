@@ -1,12 +1,13 @@
 import { inject, Service } from '@angular/core';
 import { ZardDialogService } from '../../../shared/components/dialog';
-import { ModuleApiService } from '../module-api-service';
 import { CreateModuleComponent } from './create-module.component';
+import { ModuleService } from '../module.service';
+import { CreateModule } from '@study/contracts';
 
 @Service()
 export class CreateModuleService {
   private readonly dialogService = inject(ZardDialogService);
-  private readonly moduleApiService = inject(ModuleApiService);
+  private readonly moduleService = inject(ModuleService);
 
   open(): void {
     this.dialogService.create({
@@ -17,12 +18,12 @@ export class CreateModuleService {
       zOnOk: (component) => {
         if (component.form.invalid) {
           component.form.markAllAsTouched();
-          return;
+          return false;
         }
-
-        const value = component.getValue();
-
-        console.log(value);
+        console.log('form valid');
+        const value: CreateModule = component.getValue();
+        this.moduleService.create(value).subscribe();
+        return;
       },
     });
   }

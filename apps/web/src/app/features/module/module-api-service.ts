@@ -29,4 +29,3 @@ export class ModuleApiService {
     return this.http.delete<ModuleDto>(`${this.baseUrl}/${id}`);
   }
 }
-

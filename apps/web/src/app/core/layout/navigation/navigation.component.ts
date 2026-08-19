@@ -8,7 +8,6 @@ import {
 import { NavigationItemComponent } from './navigation-item/navigation-item.component';
 import type { NavigationItem } from './navigation.models';
 import { NavigationSectionComponent } from './navigation-section.component';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { ModuleDto } from '@study/contracts';
 import { UserService } from '../../user/user.service';
 import { SemesterService } from '../../../features/semester/semester.service';
@@ -31,6 +30,10 @@ export class NavigationComponent {
   private readonly editModuleDialog = inject(EditModuleService);
   private readonly authTokenService = inject(AuthTokenService);
 
+  constructor() {
+    this.moduleService.loadAll().subscribe();
+  }
+
   protected readonly workspaceItems: readonly NavigationItem[] = [
     {
       type: 'route',
@@ -50,9 +53,8 @@ export class NavigationComponent {
     const semester = this.semesterService.activeSemester();
     return semester ? formatSemesterLabel(semester, 'short') : 'Semester';
   });
-  protected readonly modules = toSignal(this.moduleService.loadAll(), {
-    initialValue: [],
-  });
+  protected readonly modules = this.moduleService.modules;
+
   protected readonly semesterItems = computed<readonly NavigationItem[]>(() =>
     this.modules().map((module: ModuleDto): NavigationItem => ({
       type: 'route',
