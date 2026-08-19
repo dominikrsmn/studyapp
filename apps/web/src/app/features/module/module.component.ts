@@ -1,10 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { ModuleApiService } from './module-api-service';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { switchMap } from 'rxjs';
 import { formatSemesterLabel } from '../semester/semester.label';
 import { SemesterService } from '../semester/semester.service';
+import { ModuleService } from './module.service';
 
 @Component({
   selector: 'app-module',
@@ -14,12 +14,12 @@ import { SemesterService } from '../semester/semester.service';
 export default class ModuleComponent {
   moduleId = signal('');
   private activatedRoute = inject(ActivatedRoute);
-  private moduleApiService = inject(ModuleApiService);
+  private moduleService = inject(ModuleService);
   private semesterService = inject(SemesterService);
 
   protected readonly module = toSignal(
     toObservable(this.moduleId).pipe(
-      switchMap((id) => this.moduleApiService.findOne(id)),
+      switchMap((id) => this.moduleService.findOne(id)),
     ),
   );
 

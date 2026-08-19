@@ -8,7 +8,6 @@ import {
 import { NavigationItemComponent } from './navigation-item/navigation-item.component';
 import type { NavigationItem } from './navigation.models';
 import { NavigationSectionComponent } from './navigation-section.component';
-import { ModuleApiService } from '../../../features/module/module-api-service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ModuleDto } from '@study/contracts';
 import { UserService } from '../../user/user.service';
@@ -17,6 +16,7 @@ import { formatSemesterLabel } from '../../../features/semester/semester.label';
 import { CreateModuleService } from '../../../features/module/create-module/create-module.service';
 import { EditModuleService } from '../../../features/module/edit-module/edit-module.service';
 import { AuthTokenService } from '../../auth/auth-token.service';
+import { ModuleService } from '../../../features/module/module.service';
 
 @Component({
   selector: 'app-navigation',
@@ -26,7 +26,7 @@ import { AuthTokenService } from '../../auth/auth-token.service';
 })
 export class NavigationComponent {
   private readonly semesterService = inject(SemesterService);
-  private readonly moduleApiService = inject(ModuleApiService);
+  private readonly moduleService = inject(ModuleService);
   private readonly newModuleDialog = inject(CreateModuleService);
   private readonly editModuleDialog = inject(EditModuleService);
   private readonly authTokenService = inject(AuthTokenService);
@@ -50,7 +50,7 @@ export class NavigationComponent {
     const semester = this.semesterService.activeSemester();
     return semester ? formatSemesterLabel(semester, 'short') : 'Semester';
   });
-  protected readonly modules = toSignal(this.moduleApiService.findAll(), {
+  protected readonly modules = toSignal(this.moduleService.loadAll(), {
     initialValue: [],
   });
   protected readonly semesterItems = computed<readonly NavigationItem[]>(() =>
