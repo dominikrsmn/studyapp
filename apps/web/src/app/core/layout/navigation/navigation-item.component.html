@@ -1,0 +1,46 @@
+@let current = item();
+
+<div class="group relative w-full">
+  <app-navigation-interaction
+    class="flex w-full min-w-0"
+    [item]="current"
+    [classes]="classes"
+  >
+    <div
+      class="flex min-w-0 flex-1 items-center gap-2"
+      [class.pr-10]="current.trailingItem"
+    >
+      @if (current.icon) {
+        <span
+          [appIcon]="current.icon"
+          aria-hidden="true"
+        ></span>
+      }
+
+      <span class="min-w-0 truncate">
+        {{ current.label }}
+      </span>
+    </div>
+  </app-navigation-interaction>
+
+  @if (current.trailingItem; as trailing) {
+    <app-navigation-interaction
+      class="
+        invisible pointer-events-none absolute top-1/2 right-2 z-10
+        flex -translate-y-1/2 opacity-0
+        transition-opacity
+        group-hover:visible group-hover:pointer-events-auto group-hover:opacity-100
+        group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:opacity-100
+      "
+      [item]="trailing.item"
+      variant="icon"
+      [ariaLabel]="trailing.item.label"
+      [classes]="trailingClasses"
+    >
+      <span
+        [appIcon]="trailing.icon"
+        aria-hidden="true"
+      ></span>
+    </app-navigation-interaction>
+  }
+</div>

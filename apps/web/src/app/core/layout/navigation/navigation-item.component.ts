@@ -1,61 +1,42 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-
-import { ZardButtonComponent } from '../../../shared/components/button/button.component';
-import { mergeClasses } from '../../../shared/utils/merge-classes';
 import { IconDirective } from '../../../shared/icons/icon.directive';
+import { mergeClasses } from '../../../shared/utils';
 import { NavigationItem } from './navigation.models';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationInteractionComponent } from './navigation-interaction.component';
 
 @Component({
   selector: 'app-navigation-item',
-  imports: [ZardButtonComponent, IconDirective, RouterLink, RouterLinkActive],
+  imports: [IconDirective, NavigationInteractionComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'block' },
-  template: `
-    @let current = item();
-
-    @if (current.type === 'route') {
-      <a
-        z-button
-        zType="ghost"
-        zSize="lg"
-        [routerLink]="current.route"
-        routerLinkActive
-        #rla="routerLinkActive"
-        [class]="classes(rla.isActive)"
-        [attr.aria-current]="rla.isActive ? 'page' : null"
-      >
-        <span [appIcon]="current.icon" aria-hidden="true"></span>
-        <span class="min-w-0 truncate">{{ current.label }}</span>
-      </a>
-    } @else {
-      <button
-        z-button
-        type="button"
-        zType="ghost"
-        zSize="lg"
-        [class]="classes(false)"
-        (click)="current.action()"
-      >
-        <span [appIcon]="current.icon" aria-hidden="true"></span>
-        <span class="min-w-0 truncate">{{ current.label }}</span>
-      </button>
-    }
-  `,
+  templateUrl: './navigation-item.component.html',
 })
 export class NavigationItemComponent {
   readonly item = input.required<NavigationItem>();
 
-  protected classes(active: boolean): string {
+  protected readonly classes = (active: boolean): string => {
     return mergeClasses(
-      'h-10 w-full justify-start gap-3 rounded-xl px-3 text-left text-sm font-medium transition-colors',
+      'h-10 min-w-0 flex-1 justify-start gap-3 rounded-xl px-3',
+      'text-left text-sm font-medium transition-colors',
       'text-sage-600 hover:bg-sage-200/50 hover:text-sage-950',
+      'group-hover:bg-sage-200/50 group-hover:text-sage-950',
       'focus-visible:border-sage-400 focus-visible:ring-sage-400/30',
 
       active &&
-        'bg-white text-sage-950 shadow-sm shadow-sage-200/50 hover:bg-white hover:text-sage-950',
+        'bg-white text-sage-950 shadow-sm shadow-sage-200/50 ' +
+          'hover:bg-white hover:text-sage-950 ' +
+          'group-hover:bg-white group-hover:text-sage-950',
 
-      this.item().muted && !active && 'text-sage-500 hover:text-sage-700',
+      this.item().muted &&
+        !active &&
+        'text-sage-500 hover:text-sage-700 group-hover:text-sage-700',
     );
-  }
+  };
+
+  protected readonly trailingClasses = (): string => {
+    return mergeClasses(
+      'shrink-0 rounded-lg',
+      'text-sage-500 hover:bg-sage-200/50 hover:text-sage-950',
+      'focus-visible:border-sage-400 focus-visible:ring-sage-400/30',
+    );
+  };
 }

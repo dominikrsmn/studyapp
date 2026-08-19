@@ -1,7 +1,14 @@
 interface NavigationItemBase {
   readonly label: string;
-  readonly icon: string;
+  readonly icon?: string;
   readonly muted?: boolean;
+
+  readonly trailingItem?: NavigationTrailingItem;
+}
+
+interface NavigationTrailingItem {
+  readonly icon: string;
+  readonly item: NavigationItem;
 }
 
 interface NavigationRouteItem extends NavigationItemBase {
@@ -16,7 +23,7 @@ interface NavigationActionItem extends NavigationItemBase {
 
 interface NavigationPopoverItem extends NavigationItemBase {
   readonly type: 'popover';
-  readonly items: NavigationItem[];
+  readonly items: readonly NavigationItem[];
 }
 
 export type NavigationItem =

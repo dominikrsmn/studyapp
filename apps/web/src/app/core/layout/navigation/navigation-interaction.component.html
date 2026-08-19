@@ -1,0 +1,58 @@
+@let current = item();
+
+<ng-template #content>
+  <ng-content />
+</ng-template>
+
+@switch (current.type) {
+  @case ('route') {
+    <a
+      z-button
+      zType="ghost"
+      [zSize]="size()"
+      [routerLink]="current.route"
+      routerLinkActive
+      #rla="routerLinkActive"
+      [class]="classes()(rla.isActive)"
+      [attr.aria-current]="rla.isActive ? 'page' : null"
+      [attr.aria-label]="ariaLabel()"
+    >
+      <ng-container [ngTemplateOutlet]="content" />
+    </a>
+  }
+  @case ('action') {
+    <button
+      z-button
+      type="button"
+      zType="ghost"
+      [zSize]="size()"
+      [class]="classes()(false)"
+      [attr.aria-label]="ariaLabel()"
+      (click)="current.action()"
+    >
+      <ng-container [ngTemplateOutlet]="content" />
+    </button>
+  }
+  @case ('popover') {
+    <button
+      z-button
+      type="button"
+      zType="ghost"
+      [zSize]="size()"
+      zPopover
+      zPlacement="right"
+      zAlign="start"
+      [zContent]="popoverContent"
+      [class]="classes()(false)"
+      [attr.aria-label]="ariaLabel()"
+    >
+      <ng-container [ngTemplateOutlet]="content" />
+    </button>
+
+    <ng-template #popoverContent>
+      <app-navigation-popover-content
+        [items]="current.items"
+      />
+    </ng-template>
+  }
+}
