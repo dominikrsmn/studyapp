@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+} from '@angular/core';
 import {
   FormControl,
   FormGroup,
@@ -7,11 +12,12 @@ import {
 } from '@angular/forms';
 import { FeatherIconNames } from 'feather-icons';
 
-import { CreateModule } from '@study/contracts';
+import { CreateModule, ModuleDto } from '@study/contracts';
 import { ZardDatePickerComponent } from '../../../shared/components/date-picker';
 import { ZardInputComponent } from '../../../shared/components/input';
 import { IconPickerComponent } from '../../../shared/components/icon-picker/icon-picker.component';
 import { ZardTextareaComponent } from '../../../shared/components/textarea';
+import { Z_MODAL_DATA } from '../../../shared/components/dialog';
 
 @Component({
   selector: 'app-create-module',
@@ -25,7 +31,18 @@ import { ZardTextareaComponent } from '../../../shared/components/textarea';
   templateUrl: './edit-module.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EditModuleComponent {
+export class EditModuleComponent implements AfterViewInit {
+  private readonly zData = inject(Z_MODAL_DATA) as ModuleDto;
+
+  ngAfterViewInit() {
+    if (this.zData) {
+      this.form.patchValue({
+        title: this.zData.name,
+        description: this.zData.description ?? '',
+        icon: this.zData.icon as FeatherIconNames,
+      });
+    }
+  }
   readonly form = new FormGroup({
     icon: new FormControl<FeatherIconNames>('book-open', {
       nonNullable: true,
