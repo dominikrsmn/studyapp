@@ -5,9 +5,9 @@ import {
   input,
 } from '@angular/core';
 
-import { NavigationItem } from './navigation.models';
+import { NavigationItem } from '../navigation.models';
 import { NavigationItemComponent } from './navigation-item.component';
-import { ZardPopoverComponent } from '../../../shared/components/popover';
+import { ZardPopoverComponent } from '../../../../shared/components/popover';
 
 @Component({
   selector: 'app-navigation-popover-content',

@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { IconDirective } from '../../../shared/icons/icon.directive';
-import { mergeClasses } from '../../../shared/utils';
-import { NavigationItem } from './navigation.models';
-import { NavigationInteractionComponent } from './navigation-interaction.component';
+import { IconDirective } from '../../../../shared/icons/icon.directive';
+import { mergeClasses } from '../../../../shared/utils';
+import { NavigationItem } from '../navigation.models';
+import { NavigationInteractionComponent } from '../navigation-interaction/navigation-interaction.component';
 
 @Component({
   selector: 'app-navigation-item',

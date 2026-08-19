@@ -5,7 +5,7 @@ import {
   inject,
 } from '@angular/core';
 
-import { NavigationItemComponent } from './navigation-item.component';
+import { NavigationItemComponent } from './navigation-item/navigation-item.component';
 import type { NavigationItem } from './navigation.models';
 import { NavigationSectionComponent } from './navigation-section.component';
 import { ModuleApiService } from '../../../features/module/module-api-service';
@@ -69,7 +69,7 @@ export class NavigationComponent {
             {
               type: 'action',
               label: 'Edit Module',
-              action: () => this.editModuleDialog.open(),
+              action: () => this.editModuleDialog.open(module),
             },
             {
               type: 'action',

@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
-import type { NavigationItem } from './navigation.models';
-import { NavigationPopoverContentComponent } from './navigation-popover-content.component';
+import type { NavigationItem } from '../navigation.models';
+import { NavigationPopoverContentComponent } from '../navigation-item/navigation-popover-content.component';
 
-import { ZardButtonComponent } from '../../../shared/components/button';
-import { ZardPopoverDirective } from '../../../shared/components/popover';
+import { ZardButtonComponent } from '../../../../shared/components/button';
+import { ZardPopoverDirective } from '../../../../shared/components/popover';
 
 @Component({
   selector: 'app-navigation-interaction',
