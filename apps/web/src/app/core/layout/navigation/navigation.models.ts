@@ -2,7 +2,7 @@ interface NavigationItemBase {
   readonly label: string;
   readonly icon?: string;
   readonly muted?: boolean;
-
+  readonly destructive?: boolean;
   readonly trailingItem?: NavigationTrailingItem;
 }
 

@@ -1,19 +1,17 @@
 import { inject, Service } from '@angular/core';
 import { ZardDialogService } from '../../../shared/components/dialog';
-import { ModuleApiService } from '../module-api-service';
 import { EditModuleComponent } from './edit-module.component';
 
 @Service()
 export class EditModuleService {
   private readonly dialogService = inject(ZardDialogService);
-  private readonly moduleApiService = inject(ModuleApiService);
 
   open(): void {
     this.dialogService.create({
-      zTitle: 'Create module',
-      zDescription: 'Add a new module to your current semester.',
+      zTitle: 'Edit module',
+      zDescription: "Edit the current module's metadata.",
       zContent: EditModuleComponent,
-      zOkText: 'Create',
+      zOkText: 'Save changes',
       zOnOk: (component) => {
         if (component.form.invalid) {
           component.form.markAllAsTouched();

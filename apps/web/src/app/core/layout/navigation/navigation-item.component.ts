@@ -29,6 +29,13 @@ export class NavigationItemComponent {
       this.item().muted &&
         !active &&
         'text-sage-500 hover:text-sage-700 group-hover:text-sage-700',
+
+      this.item().destructive &&
+        !active &&
+        'text-red-600 ' +
+          'hover:bg-red-50 hover:text-red-700 ' +
+          'group-hover:bg-red-50 group-hover:text-red-700 ' +
+          'focus-visible:border-red-400 focus-visible:ring-red-400/30',
     );
   };
 

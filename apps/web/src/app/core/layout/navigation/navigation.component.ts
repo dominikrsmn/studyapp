@@ -74,6 +74,7 @@ export class NavigationComponent {
             {
               type: 'action',
               label: 'Delete Module',
+              destructive: true,
               action: () => console.log('delete module'),
             },
           ],
