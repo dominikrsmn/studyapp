@@ -13,6 +13,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ModuleDto } from '@study/contracts';
 import { UserService } from '../../user/user.service';
 import { SemesterService } from '../../../features/semester/semester.service';
+import { formatSemesterLabel } from '@study/features/semester/semester.label';
 
 @Component({
   selector: 'app-navigation',
@@ -21,6 +22,8 @@ import { SemesterService } from '../../../features/semester/semester.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NavigationComponent {
+  private readonly semesterService = inject(SemesterService);
+
   protected readonly workspaceItems: readonly NavigationItem[] = [
     {
       type: 'route',
@@ -41,6 +44,14 @@ export class NavigationComponent {
     label: 'New module',
     icon: 'plus',
   };
+  protected readonly semesterLabel = computed(() => {
+    const semester = this.semesterService.activeSemester();
+    return semester ? formatSemesterLabel(semester, 'short') : 'Semester';
+  });
+  private readonly moduleApiService = inject(ModuleApiService);
+  protected readonly modules = toSignal(this.moduleApiService.findAll(), {
+    initialValue: [],
+  });
   protected readonly semesterItems = computed<readonly NavigationItem[]>(() =>
     this.modules().map((module: ModuleDto): NavigationItem => ({
       type: 'route',
@@ -50,10 +61,6 @@ export class NavigationComponent {
       muted: true,
     })),
   );
-  private readonly moduleApiService = inject(ModuleApiService);
-  protected readonly modules = toSignal(this.moduleApiService.findAll(), {
-    initialValue: [],
-  });
   private readonly userService = inject(UserService);
   protected readonly accountItems = computed<readonly NavigationItem[]>(() => [
     {
@@ -63,22 +70,4 @@ export class NavigationComponent {
       icon: 'user',
     },
   ]);
-  private readonly semesterService = inject(SemesterService);
-  protected readonly semesterLabel = computed<string>(() => {
-    const semester = this.semesterService.activeSemester();
-    if (!semester) {
-      return 'Semester';
-    }
-    const start = new Date(semester.startDate);
-    const end = new Date(semester.endDate);
-
-    const startYear = start.getFullYear();
-    const endYear = end.getFullYear();
-
-    if (startYear === endYear) {
-      return `SoSe ${startYear}`;
-    }
-
-    return `WiSe ${String(startYear).slice(-2)}/${String(endYear).slice(-2)}`;
-  });
 }
