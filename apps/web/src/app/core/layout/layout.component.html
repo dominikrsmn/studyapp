@@ -2,9 +2,8 @@
   class="flex h-screen w-full bg-sage-100 text-sage-950 selection:bg-sage-300/50"
 >
   <app-navigation />
-  <main class="flex-1 flex flex-col h-screen overflow-hidden bg-white rounded-l-3xl shadow-[-10px_0_40px_rgba(0,0,0,0.03)] border-l border-sage-200/50">
-    <div class="flex-1 overflow-auto p-16 max-w-7xl mx-auto w-full">
-      <ng-content />
-    </div>
+  <main
+    class="flex-1 flex flex-col h-screen overflow-hidden bg-white rounded-l-3xl shadow-[-10px_0_40px_rgba(0,0,0,0.03)] border-l border-sage-200/50">
+    <ng-content />
   </main>
 </div>
