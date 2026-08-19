@@ -7,7 +7,7 @@ import {
 } from '@angular/forms';
 import { FeatherIconNames } from 'feather-icons';
 
-import { CreateModule } from '@study/contracts';
+import { CreateModule, dateToDateOnly } from '@study/contracts';
 import { ZardDatePickerComponent } from '../../../shared/components/date-picker';
 import { ZardInputComponent } from '../../../shared/components/input';
 import { IconPickerComponent } from '../../../shared/components/icon-picker/icon-picker.component';
@@ -51,12 +51,7 @@ export class CreateModuleComponent {
       icon,
       name: title.trim(),
       description: description.trim(),
-      examDate: examDate
-        ? `${examDate.getFullYear()}-${String(examDate.getMonth() + 1).padStart(
-            2,
-            '0',
-          )}-${String(examDate.getDate()).padStart(2, '0')}`
-        : undefined,
+      examDate: examDate ? dateToDateOnly(examDate) : undefined,
     };
   }
 }

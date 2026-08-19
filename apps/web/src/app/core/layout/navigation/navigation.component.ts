@@ -16,6 +16,7 @@ import { CreateModuleService } from '../../../features/module/create-module/crea
 import { EditModuleService } from '../../../features/module/edit-module/edit-module.service';
 import { AuthTokenService } from '../../auth/auth-token.service';
 import { ModuleService } from '../../../features/module/module.service';
+import { DeleteModuleService } from '../../../features/module/delete-module/delete-module.service';
 
 @Component({
   selector: 'app-navigation',
@@ -26,8 +27,9 @@ import { ModuleService } from '../../../features/module/module.service';
 export class NavigationComponent {
   private readonly semesterService = inject(SemesterService);
   private readonly moduleService = inject(ModuleService);
-  private readonly newModuleDialog = inject(CreateModuleService);
-  private readonly editModuleDialog = inject(EditModuleService);
+  private readonly newModuleService = inject(CreateModuleService);
+  private readonly editModuleService = inject(EditModuleService);
+  private readonly deleteModuleService = inject(DeleteModuleService);
   private readonly authTokenService = inject(AuthTokenService);
 
   constructor() {
@@ -71,13 +73,13 @@ export class NavigationComponent {
             {
               type: 'action',
               label: 'Edit Module',
-              action: () => this.editModuleDialog.open(module),
+              action: () => this.editModuleService.open(module),
             },
             {
               type: 'action',
               label: 'Delete Module',
               destructive: true,
-              action: () => console.log('delete module'),
+              action: () => this.deleteModuleService.open(module.id),
             },
           ],
         },
@@ -87,7 +89,7 @@ export class NavigationComponent {
 
   protected readonly newModuleItem: NavigationItem = {
     type: 'action',
-    action: () => this.newModuleDialog.open(),
+    action: () => this.newModuleService.open(),
     label: 'New module',
     icon: 'plus',
   };

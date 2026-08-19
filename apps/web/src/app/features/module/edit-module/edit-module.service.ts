@@ -19,11 +19,12 @@ export class EditModuleService {
       zOnOk: (component) => {
         if (component.form.invalid) {
           component.form.markAllAsTouched();
-          return;
+          return false;
         }
 
         const value = component.getValue();
         this.moduleService.update(module.id, value).subscribe();
+        return;
       },
     });
   }

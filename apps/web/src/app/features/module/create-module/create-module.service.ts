@@ -20,7 +20,6 @@ export class CreateModuleService {
           component.form.markAllAsTouched();
           return false;
         }
-        console.log('form valid');
         const value: CreateModule = component.getValue();
         this.moduleService.create(value).subscribe();
         return;

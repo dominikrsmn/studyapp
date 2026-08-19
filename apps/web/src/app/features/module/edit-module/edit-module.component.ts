@@ -12,7 +12,12 @@ import {
 } from '@angular/forms';
 import { FeatherIconNames } from 'feather-icons';
 
-import { CreateModule, ModuleDto } from '@study/contracts';
+import {
+  CreateModule,
+  dateOnlyToDate,
+  dateToDateOnly,
+  ModuleDto,
+} from '@study/contracts';
 import { ZardDatePickerComponent } from '../../../shared/components/date-picker';
 import { ZardInputComponent } from '../../../shared/components/input';
 import { IconPickerComponent } from '../../../shared/components/icon-picker/icon-picker.component';
@@ -34,15 +39,6 @@ import { Z_MODAL_DATA } from '../../../shared/components/dialog';
 export class EditModuleComponent implements AfterViewInit {
   private readonly zData = inject(Z_MODAL_DATA) as ModuleDto;
 
-  ngAfterViewInit() {
-    if (this.zData) {
-      this.form.patchValue({
-        title: this.zData.name,
-        description: this.zData.description ?? '',
-        icon: this.zData.icon as FeatherIconNames,
-      });
-    }
-  }
   readonly form = new FormGroup({
     icon: new FormControl<FeatherIconNames>('book-open', {
       nonNullable: true,
@@ -61,6 +57,21 @@ export class EditModuleComponent implements AfterViewInit {
     examDate: new FormControl<Date | null>(null),
   });
 
+  ngAfterViewInit(): void {
+    if (!this.zData) {
+      return;
+    }
+
+    this.form.patchValue({
+      title: this.zData.name,
+      description: this.zData.description ?? '',
+      icon: this.zData.icon as FeatherIconNames,
+      examDate: this.zData.examDate
+        ? dateOnlyToDate(this.zData.examDate)
+        : null,
+    });
+  }
+
   getValue(): CreateModule {
     const { icon, title, description, examDate } = this.form.getRawValue();
 
@@ -68,12 +79,7 @@ export class EditModuleComponent implements AfterViewInit {
       icon,
       name: title.trim(),
       description: description.trim(),
-      examDate: examDate
-        ? `${examDate.getFullYear()}-${String(examDate.getMonth() + 1).padStart(
-            2,
-            '0',
-          )}-${String(examDate.getDate()).padStart(2, '0')}`
-        : undefined,
+      examDate: examDate ? dateToDateOnly(examDate) : undefined,
     };
   }
 }
