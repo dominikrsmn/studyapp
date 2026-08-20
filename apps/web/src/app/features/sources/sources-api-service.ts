@@ -22,7 +22,7 @@ export class SourcesApiService {
     return this.http.delete<SourceDto>(`${this.getUrl(moduleId)}/${id}`);
   }
 
-  private getUrl(moduleId: String) {
+  private getUrl(moduleId: string) {
     return `${environment.apiUrl}/module/${moduleId}/modules`;
   }
 }
