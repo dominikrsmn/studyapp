@@ -16,11 +16,12 @@ import {
 } from '@angular/core';
 import { NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
 
-import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCalendar, lucideChevronDown } from '@ng-icons/lucide';
 import type { ClassValue } from 'clsx';
 
-import { ZardButtonComponent, type ZardButtonTypeVariants } from '@study/shared/components/button';
+import {
+  ZardButtonComponent,
+  type ZardButtonTypeVariants,
+} from '@study/shared/components/button';
 import { ZardCalendarComponent } from '@study/shared/components/calendar';
 import type {
   CalendarMode,
@@ -34,15 +35,26 @@ import {
   type ZardDatePickerIconVariants,
   type ZardDatePickerSizeVariants,
 } from '@study/shared/components/date-picker/date-picker.variants';
-import { ZardPopoverComponent, ZardPopoverDirective, type ZardPopoverAlign } from '@study/shared/components/popover';
+import {
+  ZardPopoverComponent,
+  ZardPopoverDirective,
+  type ZardPopoverAlign,
+} from '@study/shared/components/popover';
 import { mergeClasses, noopFn } from '@study/shared/utils/merge-classes';
+import { IconDirective } from '../../icons/icon.directive';
 
 /** Separates the two ends of a range in the trigger label. */
 const RANGE_SEPARATOR = ' - ';
 
 @Component({
   selector: 'z-date-picker, [z-date-picker]',
-  imports: [NgIcon, ZardButtonComponent, ZardCalendarComponent, ZardPopoverComponent, ZardPopoverDirective],
+  imports: [
+    IconDirective,
+    ZardButtonComponent,
+    ZardCalendarComponent,
+    ZardPopoverComponent,
+    ZardPopoverDirective,
+  ],
   template: `
     <button
       z-button
@@ -62,11 +74,19 @@ const RANGE_SEPARATOR = ' - ';
       (zVisibleChange)="onPopoverVisibilityChange($event)"
     >
       @if (zIcon() === 'calendar') {
-        <ng-icon name="lucideCalendar" class="size-4!" data-icon="inline-start" />
+        <span
+          appIcon="calendar"
+          class="inline-flex size-4"
+          data-icon="inline-start"
+        ></span>
       }
       <span class="min-w-0 truncate">{{ displayText() }}</span>
       @if (zIcon() === 'chevron') {
-        <ng-icon name="lucideChevronDown" class="size-4!" data-icon="inline-end" />
+        <span
+          appIcon="chevron-down"
+          class="inline-flex size-4"
+          data-icon="inline-end"
+        ></span>
       }
     </button>
 
@@ -99,7 +119,6 @@ const RANGE_SEPARATOR = ' - ';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  viewProviders: [provideIcons({ lucideCalendar, lucideChevronDown })],
   host: {
     'data-slot': 'date-picker',
     '[class]': 'classes()',
@@ -110,8 +129,10 @@ const RANGE_SEPARATOR = ' - ';
 export class ZardDatePickerComponent implements ControlValueAccessor {
   private readonly datePipe = inject(DatePipe);
 
-  readonly calendarTemplate = viewChild.required<TemplateRef<unknown>>('calendarTemplate');
-  readonly popoverDirective = viewChild.required<ZardPopoverDirective>('popoverDirective');
+  readonly calendarTemplate =
+    viewChild.required<TemplateRef<unknown>>('calendarTemplate');
+  readonly popoverDirective =
+    viewChild.required<ZardPopoverDirective>('popoverDirective');
   /** Only resolves while the popover is open — the calendar lives in a lazily rendered template. */
   readonly calendar = viewChild<ZardCalendarComponent>('calendar');
 
@@ -139,9 +160,13 @@ export class ZardDatePickerComponent implements ControlValueAccessor {
   private onChange: (value: CalendarValue) => void = noopFn;
   private onTouched: () => void = noopFn;
 
-  protected readonly classes = computed(() => mergeClasses(datePickerVariants(), this.class()));
+  protected readonly classes = computed(() =>
+    mergeClasses(datePickerVariants(), this.class()),
+  );
 
-  protected readonly triggerClasses = computed(() => datePickerTriggerVariants({ zIcon: this.zIcon() }));
+  protected readonly triggerClasses = computed(() =>
+    datePickerTriggerVariants({ zIcon: this.zIcon() }),
+  );
 
   /** The value flattened to a list, whatever the mode — empty when nothing is selected. */
   private readonly selectedDates = computed(() => {
@@ -152,7 +177,9 @@ export class ZardDatePickerComponent implements ControlValueAccessor {
     return Array.isArray(value) ? value : [value];
   });
 
-  protected readonly isEmpty = computed(() => this.selectedDates().length === 0);
+  protected readonly isEmpty = computed(
+    () => this.selectedDates().length === 0,
+  );
 
   protected readonly displayText = computed(() => {
     const dates = this.selectedDates();
@@ -168,7 +195,7 @@ export class ZardDatePickerComponent implements ControlValueAccessor {
         : this.formatDate(from, format);
     }
 
-    return dates.map(date => this.formatDate(date, format)).join(', ');
+    return dates.map((date) => this.formatDate(date, format)).join(', ');
   });
 
   protected onCalendarValueChange(value: CalendarValue): void {

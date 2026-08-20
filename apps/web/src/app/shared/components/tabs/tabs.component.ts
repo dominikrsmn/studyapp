@@ -13,8 +13,8 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 
-import { NgIcon } from '@ng-icons/core';
 import { twMerge } from 'tailwind-merge';
+import { IconDirective } from '../../icons/icon.directive';
 
 import {
   tabButtonVariants,
@@ -44,7 +44,7 @@ export class ZardTabComponent {
 
 @Component({
   selector: 'z-tab-group',
-  imports: [NgTemplateOutlet, NgIcon],
+  imports: [NgTemplateOutlet, IconDirective],
   template: `
     <nav
       [class]="navClasses()"
@@ -66,7 +66,7 @@ export class ZardTabComponent {
           [class]="buttonClasses()"
         >
           @if (tab.zIcon()) {
-            <ng-icon [name]="tab.zIcon()!" />
+            <span [appIcon]="tab.zIcon()!" class="inline-flex size-4"></span>
           }
           {{ tab.label() }}
         </button>

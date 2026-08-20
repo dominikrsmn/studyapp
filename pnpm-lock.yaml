@@ -50,15 +50,6 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.0.0
         version: 11.1.29(@nestjs/common@11.1.29(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@11.1.29)(supports-color@7.2.0)
-      '@ng-icons/core':
-        specifier: ^35.0.1
-        version: 35.0.1(@angular-devkit/schematics@22.0.6(chokidar@5.0.0))(@angular/common@22.0.6(@angular/core@22.0.6(@angular/compiler@22.0.6)(rxjs@7.8.2)(zone.js@0.16.2))(rxjs@7.8.2))(@angular/core@22.0.6(@angular/compiler@22.0.6)(rxjs@7.8.2)(zone.js@0.16.2))(@schematics/angular@22.0.6(chokidar@5.0.0))(rxjs@7.8.2)
-      '@ng-icons/fluent-ui':
-        specifier: ^35.0.1
-        version: 35.0.1
-      '@ng-icons/lucide':
-        specifier: ^35.0.1
-        version: 35.0.1
       '@prisma/adapter-pg':
         specifier: ^7.9.1
         version: 7.9.1
@@ -2640,21 +2631,6 @@ packages:
         optional: true
       '@nestjs/platform-express':
         optional: true
-
-  '@ng-icons/core@35.0.1':
-    resolution: {integrity: sha512-xdqbEAArNRtxeEkdVRK0jrr9KmMdBpfEdMeSzO3+XiEdXNCTNF32TvgCOGsU8w+Bo3Hb7IBf8CgT2lwa8ZbIPQ==}
-    peerDependencies:
-      '@angular-devkit/schematics': '>=22.0.0'
-      '@angular/common': '>=22.0.0'
-      '@angular/core': '>=22.0.0'
-      '@schematics/angular': '>=22.0.0'
-      rxjs: ^6.5.3 || ^7.4.0
-
-  '@ng-icons/fluent-ui@35.0.1':
-    resolution: {integrity: sha512-vGKVa2s/vBRFcu03CK7ZAxcyFqAWNDXv3ILKGZ1nWV8y/JCxyIMntLq5yew4snvz6NeT1bnMQ/zyn49nn2RB8w==}
-
-  '@ng-icons/lucide@35.0.1':
-    resolution: {integrity: sha512-k5TDT3gc6aepYIPGqCRRpJGjt2TM7/rDSSQeIZyX6sLiusibVT1YpSp0rcElCHYT0Yi/+ddEia5qZ8Z61wC7Mg==}
 
   '@ngtools/webpack@22.0.6':
     resolution: {integrity: sha512-uYGiUKUAr3pG/8YWBZ3Sri7wi0fJo1c4hZeYuUZVdKSmYu5JAtXVHinA4wnNGhGPeex2XG4Ea7fsG0XvZmD60Q==}
@@ -13248,23 +13224,6 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@nestjs/platform-express': 11.1.29(@nestjs/common@11.1.29(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@11.1.29)(supports-color@7.2.0)
-
-  '@ng-icons/core@35.0.1(@angular-devkit/schematics@22.0.6(chokidar@5.0.0))(@angular/common@22.0.6(@angular/core@22.0.6(@angular/compiler@22.0.6)(rxjs@7.8.2)(zone.js@0.16.2))(rxjs@7.8.2))(@angular/core@22.0.6(@angular/compiler@22.0.6)(rxjs@7.8.2)(zone.js@0.16.2))(@schematics/angular@22.0.6(chokidar@5.0.0))(rxjs@7.8.2)':
-    dependencies:
-      '@angular-devkit/schematics': 22.0.6(chokidar@5.0.0)
-      '@angular/common': 22.0.6(@angular/core@22.0.6(@angular/compiler@22.0.6)(rxjs@7.8.2)(zone.js@0.16.2))(rxjs@7.8.2)
-      '@angular/core': 22.0.6(@angular/compiler@22.0.6)(rxjs@7.8.2)(zone.js@0.16.2)
-      '@schematics/angular': 22.0.6(chokidar@5.0.0)
-      rxjs: 7.8.2
-      tslib: 2.8.1
-
-  '@ng-icons/fluent-ui@35.0.1':
-    dependencies:
-      tslib: 2.8.1
-
-  '@ng-icons/lucide@35.0.1':
-    dependencies:
-      tslib: 2.8.1
 
   '@ngtools/webpack@22.0.6(@angular/compiler-cli@22.0.6(@angular/compiler@22.0.6)(supports-color@7.2.0)(typescript@6.0.3))(typescript@6.0.3)(webpack@5.106.2(@swc/core@1.15.8(@swc/helpers@0.5.18))(cssnano@7.1.9(postcss@8.5.26))(csso@5.0.5)(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.13)(uglify-js@3.19.3)(webpack-cli@7.2.2))':
     dependencies:

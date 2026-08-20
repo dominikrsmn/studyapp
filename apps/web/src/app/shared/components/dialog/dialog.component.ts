@@ -23,12 +23,11 @@ import {
   type ViewContainerRef,
 } from '@angular/core';
 
-import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideX } from '@ng-icons/lucide';
 import type { ClassValue } from 'clsx';
 
 import { ZardIdDirective } from '@study/shared/core';
 import { mergeClasses, noopFn } from '@study/shared/utils/merge-classes';
+import { IconDirective } from '../../icons/icon.directive';
 
 import type { ZardDialogRef } from './dialog-ref';
 import {
@@ -66,7 +65,14 @@ export class ZardDialogOptions<T, U> {
 
 @Component({
   selector: 'z-dialog',
-  imports: [A11yModule, OverlayModule, PortalModule, ZardButtonComponent, ZardIdDirective, NgIcon],
+  imports: [
+    A11yModule,
+    OverlayModule,
+    PortalModule,
+    ZardButtonComponent,
+    ZardIdDirective,
+    IconDirective,
+  ],
   template: `
     <ng-container zardId="z-dialog" #idRef="zardId">
       @if (config.zClosable || config.zClosable === undefined) {
@@ -80,7 +86,7 @@ export class ZardDialogOptions<T, U> {
           class="absolute top-2 right-2"
           (click)="onCloseClick()"
         >
-          <ng-icon name="lucideX" class="size-4!" />
+          <span appIcon="x" class="inline-flex size-4"></span>
           <span class="sr-only">Close</span>
         </button>
       }
@@ -88,7 +94,12 @@ export class ZardDialogOptions<T, U> {
       @if (config.zTitle || config.zDescription) {
         <header [class]="headerClasses()" data-slot="dialog-header">
           @if (config.zTitle) {
-            <h4 data-testid="z-title" data-slot="dialog-title" [class]="titleClasses()" [id]="idRef.id() + '-title'">
+            <h4
+              data-testid="z-title"
+              data-slot="dialog-title"
+              [class]="titleClasses()"
+              [id]="idRef.id() + '-title'"
+            >
               {{ config.zTitle }}
             </h4>
 
@@ -118,12 +129,24 @@ export class ZardDialogOptions<T, U> {
       @if (!config.zHideFooter) {
         <footer [class]="footerClasses()" data-slot="dialog-footer">
           @if (config.zCancelText !== null) {
-            <button type="button" data-testid="z-cancel-button" z-button zType="outline" (click)="onCloseClick()">
+            <button
+              type="button"
+              data-testid="z-cancel-button"
+              z-button
+              zType="outline"
+              (click)="onCloseClick()"
+            >
               @if (config.zCancelIcon) {
                 @if (isSvgString(config.zCancelIcon)) {
-                  <ng-icon [svg]="config.zCancelIcon" class="size-4!" />
+                  <span
+                    [innerHTML]="config.zCancelIcon"
+                    class="inline-flex size-4"
+                  ></span>
                 } @else {
-                  <ng-icon [name]="config.zCancelIcon" class="size-4!" />
+                  <span
+                    [appIcon]="config.zCancelIcon"
+                    class="inline-flex size-4"
+                  ></span>
                 }
               }
 
@@ -142,9 +165,15 @@ export class ZardDialogOptions<T, U> {
             >
               @if (config.zOkIcon) {
                 @if (isSvgString(config.zOkIcon)) {
-                  <ng-icon [svg]="config.zOkIcon" class="size-4!" />
+                  <span
+                    [innerHTML]="config.zOkIcon"
+                    class="inline-flex size-4"
+                  ></span>
                 } @else {
-                  <ng-icon [name]="config.zOkIcon" class="size-4!" />
+                  <span
+                    [appIcon]="config.zOkIcon"
+                    class="inline-flex size-4"
+                  ></span>
                 }
               }
 
@@ -181,7 +210,6 @@ export class ZardDialogOptions<T, U> {
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  viewProviders: [provideIcons({ lucideX })],
   host: {
     '[class]': 'classes()',
     '[style.width]': 'config.zWidth ? config.zWidth : null',
@@ -201,13 +229,21 @@ export class ZardDialogComponent<T, U> extends BasePortalOutlet {
   protected readonly config = inject(ZardDialogOptions<T, U>);
   private readonly idRef = viewChild.required<ZardIdDirective>('idRef');
 
-  protected readonly classes = computed(() => mergeClasses(dialogVariants(), this.config.zCustomClasses));
+  protected readonly classes = computed(() =>
+    mergeClasses(dialogVariants(), this.config.zCustomClasses),
+  );
   protected readonly headerClasses = computed(() => dialogHeaderVariants());
   protected readonly titleClasses = computed(() => dialogTitleVariants());
-  protected readonly descriptionClasses = computed(() => dialogDescriptionVariants());
+  protected readonly descriptionClasses = computed(() =>
+    dialogDescriptionVariants(),
+  );
   protected readonly footerClasses = computed(() => dialogFooterVariants());
-  protected readonly isStringContent = computed(() => typeof this.config.zContent === 'string');
-  protected readonly titleId = computed(() => (this.config.zTitle ? `${this.idRef().id()}-title` : null));
+  protected readonly isStringContent = computed(
+    () => typeof this.config.zContent === 'string',
+  );
+  protected readonly titleId = computed(() =>
+    this.config.zTitle ? `${this.idRef().id()}-title` : null,
+  );
   protected readonly descriptionId = computed(() =>
     this.config.zDescription ? `${this.idRef().id()}-description` : null,
   );
@@ -233,14 +269,18 @@ export class ZardDialogComponent<T, U> extends BasePortalOutlet {
 
   attachComponentPortal<C>(portal: ComponentPortal<C>): ComponentRef<C> {
     if (this.portalOutlet().hasAttached()) {
-      throw new Error('Attempting to attach modal content after content is already attached');
+      throw new Error(
+        'Attempting to attach modal content after content is already attached',
+      );
     }
     return this.portalOutlet().attachComponentPortal(portal);
   }
 
   attachTemplatePortal<C>(portal: TemplatePortal<C>): EmbeddedViewRef<C> {
     if (this.portalOutlet().hasAttached()) {
-      throw new Error('Attempting to attach modal content after content is already attached');
+      throw new Error(
+        'Attempting to attach modal content after content is already attached',
+      );
     }
     return this.portalOutlet().attachTemplatePortal(portal);
   }
