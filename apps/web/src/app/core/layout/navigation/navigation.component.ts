@@ -17,6 +17,7 @@ import { EditModuleService } from '../../../features/module/edit-module/edit-mod
 import { AuthTokenService } from '../../auth/auth-token.service';
 import { ModuleService } from '../../../features/module/module.service';
 import { DeleteModuleService } from '../../../features/module/delete-module/delete-module.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-navigation',
@@ -31,6 +32,7 @@ export class NavigationComponent {
   private readonly editModuleService = inject(EditModuleService);
   private readonly deleteModuleService = inject(DeleteModuleService);
   private readonly authTokenService = inject(AuthTokenService);
+  private readonly routerService = inject(Router);
 
   constructor() {
     this.moduleService.loadAll().subscribe();
@@ -111,7 +113,10 @@ export class NavigationComponent {
           type: 'action',
           label: 'Log Out',
           icon: 'log-out',
-          action: () => this.authTokenService.logout(),
+          action: () =>
+            this.authTokenService
+              .logout()
+              .subscribe(() => this.routerService.navigate(['/login'])),
         },
       ],
     },
