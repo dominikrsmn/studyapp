@@ -35,7 +35,7 @@ export const appRoutes: Route[] = [
         component: WorkspaceComponent,
       },
       {
-        path: 'module/:id/source',
+        path: 'module/:id/sources',
         loadComponent: loadModuleComponent,
         data: { moduleTab: 'sources' },
       },
