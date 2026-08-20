@@ -23,6 +23,6 @@ export class SourceApiService {
   }
 
   private getUrl(moduleId: string) {
-    return `${environment.apiUrl}/module/${moduleId}/sources`;
+    return `${environment.apiUrl}/module/${moduleId}/source`;
   }
 }

@@ -6,6 +6,7 @@ import { AuthModule } from './features/auth/auth.module';
 import { SourceModule } from './features/source/source.module';
 import { SemesterModule } from './features/semester/semester.module';
 import { UserModule } from './features/user/user.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -13,11 +14,12 @@ import { UserModule } from './features/user/user.module';
       isGlobal: true,
       validate: (config) => envSchema.parse(config),
     }),
+    EventEmitterModule.forRoot(),
     AuthModule,
     ModuleModule,
     SourceModule,
     SemesterModule,
-    UserModule
+    UserModule,
   ],
 })
 export class AppModule {}

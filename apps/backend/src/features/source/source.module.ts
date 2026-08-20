@@ -4,10 +4,11 @@ import { SourcesController } from './source.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { FileStorageModule } from '../../infrastructure/filestorage/filestorage.module';
 import { IngestionModule } from '../ingestion/ingestion.module';
+import { SourceEventService } from './source-event.service';
 
 @Module({
   imports: [PrismaModule, FileStorageModule, IngestionModule],
-  providers: [SourceService],
+  providers: [SourceService, SourceEventService],
   controllers: [SourcesController],
 })
 export class SourceModule {}

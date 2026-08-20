@@ -8,6 +8,11 @@ import { PrismaService } from '../../infrastructure/database/prisma/prisma.servi
 import type { Sql } from '@prisma/client/runtime/client';
 import { Prisma } from '../../infrastructure/database/generated/client';
 import { randomUUID } from 'node:crypto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  SourceStateChangedEvent,
+  sourceStateChangedEventSchema,
+} from '@study/contracts';
 
 export type Chunk = {
   content: string;
@@ -28,6 +33,7 @@ export class IngestionService {
     private readonly pdfTextExtractor: PdfTextExtractorService,
     private readonly textChunker: TextChunkerService,
     private readonly embeddingService: EmbeddingService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async ingest(sourceId: string): Promise<void> {
@@ -52,6 +58,12 @@ export class IngestionService {
           },
         },
       });
+      let event: SourceStateChangedEvent = sourceStateChangedEventSchema.parse({
+        sourceId: sourceId,
+        processingState: 'PROCESSING',
+      });
+
+      this.eventEmitter.emit('source.stateChanged', event);
 
       if (!source.storageKey) {
         throw new NotFoundException('Source was not found');
@@ -81,6 +93,13 @@ export class IngestionService {
           status: 'READY',
         },
       });
+
+      event = sourceStateChangedEventSchema.parse({
+        sourceId: sourceId,
+        processingState: 'READY',
+      });
+
+      this.eventEmitter.emit('sourceStateChanged', event);
     } catch (error) {
       await this.markFailed(sourceId);
       this.logger.error(
@@ -98,6 +117,14 @@ export class IngestionService {
         where: { id: sourceId },
         data: { status: 'FAILED' },
       });
+
+      const event: SourceStateChangedEvent =
+        sourceStateChangedEventSchema.parse({
+          sourceId: sourceId,
+          processingState: 'FAILED',
+        });
+
+      this.eventEmitter.emit('sourceStateChanged', event);
     } catch (error) {
       this.logger.error(
         `Failed to mark source "${sourceId}" as failed (gg)`,

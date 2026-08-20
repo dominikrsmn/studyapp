@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Post,
   Req,
+  Sse,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -16,10 +17,16 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { SourceDto } from '@study/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceService } from './source.service';
+import { RequireActiveSemester } from '../auth/active-semester.decorator';
+import { SourceEventService } from './source-event.service';
 
+@RequireActiveSemester()
 @Controller('module/:moduleId/source')
 export class SourcesController {
-  constructor(private readonly sourceService: SourceService) {}
+  constructor(
+    private readonly sourceService: SourceService,
+    private readonly sourceEventService: SourceEventService,
+  ) {}
 
   @HttpCode(HttpStatus.CREATED)
   @Post()
@@ -61,5 +68,13 @@ export class SourcesController {
     @Param('moduleId', ParseUUIDPipe) moduleId: string,
   ): Promise<SourceDto[]> {
     return this.sourceService.findAll(request.userId, moduleId);
+  }
+
+  @Sse('events')
+  stateEvents(
+    @Req() request: AuthenticatedRequest,
+    @Param('sourceId', ParseUUIDPipe) id: string,
+  ) {
+    this.sourceEventService.subscribeToStateChanges(request.userId, id);
   }
 }
