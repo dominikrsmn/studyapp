@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
 import { TextChunkerService } from './text-chunker/text-chunker.service';
@@ -35,9 +31,12 @@ export class IngestionService {
   ) {}
 
   async ingest(sourceId: string): Promise<void> {
-    const source = await this.prismaService.source.findUnique({
+    const source = await this.prismaService.source.update({
       where: {
         id: sourceId,
+      },
+      data: {
+        status: 'PROCESSING',
       },
       select: {
         storageKey: true,
@@ -54,30 +53,49 @@ export class IngestionService {
     });
 
     if (!source || !source.storageKey) {
+      await this.prismaService.source.update({
+        where: { id: sourceId },
+        data: {
+          status: 'FAILED',
+        },
+      });
       throw new NotFoundException('Source was not found');
     }
 
-    const file: Buffer = await this.fileStorageService.read(source.storageKey);
+    try {
+      const file: Buffer = await this.fileStorageService.read(
+        source.storageKey,
+      );
 
-    const pages: PageTextResult[] = await this.pdfTextExtractor.extract(file);
+      const pages: PageTextResult[] = await this.pdfTextExtractor.extract(file);
 
-    const chunks: Chunk[] = this.chunkPages(pages);
+      const chunks: Chunk[] = this.chunkPages(pages);
 
-    const embeddedChunks = await this.embeddingService.embed(
-      {
-        id: sourceId,
-        userId: source.module.semester.userId,
-      },
-      chunks,
-    );
+      const embeddedChunks = await this.embeddingService.embed(
+        {
+          id: sourceId,
+          userId: source.module.semester.userId,
+        },
+        chunks,
+      );
 
-    await this.persistChunks(embeddedChunks, sourceId);
+      await this.persistChunks(embeddedChunks, sourceId);
 
-    this.logger.log(
-      'successfully created ' +
-        embeddedChunks.length +
-        ' embeddings in the DB. Ingestion finished',
-    );
+      await this.prismaService.source.update({
+        where: { id: sourceId },
+        data: {
+          status: 'READY',
+        },
+      });
+    } catch (error) {
+      await this.prismaService.source.update({
+        where: { id: sourceId },
+        data: {
+          status: 'FAILED',
+        },
+      });
+      throw error;
+    }
   }
 
   private async persistChunks(
