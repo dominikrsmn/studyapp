@@ -1,0 +1,218 @@
+<section aria-labelledby="sources-heading" class="space-y-8">
+  <h2 id="sources-heading" class="sr-only">Sources</h2>
+
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <z-tab-group
+      class="w-auto gap-0"
+      zNavClass="h-auto flex-wrap gap-1 rounded-full bg-transparent p-0"
+      zTabClass="h-9 flex-none rounded-full border-0 px-4 py-2 font-bold text-sage-600 after:hidden hover:bg-sage-100 hover:text-sage-950 data-active:bg-sage-950 data-active:text-white data-active:shadow-none"
+      zContentClass="hidden"
+      (zTabChange)="setFilter($event.index)"
+    >
+      @for (filter of filters; track filter.value) {
+        <z-tab [label]="filter.label" />
+      }
+    </z-tab-group>
+
+    <input
+      #fileInput
+      type="file"
+      accept=".pdf,application/pdf"
+      class="sr-only"
+      (change)="uploadSource($event)"
+    />
+    <button
+      z-button
+      type="button"
+      zType="outline"
+      zSize="lg"
+      zShape="circle"
+      class="border-sage-200 px-5 font-bold text-sage-950 hover:bg-sage-50"
+      [zLoading]="isUploading()"
+      [zDisabled]="isUploading()"
+      (click)="fileInput.click()"
+    >
+      @if (!isUploading()) {
+        <span appIcon="upload" data-icon="inline-start"></span>
+      }
+      {{ isUploading() ? 'Uploading…' : 'Upload source' }}
+    </button>
+  </div>
+
+  @if (errorMessage(); as error) {
+    <div
+      role="alert"
+      class="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive"
+    >
+      {{ error }}
+    </div>
+  }
+
+  <div
+    class="overflow-hidden rounded-3xl border border-sage-200 bg-white shadow-sm"
+  >
+    <div class="overflow-x-auto">
+      <table z-table zSize="comfortable" class="min-w-2xl">
+        <thead z-table-header class="bg-sage-50/70">
+        <tr z-table-row class="hover:bg-transparent">
+          <th
+            z-table-head
+            class="h-14 px-6 text-xs font-bold uppercase tracking-widest text-sage-600"
+          >
+            Document
+          </th>
+          <th
+            z-table-head
+            class="h-14 w-44 px-6 text-xs font-bold uppercase tracking-widest text-sage-600"
+          >
+            Type
+          </th>
+          <th
+            z-table-head
+            class="h-14 w-48 px-6 text-xs font-bold uppercase tracking-widest text-sage-600"
+          >
+            Status
+          </th>
+          <th z-table-head class="h-14 w-20 px-4">
+            <span class="sr-only">Actions</span>
+          </th>
+        </tr>
+        </thead>
+        <tbody z-table-body>
+          @if (isLoading()) {
+            @for (row of [1, 2, 3]; track row) {
+              <tr z-table-row class="hover:bg-transparent">
+                <td z-table-cell class="h-20 px-6">
+                  <div class="flex items-center gap-4">
+                    <span
+                      class="size-10 animate-pulse rounded-xl bg-sage-100"
+                    ></span>
+                    <span
+                      class="h-4 w-48 animate-pulse rounded bg-sage-100"
+                    ></span>
+                  </div>
+                </td>
+                <td z-table-cell class="px-6">
+                  <span
+                    class="block h-6 w-20 animate-pulse rounded-md bg-sage-100"
+                  ></span>
+                </td>
+                <td z-table-cell class="px-6">
+                  <span
+                    class="block h-4 w-24 animate-pulse rounded bg-sage-100"
+                  ></span>
+                </td>
+                <td z-table-cell></td>
+              </tr>
+            }
+          } @else {
+            @for (source of filteredSources(); track source.id) {
+              <tr z-table-row class="group h-20 hover:bg-sage-50/60">
+                <td z-table-cell class="px-6">
+                  <div class="flex min-w-0 items-center gap-4">
+                    <span
+                      class="flex size-10 shrink-0 items-center justify-center rounded-xl border border-sage-200 bg-sage-50 text-sage-700 shadow-sm"
+                    >
+                      <span
+                        [appIcon]="sourceIcon(source.type)"
+                        class="inline-flex size-4"
+                      ></span>
+                    </span>
+                    <div class="min-w-0">
+                      <p class="truncate text-[15px] font-bold text-sage-950">
+                        {{ source.name }}
+                      </p>
+                      <p
+                        class="mt-0.5 truncate text-xs font-medium text-sage-500"
+                      >
+                        {{ source.mimeType }}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td z-table-cell class="px-6">
+                  <span
+                    class="inline-flex rounded-md bg-sage-100 px-2.5 py-1 text-xs font-bold text-sage-800"
+                  >
+                    {{ sourceTypeLabel(source.type) }}
+                  </span>
+                </td>
+                <td z-table-cell class="px-6">
+                  <span
+                    class="inline-flex items-center gap-2 text-sm font-bold"
+                    [class]="statusClass(source.status)"
+                  >
+                    <span
+                      [appIcon]="statusIcon(source.status)"
+                      class="inline-flex size-4"
+                      [class.animate-spin]="source.status === 'PROCESSING'"
+                    ></span>
+                    {{ statusLabel(source.status) }}
+                  </span>
+                </td>
+                <td z-table-cell class="px-4 text-right">
+                  <button
+                    #actions="zPopover"
+                    z-button
+                    zPopover
+                    type="button"
+                    zType="ghost"
+                    zSize="icon-sm"
+                    zPlacement="bottom"
+                    zAlign="end"
+                    [zContent]="actionsMenu"
+                    [attr.aria-label]="'Actions for ' + source.name"
+                    class="opacity-0 text-sage-600 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 aria-expanded:opacity-100"
+                  >
+                    <span appIcon="more-horizontal"></span>
+                  </button>
+
+                  <ng-template #actionsMenu>
+                    <z-popover class="w-40 p-1.5">
+                      <button
+                        z-button
+                        type="button"
+                        zType="destructive"
+                        class="w-full justify-start"
+                        [zLoading]="deletingSourceId() === source.id"
+                        [zDisabled]="deletingSourceId() === source.id"
+                        (click)="confirmDelete(source, actions)"
+                      >
+                        @if (deletingSourceId() !== source.id) {
+                          <span
+                            appIcon="trash-2"
+                            data-icon="inline-start"
+                          ></span>
+                        }
+                        Delete
+                      </button>
+                    </z-popover>
+                  </ng-template>
+                </td>
+              </tr>
+            } @empty {
+              <tr z-table-row class="hover:bg-transparent">
+                <td z-table-cell colspan="4" class="h-56 px-6 text-center">
+                  <div class="mx-auto flex max-w-sm flex-col items-center">
+                    <span
+                      class="mb-4 flex size-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-600"
+                    >
+                      <span
+                        appIcon="file-text"
+                        class="inline-flex size-5"
+                      ></span>
+                    </span>
+                    <p class="font-bold text-sage-950">No sources here yet</p>
+                    <p class="mt-1 text-sm font-medium text-sage-500">
+                      Upload a PDF to add your first source.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
