@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 export const sourceStateSchema = z.enum([
-  'pending',
-  'processing',
-  'ready',
-  'failed',
+  'PENDING',
+  'PROCESSING',
+  'READY',
+  'FAILED',
 ]);
 
 export const sourceStateChangedEventSchema = z.object({
