@@ -4,6 +4,7 @@ export * from './module/update-module.schema';
 
 export * from './source/source.schema';
 export * from './source/create-source.schema';
+export * from './source/source-events.schema';
 
 export * from './semester/semester.schema';
 export * from './semester/create-semester.schema';
