@@ -1,32 +1,32 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { CreateSource, SourceDto } from '@study/contracts';
 import { Observable, tap } from 'rxjs';
-import { SourcesApiService } from './sources-api-service';
+import { SourceApiService } from './source-api-service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class SourcesService {
-  private readonly sourcesApiService = inject(SourcesApiService);
+export class SourceService {
+  private readonly sourceApiService = inject(SourceApiService);
 
   private readonly _sources = signal<SourceDto[]>([]);
 
   readonly sources = this._sources.asReadonly();
 
   loadAll(moduleId: string): Observable<SourceDto[]> {
-    return this.sourcesApiService
+    return this.sourceApiService
       .findAll(moduleId)
       .pipe(tap((sources) => this._sources.set(sources)));
   }
 
   create(moduleId: string, input: CreateSource): Observable<SourceDto> {
-    return this.sourcesApiService
+    return this.sourceApiService
       .create(moduleId, input)
       .pipe(tap((source) => this.upsert(source)));
   }
 
   delete(moduleId: string, id: string): Observable<SourceDto> {
-    return this.sourcesApiService.delete(moduleId, id).pipe(
+    return this.sourceApiService.delete(moduleId, id).pipe(
       tap(() => {
         this._sources.update((sources) =>
           sources.filter((source) => source.id !== id),

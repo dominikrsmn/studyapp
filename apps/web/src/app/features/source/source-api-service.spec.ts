@@ -7,10 +7,10 @@ import { TestBed } from '@angular/core/testing';
 import { SourceDto } from '@study/contracts';
 import { environment } from '../../../environments/environment';
 
-import { SourcesApiService } from './sources-api-service';
+import { SourceApiService } from './source-api-service';
 
-describe('SourcesApiService', () => {
-  let service: SourcesApiService;
+describe('SourceApiService', () => {
+  let service: SourceApiService;
   let httpTesting: HttpTestingController;
 
   const moduleId = 'f74a46b6-2d6d-4542-a9b8-37a8eef82d8c';
@@ -27,13 +27,13 @@ describe('SourcesApiService', () => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
-    service = TestBed.inject(SourcesApiService);
+    service = TestBed.inject(SourceApiService);
     httpTesting = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => httpTesting.verify());
 
-  it('loads all sources for a module', () => {
+  it('loads all source for a module', () => {
     let result: SourceDto[] | undefined;
     service.findAll(moduleId).subscribe((sources) => (result = sources));
 

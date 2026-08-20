@@ -21,7 +21,7 @@ import {
   ZardTabGroupComponent,
 } from '../../../../shared/components/tabs';
 import { IconDirective } from '../../../../shared/icons/icon.directive';
-import { SourcesService } from '../../../sources/sources.service';
+import { SourceService } from '../../../source/source.service';
 import { ZardSpinnerComponent } from '../../../../shared/components/spinner';
 
 type SourceFilter = 'ALL' | SourceDto['type'];
@@ -39,7 +39,7 @@ const SOURCE_FILTERS: ReadonlyArray<{
 ];
 
 @Component({
-  selector: 'app-sources-tab',
+  selector: 'app-source-tab',
   imports: [
     IconDirective,
     ZardButtonComponent,
@@ -56,7 +56,7 @@ const SOURCE_FILTERS: ReadonlyArray<{
 export default class SourcesTabComponent {
   readonly moduleId = input.required<string>();
 
-  private readonly sourcesService = inject(SourcesService);
+  private readonly sourcesService = inject(SourceService);
   private readonly alertDialogService = inject(ZardAlertDialogService);
 
   protected readonly filters = SOURCE_FILTERS;

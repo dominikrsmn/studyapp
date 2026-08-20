@@ -176,7 +176,7 @@ describe('SourceService', () => {
     expect(ingestionService.ingest).toHaveBeenCalledTimes(1);
   });
 
-  it('lists sources only after checking module ownership', async () => {
+  it('lists source only after checking module ownership', async () => {
     moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
     sourceDelegate.findMany.mockResolvedValue([]);
 
@@ -194,9 +194,9 @@ describe('SourceService', () => {
   it('does not delete a source owned by another user', async () => {
     sourceDelegate.findFirst.mockResolvedValue(null);
 
-    await expect(
-      service.remove('user-id', 'source-id'),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.remove('user-id', 'source-id')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
     expect(sourceDelegate.delete).not.toHaveBeenCalled();
   });
 });

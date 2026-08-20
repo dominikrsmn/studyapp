@@ -40,7 +40,7 @@ describe('Source controllers', () => {
     );
   });
 
-  it('lists sources belonging to a module', async () => {
+  it('lists source belonging to a module', async () => {
     sourceService.findAll.mockResolvedValue([]);
 
     await moduleSourcesController.findAll(request, 'module-id');

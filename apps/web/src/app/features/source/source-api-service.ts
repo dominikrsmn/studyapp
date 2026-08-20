@@ -5,7 +5,7 @@ import { CreateSource, SourceDto } from '@study/contracts';
 import { Observable } from 'rxjs';
 
 @Service()
-export class SourcesApiService {
+export class SourceApiService {
   private readonly http = inject(HttpClient);
 
   findAll(moduleId: string): Observable<SourceDto[]> {
