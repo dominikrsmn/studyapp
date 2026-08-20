@@ -66,4 +66,27 @@ describe('SseAuthService', () => {
       Authorization: 'Bearer new-access-token',
     });
   });
+
+  it('runs the open hook after every successful connection', async () => {
+    const onOpen = vi.fn();
+    fetchEventSourceMock.mockImplementation(async (_url, options) => {
+      await options.onopen?.(new Response(null, { status: 200 }));
+      await options.onopen?.(new Response(null, { status: 200 }));
+      options.onmessage?.({
+        data: JSON.stringify({ status: 'ready' }),
+        event: '',
+        id: '',
+      } satisfies EventSourceMessage);
+    });
+
+    await firstValueFrom(
+      TestBed.inject(SseAuthService).connect(
+        '/api/events',
+        z.object({ status: z.literal('ready') }),
+        { onOpen },
+      ),
+    );
+
+    expect(onOpen).toHaveBeenCalledTimes(2);
+  });
 });

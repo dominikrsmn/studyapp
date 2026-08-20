@@ -13,19 +13,28 @@ export class SseAuthService {
   private readonly authTokenService = inject(AuthTokenService);
   private readonly authRefreshService = inject(AuthRefreshService);
 
-  connect<T>(url: string, schema: ZodType<T>): Observable<T> {
+  connect<T>(
+    url: string,
+    schema: ZodType<T>,
+    options: SseConnectionOptions = {},
+  ): Observable<T> {
     return new Observable<T>((subscriber: Subscriber<T>) => {
       const controller = new AbortController();
 
-      void this.connectInternal(url, controller, (message) => {
-        try {
-          if (!message.data.trim()) return;
-          const data: T = schema.parse(JSON.parse(message.data));
-          subscriber.next(data);
-        } catch (error) {
-          subscriber.error(error);
-        }
-      }).catch((error) => {
+      void this.connectInternal(
+        url,
+        controller,
+        (message) => {
+          try {
+            if (!message.data.trim()) return;
+            const data: T = schema.parse(JSON.parse(message.data));
+            subscriber.next(data);
+          } catch (error) {
+            subscriber.error(error);
+          }
+        },
+        options.onOpen,
+      ).catch((error) => {
         if (!controller.signal.aborted) {
           subscriber.error(error);
         }
@@ -40,6 +49,7 @@ export class SseAuthService {
     url: string,
     controller: AbortController,
     onMessage: (message: EventSourceMessage) => void,
+    onOpen?: () => void | Promise<void>,
   ): Promise<void> {
     let refreshAttempted = false;
 
@@ -52,6 +62,7 @@ export class SseAuthService {
           onopen: async (response: Response) => {
             if (response.ok) {
               refreshAttempted = false;
+              await onOpen?.();
               return;
             }
             if (response.status === 401) {
@@ -93,3 +104,7 @@ export class SseAuthService {
 
 class UnauthorizedSseError extends Error {}
 class FatalSseError extends Error {}
+
+export interface SseConnectionOptions {
+  onOpen?: () => void | Promise<void>;
+}

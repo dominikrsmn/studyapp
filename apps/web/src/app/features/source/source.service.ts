@@ -4,7 +4,7 @@ import {
   SourceDto,
   SourceStateChangedEvent,
 } from '@study/contracts';
-import { Observable, tap } from 'rxjs';
+import { defer, firstValueFrom, Observable, tap } from 'rxjs';
 import { SourceApiService } from './source-api-service';
 import { SourceEventsService } from './source-events.service';
 
@@ -16,13 +16,22 @@ export class SourceService {
   private readonly sourceEventsService = inject(SourceEventsService);
 
   private readonly _sources = signal<SourceDto[]>([]);
+  private latestLoadId = 0;
 
   readonly sources = this._sources.asReadonly();
 
   loadAll(moduleId: string): Observable<SourceDto[]> {
-    return this.sourceApiService
-      .findAll(moduleId)
-      .pipe(tap((sources) => this._sources.set(sources)));
+    return defer(() => {
+      const loadId = ++this.latestLoadId;
+
+      return this.sourceApiService.findAll(moduleId).pipe(
+        tap((sources) => {
+          if (loadId === this.latestLoadId) {
+            this._sources.set(sources);
+          }
+        }),
+      );
+    });
   }
 
   create(moduleId: string, input: CreateSource): Observable<SourceDto> {
@@ -46,13 +55,19 @@ export class SourceService {
   }
 
   watchStateChanges(moduleId: string): Observable<SourceStateChangedEvent> {
-    return this.sourceEventsService.stateChanges(moduleId).pipe(
-      tap((event) => {
-        this._sources.update((sources) =>
-          this.applyProcessingStateChange(sources, event),
-        );
-      }),
-    );
+    return this.sourceEventsService
+      .stateChanges(moduleId, {
+        onOpen: async () => {
+          await firstValueFrom(this.loadAll(moduleId));
+        },
+      })
+      .pipe(
+        tap((event) => {
+          this._sources.update((sources) =>
+            this.applyProcessingStateChange(sources, event),
+          );
+        }),
+      );
   }
 
   private upsert(source: SourceDto): void {

@@ -7,14 +7,22 @@ import {
 } from '@study/contracts';
 import { environment } from '../../../environments/environment';
 
+export interface SourceEventConnectionOptions {
+  onOpen?: () => void | Promise<void>;
+}
+
 @Service()
 export class SourceEventsService {
   private readonly sse = inject(SseAuthService);
 
-  stateChanges(moduleId: string): Observable<SourceStateChangedEvent> {
+  stateChanges(
+    moduleId: string,
+    options: SourceEventConnectionOptions = {},
+  ): Observable<SourceStateChangedEvent> {
     return this.sse.connect<SourceStateChangedEvent>(
       `${environment.apiUrl}/module/${moduleId}/source/events`,
       sourceStateChangedEventSchema,
+      options,
     );
   }
 }
