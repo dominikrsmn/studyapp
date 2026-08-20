@@ -19,6 +19,7 @@ export class SseAuthService {
 
       void this.connectInternal(url, controller, (message) => {
         try {
+          if (!message.data.trim()) return;
           const data: T = schema.parse(JSON.parse(message.data));
           subscriber.next(data);
         } catch (error) {
