@@ -8,10 +8,16 @@ import {
   ZardTabGroupComponent,
 } from '../../shared/components/tabs';
 import OverviewTabComponent from './tabs/overview/overview-tab.component';
+import SourcesTabComponent from './tabs/sources/sources-tab.component';
 
 @Component({
   selector: 'app-module',
-  imports: [OverviewTabComponent, ZardTabComponent, ZardTabGroupComponent],
+  imports: [
+    OverviewTabComponent,
+    SourcesTabComponent,
+    ZardTabComponent,
+    ZardTabGroupComponent,
+  ],
   templateUrl: './module.component.html',
 })
 export default class ModuleComponent {
