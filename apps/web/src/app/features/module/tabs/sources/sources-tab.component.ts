@@ -90,7 +90,17 @@ export default class SourcesTabComponent {
           ),
       });
 
-    onCleanup(() => subscription.unsubscribe());
+    const events = this.sourcesService.watchStateChanges(moduleId).subscribe({
+      error: (error) =>
+        this.errorMessage.set(
+          'sourece SSE connection failed. Please try again.',
+        ),
+    });
+
+    onCleanup(() => {
+      subscription.unsubscribe();
+      events.unsubscribe();
+    });
   });
 
   protected setFilter(index: number): void {

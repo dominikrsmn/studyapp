@@ -1,13 +1,19 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { CreateSource, SourceDto } from '@study/contracts';
+import {
+  CreateSource,
+  SourceDto,
+  SourceStateChangedEvent,
+} from '@study/contracts';
 import { Observable, tap } from 'rxjs';
 import { SourceApiService } from './source-api-service';
+import { SourceEventsService } from './source-events.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SourceService {
   private readonly sourceApiService = inject(SourceApiService);
+  private readonly sourceEventsService = inject(SourceEventsService);
 
   private readonly _sources = signal<SourceDto[]>([]);
 
@@ -39,6 +45,16 @@ export class SourceService {
     return this._sources().find((source) => source.id === id);
   }
 
+  watchStateChanges(moduleId: string): Observable<SourceStateChangedEvent> {
+    return this.sourceEventsService.stateChanges(moduleId).pipe(
+      tap((event) => {
+        this._sources.update((sources) =>
+          this.applyProcessingStateChange(sources, event),
+        );
+      }),
+    );
+  }
+
   private upsert(source: SourceDto): void {
     this._sources.update((sources) => {
       const index = sources.findIndex((item) => item.id === source.id);
@@ -49,5 +65,19 @@ export class SourceService {
 
       return sources.map((item) => (item.id === source.id ? source : item));
     });
+  }
+
+  private applyProcessingStateChange(
+    sources: SourceDto[],
+    event: SourceStateChangedEvent,
+  ): SourceDto[] {
+    return sources.map((source) =>
+      source.id === event.sourceId
+        ? {
+            ...source,
+            processingState: event.processingState,
+          }
+        : source,
+    );
   }
 }
