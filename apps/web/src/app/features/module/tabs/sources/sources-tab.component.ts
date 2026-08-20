@@ -8,6 +8,8 @@ import {
   signal,
 } from '@angular/core';
 import { SourceDto } from '@study/contracts';
+import type { SemanticSearchResult } from '@study/contracts';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ZardAlertDialogService } from '../../../../shared/components/alert-dialog';
 import { ZardButtonComponent } from '../../../../shared/components/button';
@@ -23,6 +25,8 @@ import {
 import { IconDirective } from '../../../../shared/icons/icon.directive';
 import { SourceService } from '../../../source/source.service';
 import { ZardSpinnerComponent } from '../../../../shared/components/spinner';
+import { ZardInputComponent } from '../../../../shared/components/input';
+import { SemanticSearchApiService } from '../../../search/semantic-search-api.service';
 
 type SourceFilter = 'ALL' | SourceDto['type'];
 
@@ -49,6 +53,8 @@ const SOURCE_FILTERS: ReadonlyArray<{
     ZardTabComponent,
     ZardTabGroupComponent,
     ZardSpinnerComponent,
+    ZardInputComponent,
+    ReactiveFormsModule,
   ],
   templateUrl: './sources-tab.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,6 +64,7 @@ export default class SourcesTabComponent {
 
   private readonly sourcesService = inject(SourceService);
   private readonly alertDialogService = inject(ZardAlertDialogService);
+  private readonly semanticSearchApi = inject(SemanticSearchApiService);
 
   protected readonly filters = SOURCE_FILTERS;
   protected readonly sources = this.sourcesService.sources;
@@ -66,6 +73,15 @@ export default class SourcesTabComponent {
   protected readonly isUploading = signal(false);
   protected readonly deletingSourceId = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly searchControl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.maxLength(500)],
+  });
+  protected readonly isSearching = signal(false);
+  protected readonly searchResults = signal<SemanticSearchResult[] | null>(
+    null,
+  );
+  protected readonly searchError = signal<string | null>(null);
 
   protected readonly filteredSources = computed(() => {
     const filter = this.activeFilter();
@@ -108,6 +124,27 @@ export default class SourcesTabComponent {
     if (filter) {
       this.activeFilter.set(filter.value);
     }
+  }
+
+  protected search(): void {
+    const query = this.searchControl.value.trim();
+    if (!query || this.searchControl.invalid || this.isSearching()) {
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchError.set(null);
+
+    this.semanticSearchApi
+      .search(this.moduleId(), { query })
+      .pipe(finalize(() => this.isSearching.set(false)))
+      .subscribe({
+        next: (results) => this.searchResults.set(results),
+        error: () => {
+          this.searchResults.set(null);
+          this.searchError.set('Search failed. Please try again.');
+        },
+      });
   }
 
   protected uploadSource(event: Event): void {

@@ -1,6 +1,67 @@
 <section aria-labelledby="sources-heading" class="space-y-8">
   <h2 id="sources-heading" class="sr-only">Sources</h2>
 
+  <div class="rounded-3xl border border-sage-200 bg-white p-6 shadow-sm">
+    <form
+      class="flex flex-col gap-3 sm:flex-row"
+      (submit)="$event.preventDefault(); search()"
+    >
+      <div class="min-w-0 flex-1">
+        <label for="source-search" class="sr-only">Search source content</label>
+        <input
+          z-input
+          id="source-search"
+          type="search"
+          placeholder="Search across your sources…"
+          autocomplete="off"
+          [formControl]="searchControl"
+        />
+      </div>
+      <button
+        z-button
+        type="submit"
+        class="font-bold"
+        [zDisabled]="searchControl.invalid || isSearching()"
+      >
+        @if (isSearching()) {
+          <z-spinner></z-spinner>
+        } @else {
+          <span appIcon="search"></span>
+        }
+        {{ isSearching() ? 'Searching…' : 'Search' }}
+      </button>
+    </form>
+
+    @if (searchError(); as error) {
+      <p role="alert" class="mt-3 text-sm font-medium text-destructive">
+        {{ error }}
+      </p>
+    }
+
+    @if (searchResults(); as results) {
+      <div class="mt-5 border-t border-sage-100 pt-5" aria-live="polite">
+        <p
+          class="mb-3 text-xs font-bold uppercase tracking-widest text-sage-500"
+        >
+          {{ results.length }} {{ results.length === 1 ? 'result' : 'results' }}
+        </p>
+        <div class="space-y-3">
+          @for (result of results; track $index) {
+            <p
+              class="rounded-xl bg-sage-50 px-4 py-3 text-sm leading-6 text-sage-900"
+            >
+              {{ result.content }}
+            </p>
+          } @empty {
+            <p class="text-sm font-medium text-sage-500">
+              No matching content found.
+            </p>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
   <div class="flex flex-wrap items-center justify-between gap-4">
     <z-tab-group
       class="w-auto gap-0"
@@ -55,30 +116,17 @@
     <div class="overflow-x-auto">
       <table z-table zSize="comfortable" class="min-w-2xl">
         <thead z-table-header class="bg-sage-50/70">
-        <tr z-table-row
-            class="hover:bg-transparent font-bold text-xs uppercase tracking-widest text-sage-600 space-x-8">
-          <th
-            z-table-head
-            class="h-14 px-8!"
+          <tr
+            z-table-row
+            class="hover:bg-transparent font-bold text-xs uppercase tracking-widest text-sage-600 space-x-8"
           >
-            Document
-          </th>
-          <th
-            z-table-head
-            class="h-14 w-44 px-8!"
-          >
-            Type
-          </th>
-          <th
-            z-table-head
-            class="h-14 w-48 px-8!"
-          >
-            Status
-          </th>
-          <th z-table-head class="h-14 w-20 px-8!">
-            <span class="sr-only">Actions</span>
-          </th>
-        </tr>
+            <th z-table-head class="h-14 px-8!">Document</th>
+            <th z-table-head class="h-14 w-44 px-8!">Type</th>
+            <th z-table-head class="h-14 w-48 px-8!">Status</th>
+            <th z-table-head class="h-14 w-20 px-8!">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
         </thead>
         <tbody z-table-body>
           @if (isLoading()) {
@@ -112,11 +160,10 @@
               <tr z-table-row class="group h-20 hover:bg-sage-50/60">
                 <td z-table-cell class="px-8!">
                   <div class="flex min-w-0 items-center gap-4">
-
-                      <span
-                        [appIcon]="sourceIcon(source.type)"
-                        class="inline-flex text-lg"
-                      ></span>
+                    <span
+                      [appIcon]="sourceIcon(source.type)"
+                      class="inline-flex text-lg"
+                    ></span>
 
                     <div class="min-w-0">
                       <p class="truncate text-[15px] font-bold text-sage-950">
@@ -142,7 +189,10 @@
                     class="inline-flex items-center gap-2 text-sm font-bold"
                     [class]="statusClass(source.status)"
                   >
-                    @if (source.status === 'PROCESSING' || source.status === 'PENDING') {
+                    @if (
+                      source.status === 'PROCESSING' ||
+                      source.status === 'PENDING'
+                    ) {
                       <z-spinner></z-spinner>
                     } @else {
                       <span

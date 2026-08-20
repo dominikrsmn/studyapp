@@ -82,7 +82,7 @@ export class IngestionService {
 
       const chunks: Chunk[] = this.chunkPages(pages);
 
-      const embeddedChunks = await this.embeddingService.embed(
+      const embeddedChunks = await this.embeddingService.embedChunks(
         {
           id: sourceId,
           userId: source.module.semester.userId,
