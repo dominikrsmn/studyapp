@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { AuthTokenService } from './auth-token.service';
+import { AuthTokenService } from '../auth-token.service';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {

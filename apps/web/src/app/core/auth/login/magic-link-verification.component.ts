@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthTokenService } from './auth-token.service';
+import { AuthTokenService } from '../auth-token.service';
 
 @Component({
   selector: 'app-magic-link-verification',

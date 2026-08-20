@@ -6,9 +6,9 @@ import {
   RouterStateSnapshot,
   UrlTree,
 } from '@angular/router';
-import { AuthTokenService } from './auth-token.service';
+import { AuthTokenService } from '../auth-token.service';
 import { authGuard } from './auth.guard';
-import { appRoutes } from '../../app.routes';
+import { appRoutes } from '../../../app.routes';
 
 describe('authGuard', () => {
   let authenticated = false;

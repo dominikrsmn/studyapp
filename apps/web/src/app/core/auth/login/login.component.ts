@@ -12,9 +12,9 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
-import { ZardButtonComponent } from '../../shared/components/button';
-import { ZardInputComponent } from '../../shared/components/input';
-import { AuthTokenService } from './auth-token.service';
+import { ZardButtonComponent } from '../../../shared/components/button';
+import { ZardInputComponent } from '../../../shared/components/input';
+import { AuthTokenService } from '../auth-token.service';
 
 @Component({
   selector: 'app-login',
