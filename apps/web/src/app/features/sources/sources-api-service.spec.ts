@@ -1,16 +1,73 @@
+import { provideHttpClient } from '@angular/common/http';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { SourceDto } from '@study/contracts';
+import { environment } from '../../../environments/environment';
 
 import { SourcesApiService } from './sources-api-service';
 
 describe('SourcesApiService', () => {
   let service: SourcesApiService;
+  let httpTesting: HttpTestingController;
+
+  const moduleId = 'f74a46b6-2d6d-4542-a9b8-37a8eef82d8c';
+  const source: SourceDto = {
+    id: 'f43ff589-36b0-4f0f-b0cf-9cc1101b1952',
+    moduleId,
+    name: 'Lecture notes.pdf',
+    type: 'DOCUMENT',
+    mimeType: 'application/pdf',
+    status: 'READY',
+  };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(SourcesApiService);
+    httpTesting = TestBed.inject(HttpTestingController);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
+  afterEach(() => httpTesting.verify());
+
+  it('loads all sources for a module', () => {
+    let result: SourceDto[] | undefined;
+    service.findAll(moduleId).subscribe((sources) => (result = sources));
+
+    const request = httpTesting.expectOne(
+      `${environment.apiUrl}/module/${moduleId}/sources`,
+    );
+    expect(request.request.method).toBe('GET');
+    request.flush([source]);
+
+    expect(result).toEqual([source]);
+  });
+
+  it('uploads the source as multipart form data', () => {
+    const file = new File(['pdf'], 'Lecture notes.pdf', {
+      type: 'application/pdf',
+    });
+    service.create(moduleId, { moduleId, file }).subscribe();
+
+    const request = httpTesting.expectOne(
+      `${environment.apiUrl}/module/${moduleId}/sources`,
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeInstanceOf(FormData);
+    expect((request.request.body as FormData).get('file')).toBe(file);
+    request.flush(source);
+  });
+
+  it('deletes a source from its module', () => {
+    service.delete(moduleId, source.id).subscribe();
+
+    const request = httpTesting.expectOne(
+      `${environment.apiUrl}/module/${moduleId}/sources/${source.id}`,
+    );
+    expect(request.request.method).toBe('DELETE');
+    request.flush(source);
   });
 });

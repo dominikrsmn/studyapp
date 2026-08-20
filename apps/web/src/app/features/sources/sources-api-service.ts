@@ -15,7 +15,7 @@ export class SourcesApiService {
   create(moduleId: string, input: CreateSource): Observable<SourceDto> {
     const body = new FormData();
     body.append('file', input.file);
-    return this.http.post<SourceDto>(this.getUrl(moduleId), input);
+    return this.http.post<SourceDto>(this.getUrl(moduleId), body);
   }
 
   delete(moduleId: string, id: string): Observable<SourceDto> {
@@ -23,6 +23,6 @@ export class SourcesApiService {
   }
 
   private getUrl(moduleId: string) {
-    return `${environment.apiUrl}/module/${moduleId}/modules`;
+    return `${environment.apiUrl}/module/${moduleId}/sources`;
   }
 }
