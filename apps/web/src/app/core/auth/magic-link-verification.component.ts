@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthTokenService } from './auth-token.service';
 
@@ -27,7 +27,7 @@ export class MagicLinkVerificationComponent implements OnInit {
     }
 
     this.authTokens.verifyMagicLink(token).subscribe({
-      next: () => void this.router.navigateByUrl('/'),
+      next: () => void this.router.navigateByUrl('/workspace'),
       error: () => {
         this.errorMessage.set('This magic link is invalid or has expired.');
       },

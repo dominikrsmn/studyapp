@@ -10,6 +10,7 @@ import type { AuthenticatedRequest } from './authenticated-request';
 
 describe('AuthController', () => {
   const authService = {
+    requestMagicLink: jest.fn(),
     verifyMagicLink: jest.fn(),
     refresh: jest.fn(),
     logout: jest.fn(),
@@ -26,6 +27,18 @@ describe('AuthController', () => {
     controller = new AuthController(
       authService as unknown as AuthService,
       config as unknown as ConfigService<Env, true>,
+    );
+  });
+
+  it('passes a safe return URL into the magic-link request', async () => {
+    authService.requestMagicLink.mockResolvedValue(undefined);
+
+    await controller.requestMagicLink({
+      email: 'student@example.com',
+    });
+
+    expect(authService.requestMagicLink).toHaveBeenCalledWith(
+      'student@example.com',
     );
   });
 
