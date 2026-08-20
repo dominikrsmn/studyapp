@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { formatSemesterLabel } from '../semester/semester.label';
 import { SemesterService } from '../semester/semester.service';
 import { ModuleService } from './module.service';
@@ -9,6 +9,8 @@ import {
 } from '../../shared/components/tabs';
 import OverviewTabComponent from './tabs/overview/overview-tab.component';
 import SourcesTabComponent from './tabs/sources/sources-tab.component';
+
+const MODULE_TABS = ['overview', 'sources', 'practice', 'exam-prep'] as const;
 
 @Component({
   selector: 'app-module',
@@ -22,7 +24,9 @@ import SourcesTabComponent from './tabs/sources/sources-tab.component';
 })
 export default class ModuleComponent {
   moduleId = signal('');
+  protected readonly activeTabIndex = signal(0);
   private activatedRoute = inject(ActivatedRoute);
+  private router = inject(Router);
   private moduleService = inject(ModuleService);
   private semesterService = inject(SemesterService);
 
@@ -63,6 +67,29 @@ export default class ModuleComponent {
   constructor() {
     this.activatedRoute.params.subscribe((params) => {
       this.moduleId.set(params['id']);
+    });
+
+    this.activatedRoute.data.subscribe((data) => {
+      const tabIndex = MODULE_TABS.findIndex(
+        (tab) => tab === data['moduleTab'],
+      );
+      this.activeTabIndex.set(tabIndex === -1 ? 0 : tabIndex);
+    });
+  }
+
+  protected selectTab(index: number): void {
+    const tab = MODULE_TABS[index];
+    if (!tab) {
+      return;
+    }
+
+    const commands =
+      tab === 'overview'
+        ? ['/module', this.moduleId()]
+        : ['/module', this.moduleId(), tab];
+
+    void this.router.navigate(commands, {
+      queryParamsHandling: 'preserve',
     });
   }
 }

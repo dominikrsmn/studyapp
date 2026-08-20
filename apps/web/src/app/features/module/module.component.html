@@ -22,6 +22,8 @@
 
     <z-tab-group
       zVariant="line"
+      [zActiveTabIndex]="activeTabIndex()"
+      (zTabChange)="selectTab($event.index)"
       class="min-h-0 flex-1 gap-0"
       zNavClass="group-data-[orientation=horizontal]/tabs:h-auto w-full shrink-0 justify-start gap-8 rounded-none border-b border-sage-200 bg-sage-50 p-0 px-16 text-sage-500"
       zTabClass="h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-0 pb-4 text-sm font-bold text-sage-500 after:hidden hover:text-sage-950 data-active:border-sage-950 data-active:text-sage-950"

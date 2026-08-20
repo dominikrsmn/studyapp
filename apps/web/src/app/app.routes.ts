@@ -5,6 +5,8 @@ import { LayoutComponent } from './core/layout/layout.component';
 import { WorkspaceComponent } from './features/workspace/workspace.component';
 import { guestGuard } from './core/auth/guest.guard';
 
+const loadModuleComponent = () => import('./features/module/module.component');
+
 export const appRoutes: Route[] = [
   {
     path: 'login',
@@ -33,8 +35,24 @@ export const appRoutes: Route[] = [
         component: WorkspaceComponent,
       },
       {
+        path: 'module/:id/sources',
+        loadComponent: loadModuleComponent,
+        data: { moduleTab: 'sources' },
+      },
+      {
+        path: 'module/:id/practice',
+        loadComponent: loadModuleComponent,
+        data: { moduleTab: 'practice' },
+      },
+      {
+        path: 'module/:id/exam-prep',
+        loadComponent: loadModuleComponent,
+        data: { moduleTab: 'exam-prep' },
+      },
+      {
         path: 'module/:id',
-        loadComponent: () => import('./features/module/module.component'),
+        loadComponent: loadModuleComponent,
+        data: { moduleTab: 'overview' },
       },
       {
         path: '**',

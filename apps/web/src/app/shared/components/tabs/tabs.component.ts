@@ -5,6 +5,7 @@ import {
   Component,
   computed,
   contentChildren,
+  effect,
   input,
   output,
   signal,
@@ -118,10 +119,15 @@ export class ZardTabGroupComponent {
   readonly zVariant = input<ZardTabVariants['zVariant']>('default');
   readonly zOrientation = input<ZardTabVariants['zOrientation']>('horizontal');
   readonly zDisabled = input(false, { transform: booleanAttribute });
+  readonly zActiveTabIndex = input(0);
   readonly class = input<string>('');
   readonly zNavClass = input<string>('');
   readonly zTabClass = input<string>('');
   readonly zContentClass = input<string>('');
+
+  constructor() {
+    effect(() => this.activeTabIndex.set(this.zActiveTabIndex()));
+  }
 
   protected setActiveTab(index: number) {
     const currentTab = this.tabs()[this.activeTabIndex()];
