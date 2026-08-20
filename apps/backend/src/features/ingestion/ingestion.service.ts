@@ -3,9 +3,9 @@ import { FileStorageService } from '../../infrastructure/filestorage/filestorage
 import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
 import { TextChunkerService } from './text-chunker/text-chunker.service';
 import { EmbeddingService } from './embedding/embedding.service';
-import { PageTextResult } from 'pdf-parse';
+import type { PageTextResult } from 'pdf-parse';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
-import { Sql } from '@prisma/client/runtime/client';
+import type { Sql } from '@prisma/client/runtime/client';
 import { Prisma } from '../../infrastructure/database/generated/client';
 import { randomUUID } from 'node:crypto';
 
@@ -31,38 +31,32 @@ export class IngestionService {
   ) {}
 
   async ingest(sourceId: string): Promise<void> {
-    const source = await this.prismaService.source.update({
-      where: {
-        id: sourceId,
-      },
-      data: {
-        status: 'PROCESSING',
-      },
-      select: {
-        storageKey: true,
-        module: {
-          select: {
-            semester: {
-              select: {
-                userId: true,
+    try {
+      const source = await this.prismaService.source.update({
+        where: {
+          id: sourceId,
+        },
+        data: {
+          status: 'PROCESSING',
+        },
+        select: {
+          storageKey: true,
+          module: {
+            select: {
+              semester: {
+                select: {
+                  userId: true,
+                },
               },
             },
           },
         },
-      },
-    });
-
-    if (!source || !source.storageKey) {
-      await this.prismaService.source.update({
-        where: { id: sourceId },
-        data: {
-          status: 'FAILED',
-        },
       });
-      throw new NotFoundException('Source was not found');
-    }
 
-    try {
+      if (!source.storageKey) {
+        throw new NotFoundException('Source was not found');
+      }
+
       const file: Buffer = await this.fileStorageService.read(
         source.storageKey,
       );
@@ -88,13 +82,27 @@ export class IngestionService {
         },
       });
     } catch (error) {
-      await this.prismaService.source.update({
-        where: { id: sourceId },
-        data: {
-          status: 'FAILED',
-        },
-      });
+      await this.markFailed(sourceId);
+      this.logger.error(
+        `Ingestion failed for source "${sourceId}"`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw error;
+    }
+  }
+
+  private async markFailed(sourceId: string): Promise<void> {
+    try {
+      // updatemany to not throw 404 error, when source was deleted in the process
+      await this.prismaService.source.updateMany({
+        where: { id: sourceId },
+        data: { status: 'FAILED' },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to mark source "${sourceId}" as failed (gg)`,
+        error instanceof Error ? error.stack : undefined,
+      );
     }
   }
 

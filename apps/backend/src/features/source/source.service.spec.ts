@@ -1,10 +1,15 @@
-import { NotFoundException } from '@nestjs/common';
+import { Logger, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
+import { IngestionService } from '../ingestion/ingestion.service';
 import { SourceService } from './source.service';
 
 jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
+}));
+jest.mock('../ingestion/ingestion.service', () => ({
+  IngestionService: class IngestionService {},
 }));
 jest.mock('node:fs/promises', () => ({
   mkdir: jest.fn(),
@@ -23,6 +28,13 @@ describe('SourceService', () => {
     findFirst: jest.fn(),
     delete: jest.fn(),
   };
+  const fileStorageService = {
+    save: jest.fn(),
+    delete: jest.fn(),
+  };
+  const ingestionService = {
+    ingest: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -35,12 +47,20 @@ describe('SourceService', () => {
             source: sourceDelegate,
           },
         },
+        { provide: FileStorageService, useValue: fileStorageService },
+        { provide: IngestionService, useValue: ingestionService },
       ],
     }).compile();
 
     service = module.get<SourceService>(SourceService);
     jest.clearAllMocks();
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    fileStorageService.save.mockResolvedValue(undefined);
+    fileStorageService.delete.mockResolvedValue(undefined);
+    ingestionService.ingest.mockResolvedValue(undefined);
   });
+
+  afterEach(() => jest.restoreAllMocks());
 
   it('should be defined', () => {
     expect(service).toBeDefined();
@@ -103,6 +123,57 @@ describe('SourceService', () => {
         }),
       }),
     );
+    expect(fileStorageService.save.mock.invocationCallOrder[0]).toBeLessThan(
+      sourceDelegate.create.mock.invocationCallOrder[0],
+    );
+    expect(ingestionService.ingest).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not create metadata when storing the file fails', async () => {
+    const storageError = new Error('disk full');
+    moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
+    fileStorageService.save.mockRejectedValue(storageError);
+
+    await expect(
+      service.uploadSource('user-id', 'module-id', createFile()),
+    ).rejects.toBe(storageError);
+
+    expect(sourceDelegate.create).not.toHaveBeenCalled();
+    expect(ingestionService.ingest).not.toHaveBeenCalled();
+    expect(fileStorageService.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves the database error when file cleanup also fails', async () => {
+    const databaseError = new Error('database unavailable');
+    moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
+    sourceDelegate.create.mockRejectedValue(databaseError);
+    fileStorageService.delete.mockRejectedValue(new Error('cleanup failed'));
+
+    await expect(
+      service.uploadSource('user-id', 'module-id', createFile()),
+    ).rejects.toBe(databaseError);
+
+    expect(fileStorageService.delete).toHaveBeenCalledTimes(1);
+    expect(ingestionService.ingest).not.toHaveBeenCalled();
+  });
+
+  it('handles a rejected background ingestion task', async () => {
+    moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
+    sourceDelegate.create.mockResolvedValue({
+      id: 'source-id',
+      name: 'notes.pdf',
+      type: 'DOCUMENT',
+      mimeType: 'application/pdf',
+      status: 'PENDING',
+      moduleId: 'module-id',
+    });
+    ingestionService.ingest.mockRejectedValue(new Error('ingestion failed'));
+
+    await expect(
+      service.uploadSource('user-id', 'module-id', createFile()),
+    ).resolves.toMatchObject({ status: 'PENDING' });
+
+    expect(ingestionService.ingest).toHaveBeenCalledTimes(1);
   });
 
   it('lists sources only after checking module ownership', async () => {
@@ -130,7 +201,9 @@ describe('SourceService', () => {
   });
 });
 
-function createFile(originalName = 'notes.pdf'): Express.Multer.File {
+function createFile(
+  originalName = 'notes.pdf',
+): Parameters<SourceService['uploadSource']>[2] {
   return {
     fieldname: 'file',
     originalname: originalName,
@@ -142,5 +215,5 @@ function createFile(originalName = 'notes.pdf'): Express.Multer.File {
     destination: '',
     filename: originalName,
     path: '',
-  } as Express.Multer.File;
+  } as Parameters<SourceService['uploadSource']>[2];
 }

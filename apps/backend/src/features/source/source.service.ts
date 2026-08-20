@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SourceDto } from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { join } from 'node:path';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { IngestionService } from '../ingestion/ingestion.service';
@@ -18,6 +18,8 @@ const sourceSelect = {
 
 @Injectable()
 export class SourceService {
+  private readonly logger = new Logger(SourceService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileStorageService: FileStorageService,
@@ -39,10 +41,9 @@ export class SourceService {
     }
     const sourceId = randomUUID();
 
-    this.fileStorageService.save(source.buffer, sourceId);
-
     let uploadedMetadata: SourceDto;
     try {
+      await this.fileStorageService.save(source.buffer, sourceId);
       uploadedMetadata = await this.prisma.source.create({
         data: {
           id: sourceId,
@@ -55,11 +56,16 @@ export class SourceService {
         select: sourceSelect,
       });
     } catch (error) {
-      await this.fileStorageService.delete(sourceId);
+      await this.fileStorageService.delete(sourceId).catch((cleanupError) => {
+        this.logger.error(
+          `Failed to clean up file for source "${sourceId}"`,
+          cleanupError instanceof Error ? cleanupError.stack : undefined,
+        );
+      });
       throw error;
     }
-
-    this.ingestionService.ingest(sourceId);
+    // don't wait for ingest in http call, catch undefined because ingest() handles failures itself
+    void this.ingestionService.ingest(sourceId).catch(() => undefined);
 
     return uploadedMetadata;
   }
