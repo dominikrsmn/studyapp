@@ -38,7 +38,7 @@ describe('SourceApiService', () => {
     service.findAll(moduleId).subscribe((sources) => (result = sources));
 
     const request = httpTesting.expectOne(
-      `${environment.apiUrl}/module/${moduleId}/sources`,
+      `${environment.apiUrl}/module/${moduleId}/source`,
     );
     expect(request.request.method).toBe('GET');
     request.flush([source]);
@@ -53,7 +53,7 @@ describe('SourceApiService', () => {
     service.create(moduleId, { moduleId, file }).subscribe();
 
     const request = httpTesting.expectOne(
-      `${environment.apiUrl}/module/${moduleId}/sources`,
+      `${environment.apiUrl}/module/${moduleId}/source`,
     );
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toBeInstanceOf(FormData);
@@ -65,7 +65,7 @@ describe('SourceApiService', () => {
     service.delete(moduleId, source.id).subscribe();
 
     const request = httpTesting.expectOne(
-      `${environment.apiUrl}/module/${moduleId}/sources/${source.id}`,
+      `${environment.apiUrl}/module/${moduleId}/source/${source.id}`,
     );
     expect(request.request.method).toBe('DELETE');
     request.flush(source);

@@ -1,13 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import {
-  ModuleSourcesController,
-  SourcesController,
-} from './source.controller';
+import { SourcesController } from './source.controller';
+import { SourceEventService } from './source-event.service';
 import { SourceService } from './source.service';
 
-describe('Source controllers', () => {
-  let moduleSourcesController: ModuleSourcesController;
+jest.mock('./source-event.service', () => ({
+  SourceEventService: class SourceEventService {},
+}));
+jest.mock('./source.service', () => ({
+  SourceService: class SourceService {},
+}));
+
+describe('SourcesController', () => {
   let sourcesController: SourcesController;
   const request = { userId: 'user-id' } as AuthenticatedRequest;
   const sourceService = {
@@ -15,14 +19,19 @@ describe('Source controllers', () => {
     findAll: jest.fn(),
     remove: jest.fn(),
   };
+  const sourceEventService = {
+    subscribeToStateChanges: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [ModuleSourcesController, SourcesController],
-      providers: [{ provide: SourceService, useValue: sourceService }],
+      controllers: [SourcesController],
+      providers: [
+        { provide: SourceService, useValue: sourceService },
+        { provide: SourceEventService, useValue: sourceEventService },
+      ],
     }).compile();
 
-    moduleSourcesController = module.get(ModuleSourcesController);
     sourcesController = module.get(SourcesController);
     jest.clearAllMocks();
   });
@@ -31,7 +40,7 @@ describe('Source controllers', () => {
     const file = createFile();
     sourceService.uploadSource.mockResolvedValue({ id: 'source-id' });
 
-    await moduleSourcesController.uploadSource(request, 'module-id', file);
+    await sourcesController.uploadSource(request, 'module-id', file);
 
     expect(sourceService.uploadSource).toHaveBeenCalledWith(
       'user-id',
@@ -43,7 +52,7 @@ describe('Source controllers', () => {
   it('lists source belonging to a module', async () => {
     sourceService.findAll.mockResolvedValue([]);
 
-    await moduleSourcesController.findAll(request, 'module-id');
+    await sourcesController.findAll(request, 'module-id');
 
     expect(sourceService.findAll).toHaveBeenCalledWith('user-id', 'module-id');
   });
@@ -51,9 +60,20 @@ describe('Source controllers', () => {
   it('deletes a source by id', async () => {
     sourceService.remove.mockResolvedValue({ id: 'source-id' });
 
-    await sourcesController.deleteSource(request, 'source-id');
+    await sourcesController.deleteSource(request, 'module-id', 'source-id');
 
     expect(sourceService.remove).toHaveBeenCalledWith('user-id', 'source-id');
+  });
+
+  it('subscribes to state changes for the requested module', () => {
+    const events = Symbol('events');
+    sourceEventService.subscribeToStateChanges.mockReturnValue(events);
+
+    expect(sourcesController.stateEvents(request, 'module-id')).toBe(events);
+    expect(sourceEventService.subscribeToStateChanges).toHaveBeenCalledWith(
+      'user-id',
+      'module-id',
+    );
   });
 });
 

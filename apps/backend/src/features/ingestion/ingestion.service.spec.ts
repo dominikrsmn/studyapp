@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { EmbeddingService } from './embedding/embedding.service';
@@ -18,6 +19,8 @@ jest.mock('../../infrastructure/database/generated/client', () => ({
 
 describe('IngestionService', () => {
   let service: IngestionService;
+  const sourceId = 'f43ff589-36b0-4f0f-b0cf-9cc1101b1952';
+  const moduleId = 'f74a46b6-2d6d-4542-a9b8-37a8eef82d8c';
   const prismaService = {
     source: {
       update: jest.fn(),
@@ -29,6 +32,7 @@ describe('IngestionService', () => {
   const pdfTextExtractor = { extract: jest.fn() };
   const textChunker = { chunk: jest.fn() };
   const embeddingService = { embed: jest.fn() };
+  const eventEmitter = { emit: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -39,6 +43,7 @@ describe('IngestionService', () => {
       pdfTextExtractor as unknown as PdfTextExtractorService,
       textChunker as unknown as TextChunkerService,
       embeddingService as unknown as EmbeddingService,
+      eventEmitter as unknown as EventEmitter2,
     );
   });
 
@@ -51,19 +56,39 @@ describe('IngestionService', () => {
   it('marks the source as failed when processing fails', async () => {
     const extractionError = new Error('invalid PDF');
     prismaService.source.update.mockResolvedValue({
-      storageKey: 'source-id',
-      module: { semester: { userId: 'user-id' } },
+      storageKey: sourceId,
+      module: { id: moduleId, semester: { userId: 'user-id' } },
     });
     prismaService.source.updateMany.mockResolvedValue({ count: 1 });
     fileStorageService.read.mockResolvedValue(Buffer.from('pdf'));
     pdfTextExtractor.extract.mockRejectedValue(extractionError);
 
-    await expect(service.ingest('source-id')).rejects.toBe(extractionError);
+    await expect(service.ingest(sourceId, moduleId)).rejects.toBe(
+      extractionError,
+    );
 
     expect(prismaService.source.updateMany).toHaveBeenCalledWith({
-      where: { id: 'source-id' },
+      where: { id: sourceId },
       data: { status: 'FAILED' },
     });
+    expect(eventEmitter.emit).toHaveBeenNthCalledWith(
+      1,
+      'source.stateChanged',
+      {
+        sourceId,
+        moduleId,
+        processingState: 'PROCESSING',
+      },
+    );
+    expect(eventEmitter.emit).toHaveBeenNthCalledWith(
+      2,
+      'source.stateChanged',
+      {
+        sourceId,
+        moduleId,
+        processingState: 'FAILED',
+      },
+    );
   });
 
   it('does not mask the ingestion error if persisting FAILED also fails', async () => {
@@ -73,10 +98,12 @@ describe('IngestionService', () => {
       new Error('status update failed'),
     );
 
-    await expect(service.ingest('source-id')).rejects.toBe(processingError);
+    await expect(service.ingest(sourceId, moduleId)).rejects.toBe(
+      processingError,
+    );
 
     expect(Logger.prototype.error).toHaveBeenCalledWith(
-      'Failed to mark source "source-id" as FAILED',
+      `Failed to mark source "${sourceId}" as failed (gg)`,
       expect.any(String),
     );
   });
