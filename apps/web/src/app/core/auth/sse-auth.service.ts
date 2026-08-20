@@ -5,18 +5,20 @@ import {
   EventSourceMessage,
   fetchEventSource,
 } from '@microsoft/fetch-event-source';
+import { ZodType } from 'zod';
 
 @Injectable({ providedIn: 'root' })
 export class SseAuthService {
   private readonly authTokenService = inject(AuthTokenService);
 
-  connect<T>(url: string): Observable<T> {
+  connect<T>(url: string, schema: ZodType<T>): Observable<T> {
     return new Observable<T>((subscriber: Subscriber<T>) => {
       const controller = new AbortController();
 
       void this.connectInternal(url, controller, (message) => {
         try {
-          subscriber.next(JSON.parse(message.data) as T);
+          const data: T = schema.parse(JSON.parse(message.data));
+          subscriber.next(data);
         } catch (error) {
           subscriber.error(error);
         }
