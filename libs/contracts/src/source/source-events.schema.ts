@@ -9,6 +9,7 @@ export const sourceStateSchema = z.enum([
 
 export const sourceStateChangedEventSchema = z.object({
   sourceId: z.uuid(),
+  moduleId: z.string(),
   processingState: sourceStateSchema,
 });
 

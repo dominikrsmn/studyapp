@@ -65,7 +65,9 @@ export class SourceService {
       throw error;
     }
     // don't wait for ingest in http call, catch undefined because ingest() handles failures itself
-    void this.ingestionService.ingest(sourceId).catch(() => undefined);
+    void this.ingestionService
+      .ingest(sourceId, moduleId)
+      .catch(() => undefined);
 
     return uploadedMetadata;
   }

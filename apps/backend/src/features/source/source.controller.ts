@@ -73,8 +73,11 @@ export class SourcesController {
   @Sse('events')
   stateEvents(
     @Req() request: AuthenticatedRequest,
-    @Param('sourceId', ParseUUIDPipe) id: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
   ) {
-    this.sourceEventService.subscribeToStateChanges(request.userId, id);
+    return this.sourceEventService.subscribeToStateChanges(
+      request.userId,
+      moduleId,
+    );
   }
 }

@@ -12,16 +12,14 @@ export class SourceEventService {
 
   subscribeToStateChanges(
     userId: string,
-    sourceId: string,
+    moduleId: string,
   ): Observable<SourceStateChangedEvent> {
     return from(
-      this.prismaService.source.findFirst({
+      this.prismaService.module.findFirst({
         where: {
-          id: sourceId,
-          module: {
-            semester: {
-              userId: userId,
-            },
+          id: moduleId,
+          semester: {
+            userId: userId,
           },
         },
         select: {
@@ -29,12 +27,12 @@ export class SourceEventService {
         },
       }),
     ).pipe(
-      switchMap((source) => {
-        if (!source) {
-          throw new NotFoundException('Source not found');
+      switchMap((module) => {
+        if (!module) {
+          throw new NotFoundException('Module not found');
         }
         return this.stream$.pipe(
-          filter((event) => event.sourceId === source.id),
+          filter((event) => event.moduleId === module.id),
         );
       }),
     );

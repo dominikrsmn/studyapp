@@ -13,7 +13,7 @@ export class SourceEventsService {
 
   stateChanges(moduleId: string): Observable<SourceStateChangedEvent> {
     return this.sse.connect<SourceStateChangedEvent>(
-      `${environment.apiUrl}/modules/${moduleId}/source/events`,
+      `${environment.apiUrl}/module/${moduleId}/source/events`,
       sourceStateChangedEventSchema,
     );
   }

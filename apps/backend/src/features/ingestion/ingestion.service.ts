@@ -36,11 +36,14 @@ export class IngestionService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async ingest(sourceId: string): Promise<void> {
+  async ingest(sourceId: string, moduleId: string): Promise<void> {
     try {
       const source = await this.prismaService.source.update({
         where: {
           id: sourceId,
+          module: {
+            id: moduleId,
+          },
         },
         data: {
           status: 'PROCESSING',
@@ -49,6 +52,7 @@ export class IngestionService {
           storageKey: true,
           module: {
             select: {
+              id: true,
               semester: {
                 select: {
                   userId: true,
@@ -60,6 +64,7 @@ export class IngestionService {
       });
       let event: SourceStateChangedEvent = sourceStateChangedEventSchema.parse({
         sourceId: sourceId,
+        moduleId: source.module.id,
         processingState: 'PROCESSING',
       });
 
@@ -96,12 +101,13 @@ export class IngestionService {
 
       event = sourceStateChangedEventSchema.parse({
         sourceId: sourceId,
+        moduleId: source.module.id,
         processingState: 'READY',
       });
 
       this.eventEmitter.emit('sourceStateChanged', event);
     } catch (error) {
-      await this.markFailed(sourceId);
+      await this.markFailed(sourceId, moduleId);
       this.logger.error(
         `Ingestion failed for source "${sourceId}"`,
         error instanceof Error ? error.stack : undefined,
@@ -110,7 +116,7 @@ export class IngestionService {
     }
   }
 
-  private async markFailed(sourceId: string): Promise<void> {
+  private async markFailed(sourceId: string, moduleId: string): Promise<void> {
     try {
       // updatemany to not throw 404 error, when source was deleted in the process
       await this.prismaService.source.updateMany({
@@ -121,6 +127,7 @@ export class IngestionService {
       const event: SourceStateChangedEvent =
         sourceStateChangedEventSchema.parse({
           sourceId: sourceId,
+          moduleId: moduleId,
           processingState: 'FAILED',
         });
 
