@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, MessageEvent, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { SourceStateChangedEvent } from '@study/contracts';
-import { filter, from, Observable, Subject, switchMap } from 'rxjs';
+import { filter, from, map, Observable, Subject, switchMap } from 'rxjs';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class SourceEventService {
   subscribeToStateChanges(
     userId: string,
     moduleId: string,
-  ): Observable<SourceStateChangedEvent> {
+  ): Observable<MessageEvent> {
     return from(
       this.prismaService.module.findFirst({
         where: {
@@ -33,6 +33,7 @@ export class SourceEventService {
         }
         return this.stream$.pipe(
           filter((event) => event.moduleId === module.id),
+          map((event): MessageEvent => ({ data: event })),
         );
       }),
     );

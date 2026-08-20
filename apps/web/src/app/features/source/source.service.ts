@@ -75,7 +75,7 @@ export class SourceService {
       source.id === event.sourceId
         ? {
             ...source,
-            processingState: event.processingState,
+            status: event.processingState,
           }
         : source,
     );

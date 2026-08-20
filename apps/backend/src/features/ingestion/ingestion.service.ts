@@ -105,7 +105,7 @@ export class IngestionService {
         processingState: 'READY',
       });
 
-      this.eventEmitter.emit('sourceStateChanged', event);
+      this.eventEmitter.emit('source.stateChanged', event);
     } catch (error) {
       await this.markFailed(sourceId, moduleId);
       this.logger.error(
@@ -131,7 +131,7 @@ export class IngestionService {
           processingState: 'FAILED',
         });
 
-      this.eventEmitter.emit('sourceStateChanged', event);
+      this.eventEmitter.emit('source.stateChanged', event);
     } catch (error) {
       this.logger.error(
         `Failed to mark source "${sourceId}" as failed (gg)`,
