@@ -6,12 +6,14 @@ import {
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AuthRefreshService } from './auth-refresh.service';
 import { AuthTokenService } from './auth-token.service';
 
 const refreshUrl = `${environment.apiUrl}/auth/refresh`;
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const authTokens = inject(AuthTokenService);
+  const authRefresh = inject(AuthRefreshService);
 
   const url = request.url.split('?')[0];
   const isApiRequest =
@@ -40,15 +42,13 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         return throwError(() => error);
       }
 
-      return authTokens.refreshAccessToken().pipe(
-        switchMap((newAccessToken) =>
-          next(withBearerToken(request, newAccessToken)),
-        ),
-        catchError((refreshError: unknown) => {
-          authTokens.clearAccessToken();
-          return throwError(() => refreshError);
-        }),
-      );
+      return authRefresh
+        .refreshAccessToken()
+        .pipe(
+          switchMap((newAccessToken) =>
+            next(withBearerToken(request, newAccessToken)),
+          ),
+        );
     }),
   );
 };

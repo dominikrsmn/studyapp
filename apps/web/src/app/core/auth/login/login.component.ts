@@ -10,11 +10,10 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ZardButtonComponent } from '../../../shared/components/button';
 import { ZardInputComponent } from '../../../shared/components/input';
-import { AuthTokenService } from '../auth-token.service';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-login',
@@ -23,8 +22,7 @@ import { AuthTokenService } from '../auth-token.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
-  private readonly authTokens = inject(AuthTokenService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
 
   readonly form = new FormGroup({
     email: new FormControl('', {
@@ -46,7 +44,7 @@ export class LoginComponent {
 
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
-    this.authTokens
+    this.auth
       .requestMagicLink(email)
       .pipe(finalize(() => this.isSubmitting.set(false)))
       .subscribe({

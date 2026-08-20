@@ -9,6 +9,7 @@ import {
 import { AuthTokenService } from '../auth-token.service';
 import { authGuard } from './auth.guard';
 import { appRoutes } from '../../../app.routes';
+import { guestGuard } from './guest.guard';
 
 describe('authGuard', () => {
   let authenticated = false;
@@ -40,10 +41,10 @@ describe('authGuard', () => {
     expect(runGuard()).toBe(true);
   });
 
-  it('keeps login and verification public while guarding the app shell', () => {
-    expect(appRoutes.find(({ path }) => path === 'login')?.canActivate).toBe(
-      undefined,
-    );
+  it('keeps verification public and applies the matching auth guards', () => {
+    expect(
+      appRoutes.find(({ path }) => path === 'login')?.canActivate,
+    ).toContain(guestGuard);
     expect(
       appRoutes.find(({ path }) => path === 'auth/verify')?.canActivate,
     ).toBeUndefined();

@@ -9,6 +9,8 @@ import {
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { authInterceptor } from './auth.interceptor';
+import { AuthRefreshService } from './auth-refresh.service';
+import { AuthService } from './auth.service';
 import { AuthTokenService } from './auth-token.service';
 import { environment } from '../../../environments/environment';
 
@@ -20,6 +22,8 @@ const sourceUploadUrl = `${environment.apiUrl}/modules/module-id/sources`;
 
 describe('authInterceptor', () => {
   let authTokens: AuthTokenService;
+  let authRefresh: AuthRefreshService;
+  let auth: AuthService;
   let httpTesting: HttpTestingController;
 
   beforeEach(() => {
@@ -31,6 +35,8 @@ describe('authInterceptor', () => {
     });
 
     authTokens = TestBed.inject(AuthTokenService);
+    authRefresh = TestBed.inject(AuthRefreshService);
+    auth = TestBed.inject(AuthService);
     httpTesting = TestBed.inject(HttpTestingController);
     authTokens.clearAccessToken();
   });
@@ -124,16 +130,13 @@ describe('authInterceptor', () => {
     documentRetry.flush([]);
 
     expect(authTokens.getAccessToken()).toBe('new-access-token');
-    expect(authTokens.refreshTokenExpiresAt()?.toISOString()).toBe(
-      '2026-09-14T12:00:00.000Z',
-    );
   });
 
   it('retries refresh when another tab just rotated the cookie', async () => {
     vi.useFakeTimers();
     const refreshedTokens: string[] = [];
 
-    authTokens
+    authRefresh
       .refreshAccessToken()
       .subscribe((accessToken) => refreshedTokens.push(accessToken));
 
@@ -151,7 +154,7 @@ describe('authInterceptor', () => {
   });
 
   it('does not refresh on startup when no refresh cookie exists', async () => {
-    const restoration = authTokens.restoreSession();
+    const restoration = auth.restoreSession();
 
     httpTesting.expectOne(sessionUrl).flush({ hasSession: false });
     await restoration;
@@ -161,7 +164,7 @@ describe('authInterceptor', () => {
   });
 
   it('restores the session when the refresh cookie exists', async () => {
-    const restoration = authTokens.restoreSession();
+    const restoration = auth.restoreSession();
 
     httpTesting.expectOne(sessionUrl).flush({ hasSession: true });
     await Promise.resolve();

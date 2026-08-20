@@ -13,6 +13,7 @@
     "@angular/platform-server": "22.0.6",
     "@angular/router": "22.0.6",
     "@angular/ssr": "22.0.6",
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.0",

@@ -14,7 +14,7 @@ import { SemesterService } from '../../../features/semester/semester.service';
 import { formatSemesterLabel } from '../../../features/semester/semester.label';
 import { CreateModuleService } from '../../../features/module/create-module/create-module.service';
 import { EditModuleService } from '../../../features/module/edit-module/edit-module.service';
-import { AuthTokenService } from '../../auth/auth-token.service';
+import { AuthService } from '../../auth/auth.service';
 import { ModuleService } from '../../../features/module/module.service';
 import { DeleteModuleService } from '../../../features/module/delete-module/delete-module.service';
 import { Router } from '@angular/router';
@@ -31,7 +31,7 @@ export class NavigationComponent {
   private readonly newModuleService = inject(CreateModuleService);
   private readonly editModuleService = inject(EditModuleService);
   private readonly deleteModuleService = inject(DeleteModuleService);
-  private readonly authTokenService = inject(AuthTokenService);
+  private readonly authService = inject(AuthService);
   private readonly routerService = inject(Router);
 
   constructor() {
@@ -114,7 +114,7 @@ export class NavigationComponent {
           label: 'Log Out',
           icon: 'log-out',
           action: () =>
-            this.authTokenService
+            this.authService
               .logout()
               .subscribe(() => this.routerService.navigate(['/login'])),
         },

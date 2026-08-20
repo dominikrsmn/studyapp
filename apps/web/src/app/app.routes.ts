@@ -1,9 +1,9 @@
 import { Route } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
-import { MagicLinkVerificationComponent } from './core/auth/magic-link-verification.component';
+import { authGuard } from './core/auth/guards/auth.guard';
+import { MagicLinkVerificationComponent } from './core/auth/login/magic-link-verification.component';
 import { LayoutComponent } from './core/layout/layout.component';
 import { WorkspaceComponent } from './features/workspace/workspace.component';
-import { guestGuard } from './core/auth/guest.guard';
+import { guestGuard } from './core/auth/guards/guest.guard';
 
 const loadModuleComponent = () => import('./features/module/module.component');
 
@@ -11,7 +11,7 @@ export const appRoutes: Route[] = [
   {
     path: 'login',
     loadComponent: () =>
-      import('./core/auth/login.component').then(
+      import('./core/auth/login/login.component').then(
         ({ LoginComponent }) => LoginComponent,
       ),
     canActivate: [guestGuard],
