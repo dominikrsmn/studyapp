@@ -21,7 +21,7 @@ import {
   tabContainerVariants,
   tabNavVariants,
   type ZardTabVariants,
-} from '@study/shared/components/tabs/tabs.variants';
+} from './tabs.variants';
 
 @Component({
   selector: 'z-tab',
@@ -38,7 +38,8 @@ export class ZardTabComponent {
   readonly label = input.required<string>();
   readonly zIcon = input<string | undefined>(undefined);
   readonly zDisabled = input(false, { transform: booleanAttribute });
-  readonly contentTemplate = viewChild.required<TemplateRef<unknown>>('content');
+  readonly contentTemplate =
+    viewChild.required<TemplateRef<unknown>>('content');
 }
 
 @Component({
@@ -72,7 +73,7 @@ export class ZardTabComponent {
       }
     </nav>
 
-    <div class="flex-1">
+    <div [class]="contentClasses()">
       @for (tab of tabs(); track $index; let index = $index) {
         <div
           role="tabpanel"
@@ -95,7 +96,9 @@ export class ZardTabComponent {
   },
 })
 export class ZardTabGroupComponent {
-  private readonly tabComponents = contentChildren(ZardTabComponent, { descendants: true });
+  private readonly tabComponents = contentChildren(ZardTabComponent, {
+    descendants: true,
+  });
 
   protected readonly tabs = computed(() => this.tabComponents());
   protected readonly activeTabIndex = signal<number>(0);
@@ -116,6 +119,9 @@ export class ZardTabGroupComponent {
   readonly zOrientation = input<ZardTabVariants['zOrientation']>('horizontal');
   readonly zDisabled = input(false, { transform: booleanAttribute });
   readonly class = input<string>('');
+  readonly zNavClass = input<string>('');
+  readonly zTabClass = input<string>('');
+  readonly zContentClass = input<string>('');
 
   protected setActiveTab(index: number) {
     const currentTab = this.tabs()[this.activeTabIndex()];
@@ -139,12 +145,23 @@ export class ZardTabGroupComponent {
   }
 
   protected readonly containerClasses = computed(() =>
-    twMerge(tabContainerVariants({ zOrientation: this.zOrientation() }), this.class()),
+    twMerge(
+      tabContainerVariants({ zOrientation: this.zOrientation() }),
+      this.class(),
+    ),
   );
 
-  protected readonly navClasses = computed(() => tabNavVariants({ zVariant: this.zVariant() }));
+  protected readonly navClasses = computed(() =>
+    twMerge(tabNavVariants({ zVariant: this.zVariant() }), this.zNavClass()),
+  );
 
-  protected readonly buttonClasses = computed(() => tabButtonVariants());
+  protected readonly buttonClasses = computed(() =>
+    twMerge(tabButtonVariants(), this.zTabClass()),
+  );
+
+  protected readonly contentClasses = computed(() =>
+    twMerge('flex-1', this.zContentClass()),
+  );
 
   selectTabByIndex(index: number): void {
     if (index >= 0 && index < this.tabs().length) {

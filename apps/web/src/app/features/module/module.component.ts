@@ -7,10 +7,11 @@ import {
   ZardTabComponent,
   ZardTabGroupComponent,
 } from '../../shared/components/tabs';
+import OverviewTabComponent from './tabs/overview/overview-tab.component';
 
 @Component({
   selector: 'app-module',
-  imports: [ZardTabComponent, ZardTabGroupComponent],
+  imports: [OverviewTabComponent, ZardTabComponent, ZardTabGroupComponent],
   templateUrl: './module.component.html',
 })
 export default class ModuleComponent {
