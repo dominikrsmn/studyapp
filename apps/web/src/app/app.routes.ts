@@ -3,6 +3,7 @@ import { authGuard } from './core/auth/auth.guard';
 import { MagicLinkVerificationComponent } from './core/auth/magic-link-verification.component';
 import { LayoutComponent } from './core/layout/layout.component';
 import { WorkspaceComponent } from './features/workspace/workspace.component';
+import { guestGuard } from './core/auth/guest.guard';
 
 export const appRoutes: Route[] = [
   {
@@ -11,6 +12,7 @@ export const appRoutes: Route[] = [
       import('./core/auth/login.component').then(
         ({ LoginComponent }) => LoginComponent,
       ),
+    canActivate: [guestGuard],
   },
   {
     path: 'auth/verify',
