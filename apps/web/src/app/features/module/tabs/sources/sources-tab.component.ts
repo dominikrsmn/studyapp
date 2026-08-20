@@ -22,6 +22,7 @@ import {
 } from '../../../../shared/components/tabs';
 import { IconDirective } from '../../../../shared/icons/icon.directive';
 import { SourcesService } from '../../../sources/sources.service';
+import { ZardSpinnerComponent } from '../../../../shared/components/spinner';
 
 type SourceFilter = 'ALL' | SourceDto['type'];
 
@@ -47,6 +48,7 @@ const SOURCE_FILTERS: ReadonlyArray<{
     ZardTableImports,
     ZardTabComponent,
     ZardTabGroupComponent,
+    ZardSpinnerComponent,
   ],
   templateUrl: './sources-tab.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

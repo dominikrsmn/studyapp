@@ -5,7 +5,7 @@
     <z-tab-group
       class="w-auto gap-0"
       zNavClass="h-auto flex-wrap gap-1 rounded-full bg-transparent p-0"
-      zTabClass="h-9 flex-none rounded-full border-0 px-4 py-2 font-bold text-sage-600 after:hidden hover:bg-sage-100 hover:text-sage-950 data-active:bg-sage-950 data-active:text-white data-active:shadow-none"
+      zTabClass="h-9 flex-none rounded-full border-0 px-4 py-2 font-bold text-sage-600 after:hidden hover:bg-sage-100 hover:text-sage-950 data-active:bg-sage-500 data-active:text-white data-active:shadow-none"
       zContentClass="hidden"
       (zTabChange)="setFilter($event.index)"
     >
@@ -27,13 +27,15 @@
       zType="outline"
       zSize="lg"
       zShape="circle"
-      class="border-sage-200 px-5 font-bold text-sage-950 hover:bg-sage-50"
+      class="border-sage-300 bg-sage-100 px-6 font-bold text-sage-950 hover:bg-sage-300"
       [zLoading]="isUploading()"
       [zDisabled]="isUploading()"
       (click)="fileInput.click()"
     >
       @if (!isUploading()) {
-        <span appIcon="upload" data-icon="inline-start"></span>
+        <span appIcon="upload"></span>
+      } @else {
+        <z-spinner></z-spinner>
       }
       {{ isUploading() ? 'Uploading…' : 'Upload source' }}
     </button>
@@ -54,26 +56,27 @@
     <div class="overflow-x-auto">
       <table z-table zSize="comfortable" class="min-w-2xl">
         <thead z-table-header class="bg-sage-50/70">
-        <tr z-table-row class="hover:bg-transparent">
+        <tr z-table-row
+            class="hover:bg-transparent font-bold text-xs uppercase tracking-widest text-sage-600 space-x-8">
           <th
             z-table-head
-            class="h-14 px-6 text-xs font-bold uppercase tracking-widest text-sage-600"
+            class="h-14 px-8!"
           >
             Document
           </th>
           <th
             z-table-head
-            class="h-14 w-44 px-6 text-xs font-bold uppercase tracking-widest text-sage-600"
+            class="h-14 w-44 px-8!"
           >
             Type
           </th>
           <th
             z-table-head
-            class="h-14 w-48 px-6 text-xs font-bold uppercase tracking-widest text-sage-600"
+            class="h-14 w-48 px-8!"
           >
             Status
           </th>
-          <th z-table-head class="h-14 w-20 px-4">
+          <th z-table-head class="h-14 w-20 px-8!">
             <span class="sr-only">Actions</span>
           </th>
         </tr>
@@ -82,7 +85,7 @@
           @if (isLoading()) {
             @for (row of [1, 2, 3]; track row) {
               <tr z-table-row class="hover:bg-transparent">
-                <td z-table-cell class="h-20 px-6">
+                <td z-table-cell class="h-20 px-8!">
                   <div class="flex items-center gap-4">
                     <span
                       class="size-10 animate-pulse rounded-xl bg-sage-100"
@@ -92,32 +95,30 @@
                     ></span>
                   </div>
                 </td>
-                <td z-table-cell class="px-6">
+                <td z-table-cell class="px-8!">
                   <span
                     class="block h-6 w-20 animate-pulse rounded-md bg-sage-100"
                   ></span>
                 </td>
-                <td z-table-cell class="px-6">
+                <td z-table-cell class="px-8!">
                   <span
                     class="block h-4 w-24 animate-pulse rounded bg-sage-100"
                   ></span>
                 </td>
-                <td z-table-cell></td>
+                <td z-table-cell class="px-8!"></td>
               </tr>
             }
           } @else {
             @for (source of filteredSources(); track source.id) {
               <tr z-table-row class="group h-20 hover:bg-sage-50/60">
-                <td z-table-cell class="px-6">
+                <td z-table-cell class="px-8!">
                   <div class="flex min-w-0 items-center gap-4">
-                    <span
-                      class="flex size-10 shrink-0 items-center justify-center rounded-xl border border-sage-200 bg-sage-50 text-sage-700 shadow-sm"
-                    >
+
                       <span
                         [appIcon]="sourceIcon(source.type)"
-                        class="inline-flex size-4"
+                        class="inline-flex text-lg"
                       ></span>
-                    </span>
+
                     <div class="min-w-0">
                       <p class="truncate text-[15px] font-bold text-sage-950">
                         {{ source.name }}
@@ -130,27 +131,30 @@
                     </div>
                   </div>
                 </td>
-                <td z-table-cell class="px-6">
+                <td z-table-cell class="px-8!">
                   <span
                     class="inline-flex rounded-md bg-sage-100 px-2.5 py-1 text-xs font-bold text-sage-800"
                   >
                     {{ sourceTypeLabel(source.type) }}
                   </span>
                 </td>
-                <td z-table-cell class="px-6">
+                <td z-table-cell class="px-8!">
                   <span
                     class="inline-flex items-center gap-2 text-sm font-bold"
                     [class]="statusClass(source.status)"
                   >
-                    <span
-                      [appIcon]="statusIcon(source.status)"
-                      class="inline-flex size-4"
-                      [class.animate-spin]="source.status === 'PROCESSING'"
-                    ></span>
+                    @if (source.status === 'PROCESSING' || source.status === 'PENDING') {
+                      <z-spinner></z-spinner>
+                    } @else {
+                      <span
+                        [appIcon]="statusIcon(source.status)"
+                        class="inline-flex size-4"
+                      ></span>
+                    }
                     {{ statusLabel(source.status) }}
                   </span>
                 </td>
-                <td z-table-cell class="px-4 text-right">
+                <td z-table-cell class="px-8! text-right">
                   <button
                     #actions="zPopover"
                     z-button
@@ -192,7 +196,7 @@
               </tr>
             } @empty {
               <tr z-table-row class="hover:bg-transparent">
-                <td z-table-cell colspan="4" class="h-56 px-6 text-center">
+                <td z-table-cell colspan="4" class="h-56 px-8! text-center">
                   <div class="mx-auto flex max-w-sm flex-col items-center">
                     <span
                       class="mb-4 flex size-12 items-center justify-center rounded-2xl bg-sage-100 text-sage-600"
