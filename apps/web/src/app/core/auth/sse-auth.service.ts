@@ -72,6 +72,9 @@ export class SseAuthService {
               `SSE connection failed, status: ${response.status}`,
             );
           },
+          onclose: () => {
+            throw new RetriableSseError();
+          },
           onerror: (error: unknown) => {
             if (
               error instanceof UnauthorizedSseError ||
@@ -104,6 +107,7 @@ export class SseAuthService {
 
 class UnauthorizedSseError extends Error {}
 class FatalSseError extends Error {}
+class RetriableSseError extends Error {}
 
 export interface SseConnectionOptions {
   onOpen?: () => void | Promise<void>;
