@@ -3,10 +3,14 @@ import { ActivatedRoute } from '@angular/router';
 import { formatSemesterLabel } from '../semester/semester.label';
 import { SemesterService } from '../semester/semester.service';
 import { ModuleService } from './module.service';
+import {
+  ZardTabComponent,
+  ZardTabGroupComponent,
+} from '../../shared/components/tabs';
 
 @Component({
   selector: 'app-module',
-  imports: [],
+  imports: [ZardTabComponent, ZardTabGroupComponent],
   templateUrl: './module.component.html',
 })
 export default class ModuleComponent {
