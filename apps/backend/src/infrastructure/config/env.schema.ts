@@ -15,6 +15,11 @@ export const envSchema = z.object({
   INGESTION_MAX_PAGES: z.coerce.number().int().positive(),
   INGESTION_MAX_TEXT_CHARACTERS: z.coerce.number().int().positive(),
   INGESTION_BATCH_SIZE: z.coerce.number().int().positive(),
+
+  REDIS_HOST: z.ipv4(),
+  REDIS_PORT: z.coerce.number().int().positive(),
+  REDIS_PASSWORD: z.string(),
+  REDIS_USERNAME: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;
