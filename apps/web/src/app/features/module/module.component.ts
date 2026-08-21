@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { formatSemesterLabel } from '../semester/semester.label';
 import { SemesterService } from '../semester/semester.service';
@@ -21,14 +21,26 @@ const MODULE_TABS = ['overview', 'sources', 'practice', 'exam-prep'] as const;
     ZardTabGroupComponent,
   ],
   templateUrl: './module.component.html',
+  styleUrl: './module.component.css',
 })
 export default class ModuleComponent {
   moduleId = signal('');
   protected readonly activeTabIndex = signal(0);
+  protected readonly isHeaderCompact = signal(false);
   private activatedRoute = inject(ActivatedRoute);
   private router = inject(Router);
   private moduleService = inject(ModuleService);
   private semesterService = inject(SemesterService);
+  private readonly moduleTabs = viewChild<ZardTabGroupComponent>('moduleTabs');
+
+  protected readonly moduleTabNavClass = computed(() => {
+    const baseClasses =
+      'group-data-[orientation=horizontal]/tabs:h-auto w-full shrink-0 justify-start gap-8 overflow-hidden rounded-none border-b border-sage-200 bg-sage-50 p-0 px-16 text-sage-500 transition-[max-height,opacity,border-color] duration-300 ease-out motion-reduce:transition-none';
+
+    return this.isHeaderCompact()
+      ? `${baseClasses} max-h-0 border-transparent opacity-0`
+      : `${baseClasses} max-h-14 opacity-100`;
+  });
 
   protected readonly module = computed(() =>
     this.moduleService.findById(this.moduleId()),
@@ -67,6 +79,7 @@ export default class ModuleComponent {
   constructor() {
     this.activatedRoute.params.subscribe((params) => {
       this.moduleId.set(params['id']);
+      this.resetModuleScroll();
     });
 
     this.activatedRoute.data.subscribe((data) => {
@@ -83,6 +96,8 @@ export default class ModuleComponent {
       return;
     }
 
+    this.resetModuleScroll();
+
     const commands =
       tab === 'overview'
         ? ['/module', this.moduleId()]
@@ -91,5 +106,18 @@ export default class ModuleComponent {
     void this.router.navigate(commands, {
       queryParamsHandling: 'preserve',
     });
+  }
+
+  protected handleContentScroll(scrollTop: number): void {
+    if (scrollTop >= 32) {
+      this.isHeaderCompact.set(true);
+    } else if (scrollTop <= 8) {
+      this.isHeaderCompact.set(false);
+    }
+  }
+
+  private resetModuleScroll(): void {
+    this.isHeaderCompact.set(false);
+    this.moduleTabs()?.scrollContentToTop();
   }
 }

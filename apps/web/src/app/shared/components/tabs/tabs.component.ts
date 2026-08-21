@@ -5,6 +5,7 @@ import {
   Component,
   computed,
   contentChildren,
+  ElementRef,
   effect,
   input,
   output,
@@ -74,7 +75,11 @@ export class ZardTabComponent {
       }
     </nav>
 
-    <div [class]="contentClasses()">
+    <div
+      #contentContainer
+      [class]="contentClasses()"
+      (scroll)="contentScrolled($event)"
+    >
       @for (tab of tabs(); track $index; let index = $index) {
         <div
           role="tabpanel"
@@ -116,6 +121,8 @@ export class ZardTabGroupComponent {
     tab: ZardTabComponent;
   }>();
 
+  readonly zContentScroll = output<number>();
+
   readonly zVariant = input<ZardTabVariants['zVariant']>('default');
   readonly zOrientation = input<ZardTabVariants['zOrientation']>('horizontal');
   readonly zDisabled = input(false, { transform: booleanAttribute });
@@ -124,6 +131,9 @@ export class ZardTabGroupComponent {
   readonly zNavClass = input<string>('');
   readonly zTabClass = input<string>('');
   readonly zContentClass = input<string>('');
+
+  private readonly contentContainer =
+    viewChild<ElementRef<HTMLElement>>('contentContainer');
 
   constructor() {
     effect(() => this.activeTabIndex.set(this.zActiveTabIndex()));
@@ -150,6 +160,10 @@ export class ZardTabGroupComponent {
     }
   }
 
+  protected contentScrolled(event: Event): void {
+    this.zContentScroll.emit((event.currentTarget as HTMLElement).scrollTop);
+  }
+
   protected readonly containerClasses = computed(() =>
     twMerge(
       tabContainerVariants({ zOrientation: this.zOrientation() }),
@@ -174,6 +188,13 @@ export class ZardTabGroupComponent {
       this.setActiveTab(index);
     } else {
       console.warn(`Index ${index} outside the range of available tabs.`);
+    }
+  }
+
+  scrollContentToTop(): void {
+    const contentContainer = this.contentContainer()?.nativeElement;
+    if (contentContainer) {
+      contentContainer.scrollTop = 0;
     }
   }
 }

@@ -1,6 +1,7 @@
 @layer ng-icon, theme, base, components, utilities;
 @import 'tailwindcss';
 @import './app/shared/core/css/tailwind';
+
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
@@ -131,6 +132,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

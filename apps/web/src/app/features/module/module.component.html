@@ -1,42 +1,60 @@
 @if (module(); as module) {
   <div class="flex h-full flex-col">
-    <header class="shrink-0 bg-sage-50 px-16 pt-16 text-sage-950">
-      <div class="mb-10 flex items-end justify-between">
-        <div>
-          <h1 class="mb-2 text-5xl font-black tracking-tighter text-sage-950">
+    <header
+      class="module-header"
+      [class.module-header--compact]="isHeaderCompact()"
+    >
+      <div class="module-header__inner">
+        <div class="min-w-0">
+          <h1 class="module-header__title">
             {{ module.name }}
           </h1>
-          <p class="flex items-center gap-3 text-lg font-medium text-sage-600">
+          <p
+            class="module-header__metadata"
+            [attr.aria-hidden]="isHeaderCompact()"
+          >
             {{ semesterLabel() }}
             <span class="h-1.5 w-1.5 rounded-full bg-sage-400"></span>
             <span class="text-sage-800">{{ timeUntilExamLabel() }}</span>
           </p>
         </div>
-        <button
-          class="rounded-full bg-sage-900 px-6 py-3.5 text-base font-bold text-white shadow-[0_0_20px_rgba(159,168,139,0.2)] transition-all hover:scale-105 hover:bg-sage-800"
+        <p
+          class="module-header__compact-exam"
+          [attr.aria-hidden]="!isHeaderCompact()"
         >
-          Start Practice Session
-        </button>
+          {{ timeUntilExamLabel() }}
+        </p>
+        <button class="module-header__action">Start Practice Session</button>
       </div>
     </header>
 
     <z-tab-group
+      #moduleTabs
       zVariant="line"
       [zActiveTabIndex]="activeTabIndex()"
       (zTabChange)="selectTab($event.index)"
-      class="min-h-0 flex-1 gap-0"
-      zNavClass="group-data-[orientation=horizontal]/tabs:h-auto w-full shrink-0 justify-start gap-8 rounded-none border-b border-sage-200 bg-sage-50 p-0 px-16 text-sage-500"
+      (zContentScroll)="handleContentScroll($event)"
+      class="min-h-0 flex-1 gap-0 overflow-hidden"
+      [zNavClass]="moduleTabNavClass()"
       zTabClass="h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-0 pb-4 text-sm font-bold text-sage-500 after:hidden hover:text-sage-950 data-active:border-sage-950 data-active:text-sage-950"
-      zContentClass="min-h-0 overflow-auto bg-white mx-auto w-full max-w-6xl p-16"
+      zContentClass="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain bg-white p-16"
     >
       <z-tab label="Overview">
-        <app-overview-tab />
+        <div class="mx-auto w-full max-w-6xl">
+          <app-overview-tab />
+        </div>
       </z-tab>
       <z-tab label="Sources">
-        <app-source-tab [moduleId]="module.id" />
+        <div class="mx-auto w-full max-w-6xl">
+          <app-source-tab [moduleId]="module.id" />
+        </div>
       </z-tab>
-      <z-tab label="Practice">practice tab content</z-tab>
-      <z-tab label="Exam Prep">exam prep tab content</z-tab>
+      <z-tab label="Practice">
+        <div class="mx-auto w-full max-w-6xl">practice tab content</div>
+      </z-tab>
+      <z-tab label="Exam Prep">
+        <div class="mx-auto w-full max-w-6xl">exam prep tab content</div>
+      </z-tab>
     </z-tab-group>
   </div>
 }
