@@ -6,6 +6,8 @@ export const semanticSearchRequestSchema = z.object({
 
 export const semanticSearchResultSchema = z.object({
   content: z.string(),
+  pageStart: z.number().int().nullable(),
+  pageEnd: z.number().int().nullable(),
 });
 
 export type SemanticSearchRequest = z.infer<typeof semanticSearchRequestSchema>;
