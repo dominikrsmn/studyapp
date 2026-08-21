@@ -47,12 +47,24 @@
         </p>
         <div class="space-y-3">
           @for (result of results; track $index) {
+            <p class="text-xs font-bold text-sage-600">
+              [{{ result.citationLabel }}] {{ result.sourceName }}
+            </p>
             <p
               class="rounded-xl bg-sage-50 px-4 py-3 text-sm leading-6 text-sage-900"
             >
               {{ result.content }}
             </p>
-            <p>page {{ result.pageStart }} - {{ result.pageEnd }}</p>
+            @if (result.pageStart !== null) {
+              <p>
+                page {{ result.pageStart }}
+                @if (
+                  result.pageEnd !== null && result.pageEnd !== result.pageStart
+                ) {
+                  - {{ result.pageEnd }}
+                }
+              </p>
+            }
           } @empty {
             <p class="text-sm font-medium text-sage-500">
               No matching content found.
@@ -117,17 +129,17 @@
     <div class="overflow-x-auto">
       <table z-table zSize="comfortable" class="min-w-2xl">
         <thead z-table-header class="bg-sage-50/70">
-        <tr
-          z-table-row
-          class="hover:bg-transparent font-bold text-xs uppercase tracking-widest text-sage-600 space-x-8"
-        >
-          <th z-table-head class="h-14 px-8!">Document</th>
-          <th z-table-head class="h-14 w-44 px-8!">Type</th>
-          <th z-table-head class="h-14 w-48 px-8!">Status</th>
-          <th z-table-head class="h-14 w-20 px-8!">
-            <span class="sr-only">Actions</span>
-          </th>
-        </tr>
+          <tr
+            z-table-row
+            class="hover:bg-transparent font-bold text-xs uppercase tracking-widest text-sage-600 space-x-8"
+          >
+            <th z-table-head class="h-14 px-8!">Document</th>
+            <th z-table-head class="h-14 w-44 px-8!">Type</th>
+            <th z-table-head class="h-14 w-48 px-8!">Status</th>
+            <th z-table-head class="h-14 w-20 px-8!">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
         </thead>
         <tbody z-table-body>
           @if (isLoading()) {
@@ -190,8 +202,10 @@
                     class="inline-flex items-center gap-2 text-sm font-bold"
                     [class]="statusClass(source.status)"
                   >
-                    @if (source.status === 'PROCESSING' ||
-                    source.status === 'PENDING') {
+                    @if (
+                      source.status === 'PROCESSING' ||
+                      source.status === 'PENDING'
+                    ) {
                       <z-spinner></z-spinner>
                     } @else {
                       <span

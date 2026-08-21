@@ -19,8 +19,14 @@ export class SemanticSearchService {
     const embedding = await this.embeddingService.embedQuery(query, userId);
     const vector = `[${embedding.join(',')}]`;
 
-    return await this.prismaService.$queryRaw<SemanticSearchResult[]>`
-      SELECT chunk."content", chunk."pageStart", chunk."pageEnd"
+    const rows = await this.prismaService.$queryRaw<
+      Omit<SemanticSearchResult, 'citationLabel'>[]
+    >`
+      SELECT source."id" AS "sourceId",
+             source."name" AS "sourceName",
+             chunk."content",
+             chunk."pageStart",
+             chunk."pageEnd"
       FROM "SourceChunk" AS chunk
       INNER JOIN "Source" AS source ON source."id" = chunk."sourceId"
       INNER JOIN "Module" AS module ON module."id" = source."moduleId"
@@ -29,8 +35,13 @@ export class SemanticSearchService {
         AND module."id" = ${moduleId}
         AND source."status" = 'READY'
         AND chunk."embedding" IS NOT NULL
-      ORDER BY chunk."embedding" <=> ${vector}::vector
+      ORDER BY chunk."embedding" <=> ${vector}::vector, chunk."id"
       LIMIT ${topK}
     `;
+
+    return rows.map((row, index) => ({
+      ...row,
+      citationLabel: `S${index + 1}`,
+    }));
   }
 }

@@ -5,6 +5,9 @@ export const semanticSearchRequestSchema = z.object({
 });
 
 export const semanticSearchResultSchema = z.object({
+  citationLabel: z.string().regex(/^S[1-9]\d*$/),
+  sourceId: z.string().min(1),
+  sourceName: z.string().min(1),
   content: z.string(),
   pageStart: z.number().int().nullable(),
   pageEnd: z.number().int().nullable(),

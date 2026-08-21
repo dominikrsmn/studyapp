@@ -20,7 +20,16 @@ describe('QuestionAnsweringService', () => {
   });
 
   it('searches for relevant chunks before generating an answer', async () => {
-    const chunks = [{ content: 'Relevant notes', pageStart: 2, pageEnd: 3 }];
+    const chunks = [
+      {
+        citationLabel: 'S1',
+        sourceId: 'source-id',
+        sourceName: 'Lecture notes',
+        content: 'Relevant notes',
+        pageStart: 2,
+        pageEnd: 3,
+      },
+    ];
     semanticSearchService.search.mockResolvedValue(chunks);
     answerGenerationService.generateAnswer.mockResolvedValue('The answer');
 

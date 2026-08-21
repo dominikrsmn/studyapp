@@ -24,13 +24,21 @@ describe('SemanticSearchService', () => {
   });
 
   it('embeds the query and returns matching chunks', async () => {
-    const results = [{ content: 'Relevant notes' }];
+    const rows = [
+      {
+        sourceId: 'source-id',
+        sourceName: 'Lecture notes',
+        content: 'Relevant notes',
+        pageStart: 2,
+        pageEnd: 3,
+      },
+    ];
     embeddingService.embedQuery.mockResolvedValue([0.1, 0.2]);
-    prismaService.$queryRaw.mockResolvedValue(results);
+    prismaService.$queryRaw.mockResolvedValue(rows);
 
     await expect(
       service.search('exam topics', 'module-id', 'user-id'),
-    ).resolves.toEqual(results);
+    ).resolves.toEqual([{ ...rows[0], citationLabel: 'S1' }]);
     expect(embeddingService.embedQuery).toHaveBeenCalledWith(
       'exam topics',
       'user-id',

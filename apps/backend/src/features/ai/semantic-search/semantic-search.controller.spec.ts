@@ -26,7 +26,16 @@ describe('SemanticSearchController', () => {
   });
 
   it('searches the requested module for the current user', async () => {
-    const results = [{ content: 'Relevant notes' }];
+    const results = [
+      {
+        citationLabel: 'S1',
+        sourceId: 'source-id',
+        sourceName: 'Lecture notes',
+        content: 'Relevant notes',
+        pageStart: 2,
+        pageEnd: 3,
+      },
+    ];
     semanticSearchService.search.mockResolvedValue(results);
 
     await expect(
