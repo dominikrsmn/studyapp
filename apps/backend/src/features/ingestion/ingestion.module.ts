@@ -6,8 +6,6 @@ import { TextChunkerService } from './text-chunker/text-chunker.service';
 import { EmbeddingService } from './embedding/embedding.service';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
-import { SemanticSearchService } from './semantic-search/semantic-search.service';
-import { SemanticSearchController } from './semantic-search/semantic-search.controller';
 
 @Module({
   imports: [FileStorageModule, PrismaModule, OpenAiModule],
@@ -17,9 +15,7 @@ import { SemanticSearchController } from './semantic-search/semantic-search.cont
     TextChunkerService,
     EmbeddingService,
     Logger,
-    SemanticSearchService,
   ],
-  controllers: [SemanticSearchController],
-  exports: [IngestionService],
+  exports: [IngestionService, EmbeddingService],
 })
 export class IngestionModule {}

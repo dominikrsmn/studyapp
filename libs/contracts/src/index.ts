@@ -7,6 +7,7 @@ export * from './source/create-source.schema';
 export * from './source/source-events.schema';
 
 export * from './search/semantic-search.schema';
+export * from './ai/question-answering.schema';
 
 export * from './semester/semester.schema';
 export * from './semester/create-semester.schema';

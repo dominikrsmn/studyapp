@@ -7,6 +7,7 @@ import { SourceModule } from './features/source/source.module';
 import { SemesterModule } from './features/semester/semester.module';
 import { UserModule } from './features/user/user.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AiModule } from './features/ai/ai.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     SourceModule,
     SemesterModule,
     UserModule,
+    AiModule,
   ],
 })
 export class AppModule {}

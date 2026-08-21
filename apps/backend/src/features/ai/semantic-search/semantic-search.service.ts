@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { SemanticSearchResult } from '@study/contracts';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { EmbeddingService } from '../embedding/embedding.service';
+import { EmbeddingService } from '../../ingestion/embedding/embedding.service';
 
 @Injectable()
 export class SemanticSearchService {
@@ -20,7 +20,7 @@ export class SemanticSearchService {
     const vector = `[${embedding.join(',')}]`;
 
     return await this.prismaService.$queryRaw<SemanticSearchResult[]>`
-      SELECT chunk."content"
+      SELECT chunk."content", chunk."pageStart", chunk."pageEnd"
       FROM "SourceChunk" AS chunk
       INNER JOIN "Source" AS source ON source."id" = chunk."sourceId"
       INNER JOIN "Module" AS module ON module."id" = source."moduleId"
