@@ -1,0 +1,25 @@
+import { BullModule } from '@nestjs/bullmq';
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
+import { topicAnalysisConfig } from './topic-analysis.config';
+import { TopicAnalysisProcessor } from './topic-analysis.processor';
+import { TopicAnalysisQueue } from './topic-analysis.queue';
+import { TopicAnalysisService } from './topic-analysis.service';
+import { TopicService } from './topic.service';
+
+@Module({
+  imports: [
+    ConfigModule.forFeature(topicAnalysisConfig),
+    BullModule.registerQueue({ name: topicAnalysisConfig().queueName }),
+    PrismaModule,
+  ],
+  providers: [
+    TopicService,
+    TopicAnalysisService,
+    TopicAnalysisQueue,
+    TopicAnalysisProcessor,
+  ],
+  exports: [TopicService, TopicAnalysisService, TopicAnalysisQueue],
+})
+export class TopicModule {}

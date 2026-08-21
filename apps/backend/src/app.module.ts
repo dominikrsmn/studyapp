@@ -14,6 +14,7 @@ import { databaseConfig } from './infrastructure/config/database.config';
 import { fileStorageConfig } from './infrastructure/config/filestorage.config';
 import { openAiConfig } from './infrastructure/config/open-ai.config';
 import { redisConfig } from './infrastructure/config/redis.config';
+import { TopicModule } from './features/topic/topic.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { redisConfig } from './infrastructure/config/redis.config';
     SemesterModule,
     UserModule,
     AiModule,
+    TopicModule,
   ],
 })
 export class AppModule {}
