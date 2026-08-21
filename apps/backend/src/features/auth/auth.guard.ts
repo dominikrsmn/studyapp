@@ -2,6 +2,7 @@ import {
   CanActivate,
   ConflictException,
   ExecutionContext,
+  Inject,
   Injectable,
 } from '@nestjs/common';
 
@@ -14,6 +15,8 @@ import type { AccessTokenPayload } from './auth.types';
 import { UserService } from '../user/user.service';
 import { CURRENT_USER_REQUIRED_KEY } from './current-user.decorator';
 import { ACTIVE_SEMESTER_REQUIRED_KEY } from './active-semester.decorator';
+import { ConfigType } from '@nestjs/config';
+import { authConfig } from './auth.config';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -21,6 +24,8 @@ export class AuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private reflector: Reflector,
     private readonly usersService: UserService,
+    @Inject(authConfig.KEY)
+    private readonly config: ConfigType<typeof authConfig>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -39,7 +44,10 @@ export class AuthGuard implements CanActivate {
     try {
       const payload = await this.jwtService.verifyAsync<AccessTokenPayload>(
         token,
-        { audience: 'studyapp-api', issuer: 'studyapp' },
+        {
+          audience: this.config.audiences.access,
+          issuer: this.config.issuer,
+        },
       );
       if (
         payload.type !== 'access' ||
@@ -59,8 +67,8 @@ export class AuthGuard implements CanActivate {
 
       const activeSemesterRequired = this.reflector.getAllAndOverride<boolean>(
         ACTIVE_SEMESTER_REQUIRED_KEY,
-       [context.getHandler(), context.getClass()],
-      )
+        [context.getHandler(), context.getClass()],
+      );
 
       if (shouldLoadCurrentUser || activeSemesterRequired) {
         const user = await this.usersService.findOne(payload.sub);

@@ -6,9 +6,16 @@ import { TextChunkerService } from './text-chunker/text-chunker.service';
 import { EmbeddingService } from './embedding/embedding.service';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
+import { ConfigModule } from '@nestjs/config';
+import { ingestionConfig } from './ingestion.config';
 
 @Module({
-  imports: [FileStorageModule, PrismaModule, OpenAiModule],
+  imports: [
+    ConfigModule.forFeature(ingestionConfig),
+    FileStorageModule,
+    PrismaModule,
+    OpenAiModule,
+  ],
   providers: [
     IngestionService,
     PdfTextExtractorService,

@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { AuthGuard } from './auth.guard';
 import { UserService } from '../user/user.service';
+import { authConfig } from './auth.config';
 
 describe('AuthGuard', () => {
   const jwtService = { verifyAsync: jest.fn() };
@@ -22,6 +23,7 @@ describe('AuthGuard', () => {
       jwtService as unknown as JwtService,
       reflector as unknown as Reflector,
       usersService as unknown as UserService,
+      authConfig(),
     );
   });
 

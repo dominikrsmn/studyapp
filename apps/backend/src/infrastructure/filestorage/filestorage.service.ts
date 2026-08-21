@@ -1,9 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { mkdir, readFile, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { ConfigType } from '@nestjs/config';
+import { fileStorageConfig } from '../config/filestorage.config';
 
 @Injectable()
 export class FileStorageService {
+  constructor(
+    @Inject(fileStorageConfig.KEY)
+    private readonly config: ConfigType<typeof fileStorageConfig>,
+  ) {}
+
   async save(buffer: Buffer, key: string): Promise<void> {
     await mkdir(this.fileDir(key), { recursive: true });
     await writeFile(this.filePath(key), buffer);
@@ -26,10 +33,10 @@ export class FileStorageService {
   }
 
   private fileDir(key: string) {
-    return join(process.cwd(), '/uploads/', key);
+    return join(this.config.directory, key);
   }
 
   private filePath(key: string) {
-    return join(this.fileDir(key), '/original.pdf');
+    return join(this.fileDir(key), this.config.originalFileName);
   }
 }

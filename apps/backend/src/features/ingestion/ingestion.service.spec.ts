@@ -9,8 +9,7 @@ import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor
 import { TextChunkerService } from './text-chunker/text-chunker.service';
 import { PayloadTooLargeException } from '@nestjs/common';
 import type { PageTextResult } from 'pdf-parse';
-import type { ConfigService } from '@nestjs/config';
-import type { Env } from '../../infrastructure/config/env.schema';
+import { ingestionConfig } from './ingestion.config';
 
 const BATCH_SIZE = 64;
 const MAX_PAGES = 300;
@@ -46,14 +45,10 @@ describe('IngestionService', () => {
   const embeddingService = { embedChunks: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
   const config = {
-    get: jest.fn((key: keyof Env) => {
-      const values: Partial<Env> = {
-        INGESTION_BATCH_SIZE: BATCH_SIZE,
-        INGESTION_MAX_PAGES: MAX_PAGES,
-        INGESTION_MAX_TEXT_CHARACTERS: MAX_TEXT_CHARACTERS,
-      };
-      return values[key];
-    }),
+    ...ingestionConfig(),
+    batchSize: BATCH_SIZE,
+    maxPages: MAX_PAGES,
+    maxTextCharacters: MAX_TEXT_CHARACTERS,
   };
 
   beforeEach(() => {
@@ -66,7 +61,7 @@ describe('IngestionService', () => {
       textChunker as unknown as TextChunkerService,
       embeddingService as unknown as EmbeddingService,
       eventEmitter as unknown as EventEmitter2,
-      config as unknown as ConfigService<Env, true>,
+      config,
     );
   });
 

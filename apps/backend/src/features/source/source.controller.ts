@@ -19,6 +19,7 @@ import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceService } from './source.service';
 import { RequireActiveSemester } from '../auth/active-semester.decorator';
 import { SourceEventService } from './source-event.service';
+import { sourceConfig } from './source.config';
 
 @RequireActiveSemester()
 @Controller('module/:moduleId/source')
@@ -37,7 +38,7 @@ export class SourcesController {
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
-          fileType: 'application/pdf',
+          fileType: sourceConfig().acceptedFileType,
           errorMessage: 'File must be a PDF',
         })
         .build({

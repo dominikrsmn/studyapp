@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Env, envSchema } from './infrastructure/config/env.schema';
+import { ConfigModule, ConfigType } from '@nestjs/config';
+import { envSchema } from './infrastructure/config/env.schema';
 import { ModuleModule } from './features/module/module.module';
 import { AuthModule } from './features/auth/auth.module';
 import { SourceModule } from './features/source/source.module';
@@ -9,22 +9,33 @@ import { UserModule } from './features/user/user.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AiModule } from './features/ai/ai.module';
 import { BullModule } from '@nestjs/bullmq';
+import { applicationConfig } from './infrastructure/config/application.config';
+import { databaseConfig } from './infrastructure/config/database.config';
+import { fileStorageConfig } from './infrastructure/config/filestorage.config';
+import { openAiConfig } from './infrastructure/config/open-ai.config';
+import { redisConfig } from './infrastructure/config/redis.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [
+        applicationConfig,
+        databaseConfig,
+        fileStorageConfig,
+        openAiConfig,
+        redisConfig,
+      ],
       validate: (config) => envSchema.parse(config),
     }),
     BullModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>) => ({
+      inject: [redisConfig.KEY],
+      useFactory: (config: ConfigType<typeof redisConfig>) => ({
         connection: {
-          host: config.getOrThrow('REDIS_HOST'),
-          port: config.getOrThrow('REDIS_PORT'),
-          username: config.getOrThrow('REDIS_USERNAME'),
-          password: config.getOrThrow('REDIS_PASSWORD'),
+          host: config.host,
+          port: config.port,
+          username: config.username,
+          password: config.password,
         },
       }),
     }),

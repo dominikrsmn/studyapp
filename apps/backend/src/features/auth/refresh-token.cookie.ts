@@ -1,29 +1,32 @@
 import { CookieOptions } from 'express';
+import { ConfigType } from '@nestjs/config';
+import { authConfig } from './auth.config';
 
-export const REFRESH_TOKEN_COOKIE = 'studyapp_refresh';
-
-const REFRESH_TOKEN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-
-function baseRefreshTokenCookieOptions(isProduction: boolean): CookieOptions {
+function baseRefreshTokenCookieOptions(
+  isProduction: boolean,
+  config: ConfigType<typeof authConfig>,
+): CookieOptions {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict',
-    path: '/api/auth',
+    sameSite: config.refreshTokenCookie.sameSite,
+    path: config.refreshTokenCookie.path,
   };
 }
 
 export function refreshTokenCookieOptions(
   isProduction: boolean,
+  config: ConfigType<typeof authConfig>,
 ): CookieOptions {
   return {
-    ...baseRefreshTokenCookieOptions(isProduction),
-    maxAge: REFRESH_TOKEN_MAX_AGE_MS,
+    ...baseRefreshTokenCookieOptions(isProduction, config),
+    maxAge: config.refreshTokenCookie.maxAgeMs,
   };
 }
 
 export function clearRefreshTokenCookieOptions(
   isProduction: boolean,
+  config: ConfigType<typeof authConfig>,
 ): CookieOptions {
-  return baseRefreshTokenCookieOptions(isProduction);
+  return baseRefreshTokenCookieOptions(isProduction, config);
 }

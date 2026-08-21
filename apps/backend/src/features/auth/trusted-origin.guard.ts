@@ -2,18 +2,19 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Inject,
   Injectable,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigType } from '@nestjs/config';
 import { Request } from 'express';
-import { Env } from '../../infrastructure/config/env.schema';
+import { authConfig } from './auth.config';
 
 @Injectable()
 export class TrustedOriginGuard implements CanActivate {
   private readonly trustedOrigin: string;
 
-  constructor(config: ConfigService<Env, true>) {
-    this.trustedOrigin = new URL(config.get('WEB_URL', { infer: true })).origin;
+  constructor(@Inject(authConfig.KEY) config: ConfigType<typeof authConfig>) {
+    this.trustedOrigin = new URL(config.webUrl).origin;
   }
 
   canActivate(context: ExecutionContext): boolean {

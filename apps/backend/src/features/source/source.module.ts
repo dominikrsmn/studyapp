@@ -6,20 +6,22 @@ import { FileStorageModule } from '../../infrastructure/filestorage/filestorage.
 import { IngestionModule } from '../ingestion/ingestion.module';
 import { SourceEventService } from './source-event.service';
 import { MulterModule } from '@nestjs/platform-express';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import type { Env } from '../../infrastructure/config/env.schema';
+import { ConfigModule, ConfigType } from '@nestjs/config';
+import { ingestionConfig } from '../ingestion/ingestion.config';
+import { sourceConfig } from './source.config';
 
 @Module({
   imports: [
     PrismaModule,
     FileStorageModule,
     IngestionModule,
+    ConfigModule.forFeature(sourceConfig),
+    ConfigModule.forFeature(ingestionConfig),
     MulterModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>) => ({
+      inject: [ingestionConfig.KEY],
+      useFactory: (config: ConfigType<typeof ingestionConfig>) => ({
         limits: {
-          fileSize: config.get('INGESTION_MAX_UPLOAD_BYTES', { infer: true }),
+          fileSize: config.maxUploadBytes,
         },
       }),
     }),

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { rm } from 'node:fs/promises';
 import { FileStorageService } from './filestorage.service';
+import { fileStorageConfig } from '../config/filestorage.config';
 
 jest.mock('node:fs/promises', () => ({
   mkdir: jest.fn(),
@@ -14,7 +15,10 @@ describe('FileStorageService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [FileStorageService],
+      providers: [
+        FileStorageService,
+        { provide: fileStorageConfig.KEY, useValue: fileStorageConfig() },
+      ],
     }).compile();
 
     service = module.get<FileStorageService>(FileStorageService);

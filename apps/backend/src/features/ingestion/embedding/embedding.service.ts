@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import type { Chunk, EmbeddedChunk } from '../ingestion.service';
 import { CreateEmbeddingResponse } from 'openai/resources/embeddings';
-import { ConfigService } from '@nestjs/config';
-import type { Env } from '../../../infrastructure/config/env.schema';
+import { ConfigType } from '@nestjs/config';
+import { ingestionConfig } from '../ingestion.config';
 
 type SourceIdWithUserId = {
   id: string;
@@ -13,12 +13,17 @@ type SourceIdWithUserId = {
 @Injectable()
 export class EmbeddingService {
   private readonly batchSize: number;
+  private readonly model: string;
+  private readonly encodingFormat: 'float';
 
   constructor(
     private readonly openAIService: OpenAiService,
-    config: ConfigService<Env, true>,
+    @Inject(ingestionConfig.KEY)
+    config: ConfigType<typeof ingestionConfig>,
   ) {
-    this.batchSize = config.get('INGESTION_BATCH_SIZE', { infer: true });
+    this.batchSize = config.batchSize;
+    this.model = config.embeddingModel;
+    this.encodingFormat = config.embeddingEncodingFormat;
   }
 
   async embedChunks(
@@ -32,8 +37,8 @@ export class EmbeddingService {
       const batch = chunks.slice(offset, offset + this.batchSize);
       const response = await this.openAIService.client.embeddings.create({
         input: batch.map((chunk) => chunk.content),
-        model: 'text-embedding-3-small',
-        encoding_format: 'float',
+        model: this.model,
+        encoding_format: this.encodingFormat,
         user: source.userId,
       });
 
@@ -53,8 +58,8 @@ export class EmbeddingService {
     const response: CreateEmbeddingResponse =
       await this.openAIService.client.embeddings.create({
         input: query,
-        model: 'text-embedding-3-small',
-        encoding_format: 'float',
+        model: this.model,
+        encoding_format: this.encodingFormat,
         user: userId,
       });
 

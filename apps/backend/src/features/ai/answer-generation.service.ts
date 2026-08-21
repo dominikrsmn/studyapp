@@ -1,19 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { SemanticSearchResult } from '@study/contracts';
 import { OpenAiService } from '../../infrastructure/open-ai/open-ai.service';
+import { ConfigType } from '@nestjs/config';
+import { aiConfig } from './ai.config';
 
 @Injectable()
 export class AnswerGenerationService {
-  constructor(private readonly openAiService: OpenAiService) {}
+  constructor(
+    private readonly openAiService: OpenAiService,
+    @Inject(aiConfig.KEY)
+    private readonly config: ConfigType<typeof aiConfig>,
+  ) {}
   async generateAnswer(
     question: string,
     chunks: SemanticSearchResult[],
     userId: string,
   ): Promise<string> {
     const response = await this.openAiService.client.responses.create({
-      model: 'gpt-5.6-sol',
+      model: this.config.answerModel,
       reasoning: {
-        effort: 'medium',
+        effort: this.config.reasoningEffort,
       },
       input: [
         {

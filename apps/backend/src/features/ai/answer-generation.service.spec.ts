@@ -1,5 +1,6 @@
 import { OpenAiService } from '../../infrastructure/open-ai/open-ai.service';
 import { AnswerGenerationService } from './answer-generation.service';
+import { aiConfig } from './ai.config';
 
 describe('AnswerGenerationService', () => {
   const create = jest.fn();
@@ -10,7 +11,7 @@ describe('AnswerGenerationService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new AnswerGenerationService(openAiService);
+    service = new AnswerGenerationService(openAiService, aiConfig());
   });
 
   it('keeps untrusted evidence out of the developer message', async () => {

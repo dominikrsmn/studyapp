@@ -7,9 +7,16 @@ import { QuestionAnsweringService } from './question-answering.service';
 import { SemanticSearchController } from './semantic-search/semantic-search.controller';
 import { SemanticSearchService } from './semantic-search/semantic-search.service';
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
+import { ConfigModule } from '@nestjs/config';
+import { aiConfig } from './ai.config';
 
 @Module({
-  imports: [IngestionModule, PrismaModule, OpenAiModule],
+  imports: [
+    ConfigModule.forFeature(aiConfig),
+    IngestionModule,
+    PrismaModule,
+    OpenAiModule,
+  ],
   controllers: [AiController, SemanticSearchController],
   providers: [
     AnswerGenerationService,

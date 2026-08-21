@@ -18,8 +18,10 @@ import {
   SourceStateChangedEvent,
   sourceStateChangedEventSchema,
 } from '@study/contracts';
-import { ConfigService } from '@nestjs/config';
-import type { Env } from '../../infrastructure/config/env.schema';
+import { ConfigType } from '@nestjs/config';
+import { Inject } from '@nestjs/common';
+import { ingestionConfig } from './ingestion.config';
+import { sourceConfig } from '../source/source.config';
 
 export type Chunk = {
   content: string;
@@ -44,13 +46,12 @@ export class IngestionService {
     private readonly textChunker: TextChunkerService,
     private readonly embeddingService: EmbeddingService,
     private readonly eventEmitter: EventEmitter2,
-    config: ConfigService<Env, true>,
+    @Inject(ingestionConfig.KEY)
+    config: ConfigType<typeof ingestionConfig>,
   ) {
-    this.batchSize = config.get('INGESTION_BATCH_SIZE', { infer: true });
-    this.maxPages = config.get('INGESTION_MAX_PAGES', { infer: true });
-    this.maxTextCharacters = config.get('INGESTION_MAX_TEXT_CHARACTERS', {
-      infer: true,
-    });
+    this.batchSize = config.batchSize;
+    this.maxPages = config.maxPages;
+    this.maxTextCharacters = config.maxTextCharacters;
   }
 
   async ingest(sourceId: string, moduleId: string): Promise<void> {
@@ -85,7 +86,7 @@ export class IngestionService {
         processingState: 'PROCESSING',
       });
 
-      this.eventEmitter.emit('source.stateChanged', event);
+      this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
 
       if (!source.storageKey) {
         throw new NotFoundException('Source was not found');
@@ -113,7 +114,7 @@ export class IngestionService {
         processingState: 'READY',
       });
 
-      this.eventEmitter.emit('source.stateChanged', event);
+      this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
     } catch (error) {
       await this.deletePartialChunks(sourceId);
       await this.markFailed(sourceId, moduleId);
@@ -151,7 +152,7 @@ export class IngestionService {
           processingState: 'FAILED',
         });
 
-      this.eventEmitter.emit('source.stateChanged', event);
+      this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
     } catch (error) {
       this.logger.error(
         `Failed to mark source "${sourceId}" as failed (gg)`,

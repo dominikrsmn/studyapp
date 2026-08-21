@@ -1,14 +1,14 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID } from 'node:crypto';
-import { Env } from '../../infrastructure/config/env.schema';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { UserService } from '../user/user.service';
 import {
@@ -17,12 +17,8 @@ import {
   RefreshTokenPayload,
   TokenPair,
 } from './auth.types';
-
-const ACCESS_TOKEN_TTL_SECONDS = 60;
-const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
-const MAGIC_LINK_TTL_SECONDS = 10 * 60;
-const REFRESH_ROTATION_GRACE_MS = 5_000;
-const JWT_ISSUER = 'studyapp';
+import { authConfig } from './auth.config';
+import { applicationConfig } from '../../infrastructure/config/application.config';
 
 @Injectable()
 export class AuthService {
@@ -32,7 +28,10 @@ export class AuthService {
     private readonly usersService: UserService,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService<Env, true>,
+    @Inject(authConfig.KEY)
+    private readonly config: ConfigType<typeof authConfig>,
+    @Inject(applicationConfig.KEY)
+    private readonly application: ConfigType<typeof applicationConfig>,
   ) {}
 
   async requestMagicLink(email: string): Promise<void> {
@@ -41,9 +40,9 @@ export class AuthService {
     const token = await this.jwtService.signAsync(
       { email: normalizedEmail, type: 'magic-link' },
       {
-        audience: 'studyapp-magic-link',
-        issuer: JWT_ISSUER,
-        expiresIn: MAGIC_LINK_TTL_SECONDS,
+        audience: this.config.audiences.magicLink,
+        issuer: this.config.issuer,
+        expiresIn: this.config.magicLinkTtlSeconds,
         jwtid: tokenId,
       },
     );
@@ -53,14 +52,14 @@ export class AuthService {
         id: tokenId,
         email: normalizedEmail,
         tokenHash: this.hashToken(token),
-        expiresAt: this.expiresAt(MAGIC_LINK_TTL_SECONDS),
+        expiresAt: this.expiresAt(this.config.magicLinkTtlSeconds),
       },
     });
 
-    if (this.config.get('NODE_ENV', { infer: true }) === 'development') {
+    if (this.application.environment === 'development') {
       const link = new URL(
-        '/auth/verify',
-        this.config.get('WEB_URL', { infer: true }),
+        this.config.magicLinkVerificationPath,
+        this.config.webUrl,
       );
       link.searchParams.set('token', token);
       this.logger.log(
@@ -267,8 +266,8 @@ export class AuthService {
       const payload = await this.jwtService.verifyAsync<MagicLinkTokenPayload>(
         token,
         {
-          audience: 'studyapp-magic-link',
-          issuer: JWT_ISSUER,
+          audience: this.config.audiences.magicLink,
+          issuer: this.config.issuer,
         },
       );
       if (payload.type !== 'magic-link' || !payload.email || !payload.jti) {
@@ -287,8 +286,8 @@ export class AuthService {
       const payload = await this.jwtService.verifyAsync<RefreshTokenPayload>(
         token,
         {
-          audience: 'studyapp-refresh',
-          issuer: JWT_ISSUER,
+          audience: this.config.audiences.refresh,
+          issuer: this.config.issuer,
         },
       );
       if (payload.type !== 'refresh' || !payload.sessionId || !payload.jti) {
@@ -315,17 +314,17 @@ export class AuthService {
       this.jwtService.signAsync(
         { ...commonPayload, type: 'access' },
         {
-          audience: 'studyapp-api',
-          issuer: JWT_ISSUER,
-          expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+          audience: this.config.audiences.access,
+          issuer: this.config.issuer,
+          expiresIn: this.config.accessTokenTtlSeconds,
         },
       ),
       this.jwtService.signAsync(
         { ...commonPayload, type: 'refresh' },
         {
-          audience: 'studyapp-refresh',
-          issuer: JWT_ISSUER,
-          expiresIn: REFRESH_TOKEN_TTL_SECONDS,
+          audience: this.config.audiences.refresh,
+          issuer: this.config.issuer,
+          expiresIn: this.config.refreshTokenTtlSeconds,
           jwtid: input.refreshTokenId,
         },
       ),
@@ -334,7 +333,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      refreshTokenExpiresAt: this.expiresAt(REFRESH_TOKEN_TTL_SECONDS),
+      refreshTokenExpiresAt: this.expiresAt(this.config.refreshTokenTtlSeconds),
     };
   }
 
@@ -367,7 +366,8 @@ export class AuthService {
     if (
       currentToken?.usedAt &&
       !currentToken.revokedAt &&
-      now.getTime() - currentToken.usedAt.getTime() <= REFRESH_ROTATION_GRACE_MS
+      now.getTime() - currentToken.usedAt.getTime() <=
+        this.config.refreshRotationGraceMs
     ) {
       throw new ConflictException('Refresh token was just rotated');
     }

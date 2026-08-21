@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { SourceStateChangedEvent } from '@study/contracts';
 import { filter, from, map, Observable, Subject, switchMap } from 'rxjs';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { sourceConfig } from './source.config';
 
 @Injectable()
 export class SourceEventService {
@@ -39,7 +40,7 @@ export class SourceEventService {
     );
   }
 
-  @OnEvent('source.stateChanged')
+  @OnEvent(sourceConfig().stateChangedEventName)
   stateChanges(payload: SourceStateChangedEvent): void {
     this.stream$.next(payload);
   }

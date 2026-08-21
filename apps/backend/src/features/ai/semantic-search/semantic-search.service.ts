@@ -1,20 +1,24 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { SemanticSearchResult } from '@study/contracts';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { EmbeddingService } from '../../ingestion/embedding/embedding.service';
+import { ConfigType } from '@nestjs/config';
+import { aiConfig } from '../ai.config';
 
 @Injectable()
 export class SemanticSearchService {
   constructor(
     private readonly embeddingService: EmbeddingService,
     private readonly prismaService: PrismaService,
+    @Inject(aiConfig.KEY)
+    private readonly config: ConfigType<typeof aiConfig>,
   ) {}
 
   async search(
     query: string,
     moduleId: string,
     userId: string,
-    topK = 5,
+    topK = this.config.semanticSearchResultLimit,
   ): Promise<SemanticSearchResult[]> {
     const embedding = await this.embeddingService.embedQuery(query, userId);
     const vector = `[${embedding.join(',')}]`;

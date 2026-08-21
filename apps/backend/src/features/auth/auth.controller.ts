@@ -7,6 +7,7 @@ import {
   Header,
   HttpCode,
   HttpStatus,
+  Inject,
   Post,
   Param,
   ParseUUIDPipe,
@@ -15,20 +16,20 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigType } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { Env } from '../../infrastructure/config/env.schema';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import {
   clearRefreshTokenCookieOptions,
-  REFRESH_TOKEN_COOKIE,
   refreshTokenCookieOptions,
 } from './refresh-token.cookie';
 import { TrustedOriginGuard } from './trusted-origin.guard';
 import type { AuthSession } from './auth.types';
 import type { AuthenticatedRequest } from './authenticated-request';
+import { authConfig } from './auth.config';
+import { applicationConfig } from '../../infrastructure/config/application.config';
 
 const emailSchema = z.object({ email: z.email() });
 const tokenSchema = z.object({ token: z.string().min(1) });
@@ -44,10 +45,12 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
-    config: ConfigService<Env, true>,
+    @Inject(authConfig.KEY)
+    private readonly config: ConfigType<typeof authConfig>,
+    @Inject(applicationConfig.KEY)
+    application: ConfigType<typeof applicationConfig>,
   ) {
-    this.isProduction =
-      config.get('NODE_ENV', { infer: true }) === 'production';
+    this.isProduction = application.environment === 'production';
   }
 
   @Public()
@@ -91,7 +94,7 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<AccessTokenResponse> {
-    const refreshToken = request.cookies?.[REFRESH_TOKEN_COOKIE];
+    const refreshToken = request.cookies?.[this.config.refreshTokenCookie.name];
     if (!refreshToken) {
       throw new UnauthorizedException('No refresh token provided');
     }
@@ -108,7 +111,9 @@ export class AuthController {
   @Get('session')
   sessionAvailability(@Req() request: Request): { hasSession: boolean } {
     return {
-      hasSession: Boolean(request.cookies?.[REFRESH_TOKEN_COOKIE]),
+      hasSession: Boolean(
+        request.cookies?.[this.config.refreshTokenCookie.name],
+      ),
     };
   }
 
@@ -127,8 +132,8 @@ export class AuthController {
     await this.authService.revokeUserSession(request.userId, sessionId);
     if (sessionId === request.sessionId) {
       response.clearCookie(
-        REFRESH_TOKEN_COOKIE,
-        clearRefreshTokenCookieOptions(this.isProduction),
+        this.config.refreshTokenCookie.name,
+        clearRefreshTokenCookieOptions(this.isProduction, this.config),
       );
     }
   }
@@ -141,10 +146,10 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    const refreshToken = request.cookies?.[REFRESH_TOKEN_COOKIE];
+    const refreshToken = request.cookies?.[this.config.refreshTokenCookie.name];
     response.clearCookie(
-      REFRESH_TOKEN_COOKIE,
-      clearRefreshTokenCookieOptions(this.isProduction),
+      this.config.refreshTokenCookie.name,
+      clearRefreshTokenCookieOptions(this.isProduction, this.config),
     );
 
     if (refreshToken) {
@@ -152,15 +157,14 @@ export class AuthController {
     }
   }
 
-
   private setRefreshTokenCookie(
     response: Response,
     refreshToken: string,
   ): void {
     response.cookie(
-      REFRESH_TOKEN_COOKIE,
+      this.config.refreshTokenCookie.name,
       refreshToken,
-      refreshTokenCookieOptions(this.isProduction),
+      refreshTokenCookieOptions(this.isProduction, this.config),
     );
   }
 }

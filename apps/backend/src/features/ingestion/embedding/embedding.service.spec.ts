@@ -1,7 +1,6 @@
 import { EmbeddingService } from './embedding.service';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import type { ConfigService } from '@nestjs/config';
-import type { Env } from '../../../infrastructure/config/env.schema';
+import { ingestionConfig } from '../ingestion.config';
 
 const BATCH_SIZE = 64;
 
@@ -16,9 +15,7 @@ describe('EmbeddingServiceService', () => {
       {
         client: { embeddings: { create: createEmbedding } },
       } as unknown as OpenAiService,
-      {
-        get: jest.fn().mockReturnValue(BATCH_SIZE),
-      } as unknown as ConfigService<Env, true>,
+      { ...ingestionConfig(), batchSize: BATCH_SIZE },
     );
   });
 

@@ -1,14 +1,14 @@
 jest.mock('./auth.service', () => ({ AuthService: class AuthService {} }));
 
-import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { Env } from '../../infrastructure/config/env.schema';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { REFRESH_TOKEN_COOKIE } from './refresh-token.cookie';
 import type { AuthenticatedRequest } from './authenticated-request';
+import { authConfig } from './auth.config';
+import { applicationConfig } from '../../infrastructure/config/application.config';
 
 describe('AuthController', () => {
+  const refreshTokenCookie = authConfig().refreshTokenCookie.name;
   const authService = {
     requestMagicLink: jest.fn(),
     verifyMagicLink: jest.fn(),
@@ -17,16 +17,14 @@ describe('AuthController', () => {
     findSessions: jest.fn(),
     revokeUserSession: jest.fn(),
   };
-  const config = {
-    get: jest.fn().mockReturnValue('development'),
-  };
   let controller: AuthController;
 
   beforeEach(() => {
     jest.clearAllMocks();
     controller = new AuthController(
       authService as unknown as AuthService,
-      config as unknown as ConfigService<Env, true>,
+      authConfig(),
+      applicationConfig(),
     );
   });
 
@@ -58,7 +56,7 @@ describe('AuthController', () => {
       refreshTokenExpiresAt: refreshTokenExpiresAt.toISOString(),
     });
     expect(response.cookie).toHaveBeenCalledWith(
-      REFRESH_TOKEN_COOKIE,
+      refreshTokenCookie,
       'refresh-token',
       expect.objectContaining({
         httpOnly: true,
@@ -76,7 +74,7 @@ describe('AuthController', () => {
       refreshTokenExpiresAt,
     });
     const request = {
-      cookies: { [REFRESH_TOKEN_COOKIE]: 'current-refresh-token' },
+      cookies: { [refreshTokenCookie]: 'current-refresh-token' },
     } as unknown as Request;
     const response = { cookie: jest.fn() } as unknown as Response;
 
@@ -86,7 +84,7 @@ describe('AuthController', () => {
     });
     expect(authService.refresh).toHaveBeenCalledWith('current-refresh-token');
     expect(response.cookie).toHaveBeenCalledWith(
-      REFRESH_TOKEN_COOKIE,
+      refreshTokenCookie,
       'new-refresh-token',
       expect.any(Object),
     );
@@ -95,7 +93,7 @@ describe('AuthController', () => {
   it('revokes the session and clears its refresh cookie on logout', async () => {
     authService.logout.mockResolvedValue(undefined);
     const request = {
-      cookies: { [REFRESH_TOKEN_COOKIE]: 'refresh-token' },
+      cookies: { [refreshTokenCookie]: 'refresh-token' },
     } as unknown as Request;
     const response = { clearCookie: jest.fn() } as unknown as Response;
 
@@ -103,7 +101,7 @@ describe('AuthController', () => {
 
     expect(authService.logout).toHaveBeenCalledWith('refresh-token');
     expect(response.clearCookie).toHaveBeenCalledWith(
-      REFRESH_TOKEN_COOKIE,
+      refreshTokenCookie,
       expect.objectContaining({ path: '/api/auth' }),
     );
   });
@@ -127,7 +125,7 @@ describe('AuthController', () => {
       currentSessionId,
     );
     expect(response.clearCookie).toHaveBeenCalledWith(
-      REFRESH_TOKEN_COOKIE,
+      refreshTokenCookie,
       expect.any(Object),
     );
   });
