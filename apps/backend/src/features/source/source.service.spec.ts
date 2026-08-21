@@ -2,14 +2,14 @@ import { Logger, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
-import { IngestionService } from '../ingestion/ingestion.service';
+import { SourceIngestionQueue } from '../ingestion/source-ingestion.queue';
 import { SourceService } from './source.service';
 
 jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../ingestion/ingestion.service', () => ({
-  IngestionService: class IngestionService {},
+jest.mock('../ingestion/source-ingestion.queue', () => ({
+  SourceIngestionQueue: class SourceIngestionQueue {},
 }));
 describe('SourceService', () => {
   let service: SourceService;
@@ -25,10 +25,10 @@ describe('SourceService', () => {
   const fileStorageService = {
     save: jest.fn(),
     delete: jest.fn(),
-    deleteAll: jest.fn(),
+    deleteMany: jest.fn(),
   };
-  const ingestionService = {
-    ingest: jest.fn(),
+  const sourceIngestionQueue = {
+    enqueue: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -43,7 +43,7 @@ describe('SourceService', () => {
           },
         },
         { provide: FileStorageService, useValue: fileStorageService },
-        { provide: IngestionService, useValue: ingestionService },
+        { provide: SourceIngestionQueue, useValue: sourceIngestionQueue },
       ],
     }).compile();
 
@@ -52,8 +52,9 @@ describe('SourceService', () => {
     jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     fileStorageService.save.mockResolvedValue(undefined);
     fileStorageService.delete.mockResolvedValue(undefined);
-    fileStorageService.deleteAll.mockResolvedValue(undefined);
-    ingestionService.ingest.mockResolvedValue(undefined);
+    fileStorageService.deleteMany.mockResolvedValue(undefined);
+    sourceDelegate.delete.mockResolvedValue(undefined);
+    sourceIngestionQueue.enqueue.mockResolvedValue(undefined);
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -122,7 +123,9 @@ describe('SourceService', () => {
     expect(fileStorageService.save.mock.invocationCallOrder[0]).toBeLessThan(
       sourceDelegate.create.mock.invocationCallOrder[0],
     );
-    expect(ingestionService.ingest).toHaveBeenCalledTimes(1);
+    expect(sourceIngestionQueue.enqueue).toHaveBeenCalledWith(
+      expect.any(String),
+    );
   });
 
   it('does not create metadata when storing the file fails', async () => {
@@ -135,7 +138,7 @@ describe('SourceService', () => {
     ).rejects.toBe(storageError);
 
     expect(sourceDelegate.create).not.toHaveBeenCalled();
-    expect(ingestionService.ingest).not.toHaveBeenCalled();
+    expect(sourceIngestionQueue.enqueue).not.toHaveBeenCalled();
     expect(fileStorageService.delete).toHaveBeenCalledTimes(1);
   });
 
@@ -150,10 +153,10 @@ describe('SourceService', () => {
     ).rejects.toBe(databaseError);
 
     expect(fileStorageService.delete).toHaveBeenCalledTimes(1);
-    expect(ingestionService.ingest).not.toHaveBeenCalled();
+    expect(sourceIngestionQueue.enqueue).not.toHaveBeenCalled();
   });
 
-  it('handles a rejected background ingestion task', async () => {
+  it('cleans up the source when queueing fails', async () => {
     moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
     sourceDelegate.create.mockResolvedValue({
       id: 'source-id',
@@ -163,13 +166,17 @@ describe('SourceService', () => {
       status: 'PENDING',
       moduleId: 'module-id',
     });
-    ingestionService.ingest.mockRejectedValue(new Error('ingestion failed'));
+    const queueError = new Error('redis unavailable');
+    sourceIngestionQueue.enqueue.mockRejectedValue(queueError);
 
     await expect(
       service.uploadSource('user-id', 'module-id', createFile()),
-    ).resolves.toMatchObject({ status: 'PENDING' });
+    ).rejects.toBe(queueError);
 
-    expect(ingestionService.ingest).toHaveBeenCalledTimes(1);
+    expect(sourceDelegate.delete).toHaveBeenCalledWith({
+      where: { id: expect.any(String) },
+    });
+    expect(fileStorageService.delete).toHaveBeenCalledWith(expect.any(String));
   });
 
   it('lists source only after checking module ownership', async () => {
@@ -217,9 +224,9 @@ describe('SourceService', () => {
 
     await service.remove('user-id', 'source-id');
 
-    expect(fileStorageService.deleteAll).toHaveBeenCalledWith(['storage-key']);
+    expect(fileStorageService.deleteMany).toHaveBeenCalledWith(['storage-key']);
     expect(sourceDelegate.delete.mock.invocationCallOrder[0]).toBeLessThan(
-      fileStorageService.deleteAll.mock.invocationCallOrder[0],
+      fileStorageService.deleteMany.mock.invocationCallOrder[0],
     );
   });
 });

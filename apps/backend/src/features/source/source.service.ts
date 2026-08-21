@@ -3,7 +3,7 @@ import { SourceDto } from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
-import { IngestionService } from '../ingestion/ingestion.service';
+import { SourceIngestionQueue } from '../ingestion/source-ingestion.queue';
 
 const sourceSelect = {
   id: true,
@@ -21,7 +21,7 @@ export class SourceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileStorageService: FileStorageService,
-    private readonly ingestionService: IngestionService,
+    private readonly sourceIngestionQueue: SourceIngestionQueue,
   ) {}
 
   async uploadSource(
@@ -40,6 +40,7 @@ export class SourceService {
     const sourceId = randomUUID();
 
     let uploadedMetadata: SourceDto;
+    let sourceCreated = false;
     try {
       await this.fileStorageService.save(source.buffer, sourceId);
       uploadedMetadata = await this.prisma.source.create({
@@ -53,7 +54,19 @@ export class SourceService {
         },
         select: sourceSelect,
       });
+      sourceCreated = true;
+      await this.sourceIngestionQueue.enqueue(sourceId);
     } catch (error) {
+      if (sourceCreated) {
+        await this.prisma.source
+          .delete({ where: { id: sourceId } })
+          .catch((cleanupError) => {
+            this.logger.error(
+              `Failed to clean up metadata for source "${sourceId}"`,
+              cleanupError instanceof Error ? cleanupError.stack : undefined,
+            );
+          });
+      }
       await this.fileStorageService.delete(sourceId).catch((cleanupError) => {
         this.logger.error(
           `Failed to clean up file for source "${sourceId}"`,
@@ -62,10 +75,6 @@ export class SourceService {
       });
       throw error;
     }
-    // don't wait for ingest in http call, catch undefined because ingest() handles failures itself
-    void this.ingestionService
-      .ingest(sourceId, moduleId)
-      .catch(() => undefined);
 
     return uploadedMetadata;
   }

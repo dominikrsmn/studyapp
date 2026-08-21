@@ -54,14 +54,12 @@ export class IngestionService {
     this.maxTextCharacters = config.maxTextCharacters;
   }
 
-  async ingest(sourceId: string, moduleId: string): Promise<void> {
+  async ingest(sourceId: string): Promise<void> {
+    let moduleId: string | undefined;
     try {
       const source = await this.prismaService.source.update({
         where: {
           id: sourceId,
-          module: {
-            id: moduleId,
-          },
         },
         data: {
           status: 'PROCESSING',
@@ -80,6 +78,7 @@ export class IngestionService {
           },
         },
       });
+      moduleId = source.module.id;
       let event: SourceStateChangedEvent = sourceStateChangedEventSchema.parse({
         sourceId: sourceId,
         moduleId: source.module.id,
@@ -91,6 +90,10 @@ export class IngestionService {
       if (!source.storageKey) {
         throw new NotFoundException('Source was not found');
       }
+
+      // A retry always starts from a clean slate, making chunk persistence
+      // idempotent even if a previous attempt failed between batches.
+      await this.deletePartialChunks(sourceId);
 
       const file: Buffer = await this.fileStorageService.read(
         source.storageKey,
@@ -137,7 +140,10 @@ export class IngestionService {
     }
   }
 
-  private async markFailed(sourceId: string, moduleId: string): Promise<void> {
+  private async markFailed(
+    sourceId: string,
+    moduleId: string | undefined,
+  ): Promise<void> {
     try {
       // updatemany to not throw 404 error, when source was deleted in the process
       await this.prismaService.source.updateMany({
@@ -145,17 +151,19 @@ export class IngestionService {
         data: { status: 'FAILED' },
       });
 
-      const event: SourceStateChangedEvent =
-        sourceStateChangedEventSchema.parse({
-          sourceId: sourceId,
-          moduleId: moduleId,
-          processingState: 'FAILED',
-        });
+      if (moduleId) {
+        const event: SourceStateChangedEvent =
+          sourceStateChangedEventSchema.parse({
+            sourceId: sourceId,
+            moduleId: moduleId,
+            processingState: 'FAILED',
+          });
 
-      this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
+        this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
+      }
     } catch (error) {
       this.logger.error(
-        `Failed to mark source "${sourceId}" as failed (gg)`,
+        `Failed to mark source "${sourceId}" as failed`,
         error instanceof Error ? error.stack : undefined,
       );
     }

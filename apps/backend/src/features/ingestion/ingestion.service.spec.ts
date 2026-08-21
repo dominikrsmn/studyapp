@@ -81,9 +81,7 @@ describe('IngestionService', () => {
     fileStorageService.read.mockResolvedValue(Buffer.from('pdf'));
     pdfTextExtractor.extract.mockRejectedValue(extractionError);
 
-    await expect(service.ingest(sourceId, moduleId)).rejects.toBe(
-      extractionError,
-    );
+    await expect(service.ingest(sourceId)).rejects.toBe(extractionError);
 
     expect(prismaService.source.updateMany).toHaveBeenCalledWith({
       where: { id: sourceId },
@@ -119,12 +117,10 @@ describe('IngestionService', () => {
       new Error('status update failed'),
     );
 
-    await expect(service.ingest(sourceId, moduleId)).rejects.toBe(
-      processingError,
-    );
+    await expect(service.ingest(sourceId)).rejects.toBe(processingError);
 
     expect(Logger.prototype.error).toHaveBeenCalledWith(
-      `Failed to mark source "${sourceId}" as failed (gg)`,
+      `Failed to mark source "${sourceId}" as failed`,
       expect.any(String),
     );
   });
@@ -152,8 +148,14 @@ describe('IngestionService', () => {
         })),
     );
 
-    await service.ingest(sourceId, moduleId);
+    await service.ingest(sourceId);
 
+    expect(prismaService.sourceChunk.deleteMany).toHaveBeenCalledWith({
+      where: { sourceId },
+    });
+    expect(
+      prismaService.sourceChunk.deleteMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(prismaService.$executeRaw.mock.invocationCallOrder[0]);
     expect(embeddingService.embedChunks).toHaveBeenCalledTimes(2);
     expect(embeddingService.embedChunks.mock.calls[0][1]).toHaveLength(
       BATCH_SIZE,
@@ -169,7 +171,7 @@ describe('IngestionService', () => {
       Array.from({ length: MAX_PAGES + 1 }, (_, index) => page('', index + 1)),
     );
 
-    await expect(service.ingest(sourceId, moduleId)).rejects.toBeInstanceOf(
+    await expect(service.ingest(sourceId)).rejects.toBeInstanceOf(
       PayloadTooLargeException,
     );
 
@@ -180,7 +182,7 @@ describe('IngestionService', () => {
   it('rejects PDFs over the extracted-text limit before chunking', async () => {
     arrangeDocument([page('x'.repeat(MAX_TEXT_CHARACTERS + 1))]);
 
-    await expect(service.ingest(sourceId, moduleId)).rejects.toBeInstanceOf(
+    await expect(service.ingest(sourceId)).rejects.toBeInstanceOf(
       PayloadTooLargeException,
     );
 
