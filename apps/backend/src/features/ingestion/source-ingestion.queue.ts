@@ -1,7 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
-import type { ConfigType } from '@nestjs/config';
-import type { Queue } from 'bullmq';
+import { ConfigType } from '@nestjs/config';
+import { Queue } from 'bullmq';
 import { sourceIngestionConfig } from './source-ingestion.config';
 
 export type SourceIngestionJobData = {

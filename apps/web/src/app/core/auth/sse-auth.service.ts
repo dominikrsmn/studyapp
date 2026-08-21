@@ -1,12 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import type { Subscriber } from 'rxjs';
-import { firstValueFrom, Observable } from 'rxjs';
-import type {
-  EventSourceMessage} from '@microsoft/fetch-event-source';
+import { firstValueFrom, Observable, Subscriber } from 'rxjs';
 import {
+  EventSourceMessage,
   fetchEventSource,
 } from '@microsoft/fetch-event-source';
-import type { ZodType } from 'zod';
+import { ZodType } from 'zod';
 import { AuthRefreshService } from './auth-refresh.service';
 import { AuthTokenService } from './auth-token.service';
 

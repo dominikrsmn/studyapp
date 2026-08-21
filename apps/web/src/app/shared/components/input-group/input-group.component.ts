@@ -11,7 +11,7 @@ import {
 
 import type { ClassValue } from 'clsx';
 
-import { mergeClasses } from '../../utils/merge-classes';
+import { mergeClasses } from '@study/shared/utils/merge-classes';
 
 import {
   inputGroupAddonVariants,

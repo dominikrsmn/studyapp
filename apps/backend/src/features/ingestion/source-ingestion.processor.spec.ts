@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq';
-import type { IngestionService } from './ingestion.service';
+import { IngestionService } from './ingestion.service';
 import { SourceIngestionProcessor } from './source-ingestion.processor';
 import type { SourceIngestionJobData } from './source-ingestion.queue';
 

@@ -35,8 +35,8 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import type { ClassValue } from 'clsx';
 import { filter, type Subscription } from 'rxjs';
 
-import { ZardIdDirective } from '../../core/directives/id.directive';
-import { mergeClasses } from '../../utils/merge-classes';
+import { ZardIdDirective } from '@study/shared/core';
+import { mergeClasses } from '@study/shared/utils/merge-classes';
 
 import {
   popoverDescriptionVariants,

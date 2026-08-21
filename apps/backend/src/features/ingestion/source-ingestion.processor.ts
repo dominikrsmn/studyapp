@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import type { Job } from 'bullmq';
-import type { IngestionService } from './ingestion.service';
+import { Job } from 'bullmq';
+import { IngestionService } from './ingestion.service';
 import type { SourceIngestionJobData } from './source-ingestion.queue';
 import { sourceIngestionConfig } from './source-ingestion.config';
 

@@ -1,5 +1,5 @@
-import type { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import type { EmbeddingService } from '../../ingestion/embedding/embedding.service';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { EmbeddingService } from '../../ingestion/embedding/embedding.service';
 import { SemanticSearchService } from './semantic-search.service';
 import { aiConfig } from '../ai.config';
 

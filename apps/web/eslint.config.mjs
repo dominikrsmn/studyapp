@@ -27,12 +27,8 @@ export default [
     },
   },
   {
-    files: ['**/src/app/shared/**/*.ts'],
-    rules: {
-      '@angular-eslint/component-selector': 'off',
-      '@angular-eslint/directive-selector': 'off',
-      '@nx/enforce-module-boundaries': 'off',
-      '@typescript-eslint/no-unused-vars': 'off',
-    },
+    files: ['**/*.html'],
+    // Override or add rules here
+    rules: {},
   },
 ];

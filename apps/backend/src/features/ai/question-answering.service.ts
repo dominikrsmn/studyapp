@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { QuestionAnsweringResponse } from '@study/contracts';
-import type { AnswerGenerationService } from './answer-generation.service';
-import type { SemanticSearchService } from './semantic-search/semantic-search.service';
+import { AnswerGenerationService } from './answer-generation.service';
+import { SemanticSearchService } from './semantic-search/semantic-search.service';
 
 @Injectable()
 export class QuestionAnsweringService {

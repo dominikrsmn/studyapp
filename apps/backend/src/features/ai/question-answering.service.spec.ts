@@ -1,6 +1,6 @@
-import type { AnswerGenerationService } from './answer-generation.service';
+import { AnswerGenerationService } from './answer-generation.service';
 import { QuestionAnsweringService } from './question-answering.service';
-import type { SemanticSearchService } from './semantic-search/semantic-search.service';
+import { SemanticSearchService } from './semantic-search/semantic-search.service';
 
 jest.mock('./semantic-search/semantic-search.service', () => ({
   SemanticSearchService: class SemanticSearchService {},

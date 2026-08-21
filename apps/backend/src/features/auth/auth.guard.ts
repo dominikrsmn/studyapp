@@ -1,22 +1,21 @@
-import type {
-  CanActivate,
-  ExecutionContext} from '@nestjs/common';
 import {
+  CanActivate,
   ConflictException,
+  ExecutionContext,
   Inject,
   Injectable,
 } from '@nestjs/common';
 
-import type { JwtService } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common/exceptions';
-import type { Request } from 'express';
-import type { Reflector } from '@nestjs/core';
+import { Request } from 'express';
+import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import type { AccessTokenPayload } from './auth.types';
-import type { UserService } from '../user/user.service';
+import { UserService } from '../user/user.service';
 import { CURRENT_USER_REQUIRED_KEY } from './current-user.decorator';
 import { ACTIVE_SEMESTER_REQUIRED_KEY } from './active-semester.decorator';
-import type { ConfigType } from '@nestjs/config';
+import { ConfigType } from '@nestjs/config';
 import { authConfig } from './auth.config';
 
 @Injectable()

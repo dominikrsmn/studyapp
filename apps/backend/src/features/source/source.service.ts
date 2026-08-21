@@ -1,9 +1,9 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { SourceDto } from '@study/contracts';
-import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { SourceDto } from '@study/contracts';
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
-import type { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
-import type { SourceIngestionQueue } from '../ingestion/source-ingestion.queue';
+import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
+import { SourceIngestionQueue } from '../ingestion/source-ingestion.queue';
 
 const sourceSelect = {
   id: true,

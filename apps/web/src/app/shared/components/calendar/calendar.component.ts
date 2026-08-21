@@ -17,14 +17,28 @@ import { NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
 import type { ClassValue } from 'clsx';
 import { filter, map } from 'rxjs';
 
-import { ZardCalendarGridComponent } from './calendar-grid.component';
-import { ZardCalendarNavigationComponent } from './calendar-navigation.component';
-import type { CalendarMode, CalendarValue, ZardCalendarCaptionLayout } from './calendar.types';
-import { generateCalendarDays, getSelectedDatesArray, isSameDay, makeSafeDate, normalizeCalendarValue } from './calendar.utils';
-import { calendarMonthsVariants, calendarMonthVariants, calendarVariants } from './calendar.variants';
-import { mergeClasses, noopFn } from '../../utils/merge-classes';
+import { ZardCalendarGridComponent } from '@study/shared/components/calendar/calendar-grid.component';
+import { ZardCalendarNavigationComponent } from '@study/shared/components/calendar/calendar-navigation.component';
+import type {
+  CalendarMode,
+  CalendarValue,
+  ZardCalendarCaptionLayout,
+} from '@study/shared/components/calendar/calendar.types';
+import {
+  generateCalendarDays,
+  getSelectedDatesArray,
+  isSameDay,
+  makeSafeDate,
+  normalizeCalendarValue,
+} from '@study/shared/components/calendar/calendar.utils';
+import {
+  calendarMonthsVariants,
+  calendarMonthVariants,
+  calendarVariants,
+} from '@study/shared/components/calendar/calendar.variants';
+import { mergeClasses, noopFn } from '@study/shared/utils/merge-classes';
 
-import type { ZardButtonTypeVariants } from '../button/button.variants';
+import type { ZardButtonTypeVariants } from '@study/shared/components/button/button.variants';
 
 @Component({
   selector: 'z-calendar, [z-calendar]',

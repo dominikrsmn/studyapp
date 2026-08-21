@@ -1,4 +1,4 @@
-import type { SemesterDto } from '@study/contracts';
+import { SemesterDto } from '@study/contracts';
 
 export type SemesterLabelFormat = 'short' | 'long';
 

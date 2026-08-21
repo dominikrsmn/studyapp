@@ -25,8 +25,8 @@ import {
 
 import type { ClassValue } from 'clsx';
 
-import { ZardIdDirective } from '../../core/directives/id.directive';
-import { mergeClasses, noopFn } from '../../utils/merge-classes';
+import { ZardIdDirective } from '@study/shared/core';
+import { mergeClasses, noopFn } from '@study/shared/utils/merge-classes';
 import { IconDirective } from '../../icons/icon.directive';
 
 import type { ZardDialogRef } from './dialog-ref';
@@ -37,7 +37,7 @@ import {
   dialogTitleVariants,
   dialogVariants,
 } from './dialog.variants';
-import { ZardButtonComponent } from '../button/button.component';
+import { ZardButtonComponent } from '@study/shared/components/button/button.component';
 
 export type OnClickCallback<T> = (instance: T) => false | void | object;
 export class ZardDialogOptions<T, U> {

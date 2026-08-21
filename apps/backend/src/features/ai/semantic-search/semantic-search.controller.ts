@@ -14,7 +14,7 @@ import {
 import { z } from 'zod';
 import { RequireActiveSemester } from '../../auth/active-semester.decorator';
 import type { AuthenticatedRequest } from '../../auth/authenticated-request';
-import type { SemanticSearchService } from './semantic-search.service';
+import { SemanticSearchService } from './semantic-search.service';
 
 @RequireActiveSemester()
 @Controller('module/:moduleId/search')

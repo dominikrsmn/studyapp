@@ -4,22 +4,21 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
-import type { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
-import type { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
-import type { TextChunkerService } from './text-chunker/text-chunker.service';
-import type { EmbeddingService } from './embedding/embedding.service';
+import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
+import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
+import { TextChunkerService } from './text-chunker/text-chunker.service';
+import { EmbeddingService } from './embedding/embedding.service';
 import type { PageTextResult } from 'pdf-parse';
-import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import type { Sql } from '@prisma/client/runtime/client';
 import { Prisma } from '../../infrastructure/database/generated/client';
 import { randomUUID } from 'node:crypto';
-import type { EventEmitter2 } from '@nestjs/event-emitter';
-import type {
-  SourceStateChangedEvent} from '@study/contracts';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
+  SourceStateChangedEvent,
   sourceStateChangedEventSchema,
 } from '@study/contracts';
-import type { ConfigType } from '@nestjs/config';
+import { ConfigType } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import { ingestionConfig } from './ingestion.config';
 import { sourceConfig } from '../source/source.config';

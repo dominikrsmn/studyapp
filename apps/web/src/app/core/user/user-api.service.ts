@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
-import type { Observable } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { inject, Service } from '@angular/core';
-import type { UserDto } from '@study/contracts';
+import { UserDto } from '@study/contracts';
 
 @Service()
 export class UserApiService {

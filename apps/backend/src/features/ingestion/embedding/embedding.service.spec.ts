@@ -1,5 +1,5 @@
 import { EmbeddingService } from './embedding.service';
-import type { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import { ingestionConfig } from '../ingestion.config';
 
 const BATCH_SIZE = 64;

@@ -1,6 +1,6 @@
-import type { CookieOptions } from 'express';
-import type { ConfigType } from '@nestjs/config';
-import type { authConfig } from './auth.config';
+import { CookieOptions } from 'express';
+import { ConfigType } from '@nestjs/config';
+import { authConfig } from './auth.config';
 
 function baseRefreshTokenCookieOptions(
   isProduction: boolean,

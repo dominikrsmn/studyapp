@@ -2,13 +2,12 @@ jest.mock('../user/user.service', () => ({
   UsersService: class UsersService {},
 }));
 
-import type { ExecutionContext} from '@nestjs/common';
-import { UnauthorizedException } from '@nestjs/common';
-import type { JwtService } from '@nestjs/jwt';
-import type { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { AuthGuard } from './auth.guard';
-import type { UserService } from '../user/user.service';
+import { UserService } from '../user/user.service';
 import { authConfig } from './auth.config';
 
 describe('AuthGuard', () => {

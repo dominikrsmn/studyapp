@@ -1,4 +1,4 @@
-import type { OpenAiService } from '../../infrastructure/open-ai/open-ai.service';
+import { OpenAiService } from '../../infrastructure/open-ai/open-ai.service';
 import { AnswerGenerationService } from './answer-generation.service';
 import { aiConfig } from './ai.config';
 

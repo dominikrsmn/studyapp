@@ -2,7 +2,7 @@ import { inject, Service } from '@angular/core';
 import { ZardDialogService } from '../../../shared/components/dialog';
 import { CreateModuleComponent } from './create-module.component';
 import { ModuleService } from '../module.service';
-import type { CreateModule } from '@study/contracts';
+import { CreateModule } from '@study/contracts';
 
 @Service()
 export class CreateModuleService {

@@ -1,8 +1,8 @@
 jest.mock('./auth.service', () => ({ AuthService: class AuthService {} }));
 
-import type { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthController } from './auth.controller';
-import type { AuthService } from './auth.service';
+import { AuthService } from './auth.service';
 import type { AuthenticatedRequest } from './authenticated-request';
 import { authConfig } from './auth.config';
 import { applicationConfig } from '../../infrastructure/config/application.config';

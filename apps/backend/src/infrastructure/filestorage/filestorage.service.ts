@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { mkdir, readFile, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
-import type { ConfigType } from '@nestjs/config';
+import { ConfigType } from '@nestjs/config';
 import { fileStorageConfig } from '../config/filestorage.config';
 
 @Injectable()

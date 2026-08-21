@@ -1,6 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import type { Observable} from 'rxjs';
-import { firstValueFrom, finalize, map, tap } from 'rxjs';
+import { firstValueFrom, finalize, map, Observable, tap } from 'rxjs';
 import { AuthApiService } from './auth-api.service';
 import { AuthRefreshService } from './auth-refresh.service';
 import { AuthTokenService } from './auth-token.service';

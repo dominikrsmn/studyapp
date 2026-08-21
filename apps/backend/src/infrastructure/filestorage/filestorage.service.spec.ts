@@ -1,5 +1,4 @@
-import type { TestingModule } from '@nestjs/testing';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { rm } from 'node:fs/promises';
 import { FileStorageService } from './filestorage.service';
 import { fileStorageConfig } from '../config/filestorage.config';

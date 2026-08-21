@@ -7,7 +7,8 @@ import {
   input,
   signal,
 } from '@angular/core';
-import type { SemanticSearchResult, SourceDto } from '@study/contracts';
+import { SourceDto } from '@study/contracts';
+import type { SemanticSearchResult } from '@study/contracts';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ZardAlertDialogService } from '../../../../shared/components/alert-dialog';
@@ -106,9 +107,9 @@ export default class SourcesTabComponent {
       });
 
     const events = this.sourcesService.watchStateChanges(moduleId).subscribe({
-      error: () =>
+      error: (error) =>
         this.errorMessage.set(
-          'source SSE connection failed. Please try again.',
+          'sourece SSE connection failed. Please try again.',
         ),
     });
 

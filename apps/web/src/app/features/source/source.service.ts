@@ -1,11 +1,10 @@
 import { inject, Injectable, signal } from '@angular/core';
-import type {
+import {
   CreateSource,
   SourceDto,
   SourceStateChangedEvent,
 } from '@study/contracts';
-import type { Observable} from 'rxjs';
-import { defer, firstValueFrom, tap } from 'rxjs';
+import { defer, firstValueFrom, Observable, tap } from 'rxjs';
 import { SourceApiService } from './source-api-service';
 import { SourceEventsService } from './source-events.service';
 

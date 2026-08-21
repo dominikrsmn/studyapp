@@ -1,13 +1,12 @@
-import type {
-  OnModuleDestroy,
-  OnModuleInit} from '@nestjs/common';
 import {
   Inject,
-  Injectable
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/client';
-import type { ConfigType } from '@nestjs/config';
+import { ConfigType } from '@nestjs/config';
 import { databaseConfig } from '../../config/database.config';
 
 @Injectable()

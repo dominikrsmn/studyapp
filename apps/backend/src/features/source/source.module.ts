@@ -6,8 +6,7 @@ import { FileStorageModule } from '../../infrastructure/filestorage/filestorage.
 import { IngestionModule } from '../ingestion/ingestion.module';
 import { SourceEventService } from './source-event.service';
 import { MulterModule } from '@nestjs/platform-express';
-import type { ConfigType } from '@nestjs/config';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigType } from '@nestjs/config';
 import { ingestionConfig } from '../ingestion/ingestion.config';
 import { sourceConfig } from './source.config';
 

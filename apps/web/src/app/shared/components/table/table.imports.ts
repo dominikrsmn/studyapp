@@ -1,4 +1,13 @@
-import { ZardTableComponent, ZardTableHeaderComponent, ZardTableBodyComponent, ZardTableRowComponent, ZardTableHeadComponent, ZardTableCellComponent, ZardTableCaptionComponent, ZardTableFooterComponent } from './table.component';
+import {
+  ZardTableComponent,
+  ZardTableHeaderComponent,
+  ZardTableBodyComponent,
+  ZardTableRowComponent,
+  ZardTableHeadComponent,
+  ZardTableCellComponent,
+  ZardTableCaptionComponent,
+  ZardTableFooterComponent,
+} from '@study/shared/components/table/table.component';
 
 export const ZardTableImports = [
   ZardTableComponent,

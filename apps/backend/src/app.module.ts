@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import type { ConfigType } from '@nestjs/config';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigType } from '@nestjs/config';
 import { envSchema } from './infrastructure/config/env.schema';
 import { ModuleModule } from './features/module/module.module';
 import { AuthModule } from './features/auth/auth.module';

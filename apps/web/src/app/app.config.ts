@@ -1,5 +1,5 @@
-import type { ApplicationConfig } from '@angular/core';
 import {
+  ApplicationConfig,
   inject,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
@@ -9,7 +9,7 @@ import { appRoutes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
-import { provideZard } from './shared/core';
+import { provideZard } from './shared/core/provider/providezard';
 
 export const appConfig: ApplicationConfig = {
   providers: [

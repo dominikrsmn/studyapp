@@ -2,9 +2,19 @@ import { ChangeDetectionStrategy, Component, computed, input, ViewEncapsulation 
 
 import type { ClassValue } from 'clsx';
 
-import type { ZardTableSizeVariants, ZardTableTypeVariants} from './table.variants';
-import { tableBodyVariants, tableCaptionVariants, tableCellVariants, tableFooterVariants, tableHeaderVariants, tableHeadVariants, tableRowVariants, tableVariants } from './table.variants';
-import { mergeClasses } from '../../utils/merge-classes';
+import {
+  type ZardTableSizeVariants,
+  type ZardTableTypeVariants,
+  tableBodyVariants,
+  tableCaptionVariants,
+  tableCellVariants,
+  tableFooterVariants,
+  tableHeaderVariants,
+  tableHeadVariants,
+  tableRowVariants,
+  tableVariants,
+} from '@study/shared/components/table/table.variants';
+import { mergeClasses } from '@study/shared/utils/merge-classes';
 
 @Component({
   selector: 'table[z-table]',

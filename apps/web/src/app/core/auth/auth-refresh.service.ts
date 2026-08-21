@@ -1,11 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import type {
-  Observable} from 'rxjs';
 import {
   catchError,
   finalize,
   map,
+  Observable,
   retry,
   shareReplay,
   tap,

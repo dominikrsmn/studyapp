@@ -1,10 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import type { SourceDto, SourceStateChangedEvent } from '@study/contracts';
+import { SourceDto, SourceStateChangedEvent } from '@study/contracts';
 import { of, Subject } from 'rxjs';
 import { SourceApiService } from './source-api-service';
-import type {
-  SourceEventConnectionOptions} from './source-events.service';
 import {
+  SourceEventConnectionOptions,
   SourceEventsService,
 } from './source-events.service';
 import { SourceService } from './source.service';

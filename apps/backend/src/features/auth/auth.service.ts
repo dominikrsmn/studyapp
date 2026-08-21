@@ -6,12 +6,12 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { ConfigType } from '@nestjs/config';
-import type { JwtService } from '@nestjs/jwt';
+import { ConfigType } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID } from 'node:crypto';
-import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
-import type { UserService } from '../user/user.service';
-import type {
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { UserService } from '../user/user.service';
+import {
   MagicLinkTokenPayload,
   AuthSession,
   RefreshTokenPayload,

@@ -16,10 +16,10 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import type { ConfigType } from '@nestjs/config';
-import type { Request, Response } from 'express';
+import { ConfigType } from '@nestjs/config';
+import { Request, Response } from 'express';
 import { z } from 'zod';
-import type { AuthService } from './auth.service';
+import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import {
   clearRefreshTokenCookieOptions,

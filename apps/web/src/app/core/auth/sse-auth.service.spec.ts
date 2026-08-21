@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import type {
-  EventSourceMessage} from '@microsoft/fetch-event-source';
 import {
+  EventSourceMessage,
   fetchEventSource,
 } from '@microsoft/fetch-event-source';
 import { defer, firstValueFrom, of } from 'rxjs';
