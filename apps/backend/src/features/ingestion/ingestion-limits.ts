@@ -1,4 +1,0 @@
-export const MAX_SOURCE_UPLOAD_BYTES = 10_000_000;
-export const MAX_SOURCE_PAGES = 300;
-export const MAX_SOURCE_TEXT_CHARACTERS = 2_000_000;
-export const INGESTION_BATCH_SIZE = 64;

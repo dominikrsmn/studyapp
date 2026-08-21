@@ -7,13 +7,14 @@ import { IngestionService } from './ingestion.service';
 import type { Chunk } from './ingestion.service';
 import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
 import { TextChunkerService } from './text-chunker/text-chunker.service';
-import {
-  INGESTION_BATCH_SIZE,
-  MAX_SOURCE_PAGES,
-  MAX_SOURCE_TEXT_CHARACTERS,
-} from './ingestion-limits';
 import { PayloadTooLargeException } from '@nestjs/common';
 import type { PageTextResult } from 'pdf-parse';
+import type { ConfigService } from '@nestjs/config';
+import type { Env } from '../../infrastructure/config/env.schema';
+
+const BATCH_SIZE = 64;
+const MAX_PAGES = 300;
+const MAX_TEXT_CHARACTERS = 2_000_000;
 
 jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
@@ -44,6 +45,16 @@ describe('IngestionService', () => {
   const textChunker = { chunk: jest.fn() };
   const embeddingService = { embedChunks: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
+  const config = {
+    get: jest.fn((key: keyof Env) => {
+      const values: Partial<Env> = {
+        INGESTION_BATCH_SIZE: BATCH_SIZE,
+        INGESTION_MAX_PAGES: MAX_PAGES,
+        INGESTION_MAX_TEXT_CHARACTERS: MAX_TEXT_CHARACTERS,
+      };
+      return values[key];
+    }),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -55,6 +66,7 @@ describe('IngestionService', () => {
       textChunker as unknown as TextChunkerService,
       embeddingService as unknown as EmbeddingService,
       eventEmitter as unknown as EventEmitter2,
+      config as unknown as ConfigService<Env, true>,
     );
   });
 
@@ -124,7 +136,7 @@ describe('IngestionService', () => {
 
   it('embeds and inserts chunks in bounded batches with global indexes', async () => {
     const chunkContents = Array.from(
-      { length: INGESTION_BATCH_SIZE + 1 },
+      { length: BATCH_SIZE + 1 },
       (_, index) => `chunk-${index}`,
     );
     prismaService.source.update
@@ -149,21 +161,17 @@ describe('IngestionService', () => {
 
     expect(embeddingService.embedChunks).toHaveBeenCalledTimes(2);
     expect(embeddingService.embedChunks.mock.calls[0][1]).toHaveLength(
-      INGESTION_BATCH_SIZE,
+      BATCH_SIZE,
     );
     expect(embeddingService.embedChunks.mock.calls[0][2]).toBe(0);
     expect(embeddingService.embedChunks.mock.calls[1][1]).toHaveLength(1);
-    expect(embeddingService.embedChunks.mock.calls[1][2]).toBe(
-      INGESTION_BATCH_SIZE,
-    );
+    expect(embeddingService.embedChunks.mock.calls[1][2]).toBe(BATCH_SIZE);
     expect(prismaService.$executeRaw).toHaveBeenCalledTimes(2);
   });
 
   it('rejects PDFs over the page limit before chunking', async () => {
     arrangeDocument(
-      Array.from({ length: MAX_SOURCE_PAGES + 1 }, (_, index) =>
-        page('', index + 1),
-      ),
+      Array.from({ length: MAX_PAGES + 1 }, (_, index) => page('', index + 1)),
     );
 
     await expect(service.ingest(sourceId, moduleId)).rejects.toBeInstanceOf(
@@ -175,7 +183,7 @@ describe('IngestionService', () => {
   });
 
   it('rejects PDFs over the extracted-text limit before chunking', async () => {
-    arrangeDocument([page('x'.repeat(MAX_SOURCE_TEXT_CHARACTERS + 1))]);
+    arrangeDocument([page('x'.repeat(MAX_TEXT_CHARACTERS + 1))]);
 
     await expect(service.ingest(sourceId, moduleId)).rejects.toBeInstanceOf(
       PayloadTooLargeException,

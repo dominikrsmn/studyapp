@@ -10,6 +10,11 @@ export const envSchema = z.object({
   WEB_URL: z.url().default('http://localhost:4200'),
 
   OPENAI_API_KEY: z.string(),
+
+  INGESTION_MAX_UPLOAD_BYTES: z.coerce.number().int().positive(),
+  INGESTION_MAX_PAGES: z.coerce.number().int().positive(),
+  INGESTION_MAX_TEXT_CHARACTERS: z.coerce.number().int().positive(),
+  INGESTION_BATCH_SIZE: z.coerce.number().int().positive(),
 });
 
 export type Env = z.infer<typeof envSchema>;

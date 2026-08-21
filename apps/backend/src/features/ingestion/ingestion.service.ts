@@ -18,11 +18,8 @@ import {
   SourceStateChangedEvent,
   sourceStateChangedEventSchema,
 } from '@study/contracts';
-import {
-  INGESTION_BATCH_SIZE,
-  MAX_SOURCE_PAGES,
-  MAX_SOURCE_TEXT_CHARACTERS,
-} from './ingestion-limits';
+import { ConfigService } from '@nestjs/config';
+import type { Env } from '../../infrastructure/config/env.schema';
 
 export type Chunk = {
   content: string;
@@ -36,6 +33,9 @@ export type EmbeddedChunk = Chunk & {
 @Injectable()
 export class IngestionService {
   private readonly logger = new Logger(IngestionService.name);
+  private readonly batchSize: number;
+  private readonly maxPages: number;
+  private readonly maxTextCharacters: number;
 
   constructor(
     private readonly prismaService: PrismaService,
@@ -44,7 +44,14 @@ export class IngestionService {
     private readonly textChunker: TextChunkerService,
     private readonly embeddingService: EmbeddingService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+    config: ConfigService<Env, true>,
+  ) {
+    this.batchSize = config.get('INGESTION_BATCH_SIZE', { infer: true });
+    this.maxPages = config.get('INGESTION_MAX_PAGES', { infer: true });
+    this.maxTextCharacters = config.get('INGESTION_MAX_TEXT_CHARACTERS', {
+      infer: true,
+    });
+  }
 
   async ingest(sourceId: string, moduleId: string): Promise<void> {
     try {
@@ -182,18 +189,18 @@ export class IngestionService {
   }
 
   private validateDocumentSize(pages: PageTextResult[]): void {
-    if (pages.length > MAX_SOURCE_PAGES) {
+    if (pages.length > this.maxPages) {
       throw new PayloadTooLargeException(
-        `PDF can't have more than ${MAX_SOURCE_PAGES} pages`,
+        `PDF can't have more than ${this.maxPages} pages`,
       );
     }
 
     let characterCount = 0;
     for (const page of pages) {
       characterCount += page.text.length;
-      if (characterCount > MAX_SOURCE_TEXT_CHARACTERS) {
+      if (characterCount > this.maxTextCharacters) {
         throw new PayloadTooLargeException(
-          `Extracted PDF text can't exceed ${MAX_SOURCE_TEXT_CHARACTERS} characters`,
+          `Extracted PDF text can't exceed ${this.maxTextCharacters} characters`,
         );
       }
     }
@@ -216,7 +223,7 @@ export class IngestionService {
           content,
         });
 
-        if (batch.length === INGESTION_BATCH_SIZE) {
+        if (batch.length === this.batchSize) {
           await this.embedAndPersistBatch(batch, sourceId, userId, chunkIndex);
           chunkIndex += batch.length;
           batch = [];

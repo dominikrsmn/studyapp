@@ -1,6 +1,9 @@
 import { EmbeddingService } from './embedding.service';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import { INGESTION_BATCH_SIZE } from '../ingestion-limits';
+import type { ConfigService } from '@nestjs/config';
+import type { Env } from '../../../infrastructure/config/env.schema';
+
+const BATCH_SIZE = 64;
 
 describe('EmbeddingServiceService', () => {
   let service: EmbeddingService;
@@ -9,9 +12,14 @@ describe('EmbeddingServiceService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new EmbeddingService({
-      client: { embeddings: { create: createEmbedding } },
-    } as unknown as OpenAiService);
+    service = new EmbeddingService(
+      {
+        client: { embeddings: { create: createEmbedding } },
+      } as unknown as OpenAiService,
+      {
+        get: jest.fn().mockReturnValue(BATCH_SIZE),
+      } as unknown as ConfigService<Env, true>,
+    );
   });
 
   it('should be defined', () => {
@@ -19,10 +27,10 @@ describe('EmbeddingServiceService', () => {
   });
 
   it('batches chunk embeddings and preserves global chunk indexes', async () => {
-    const chunks = Array.from(
-      { length: INGESTION_BATCH_SIZE + 1 },
-      (_, index) => ({ content: `chunk-${index}`, page: 1 }),
-    );
+    const chunks = Array.from({ length: BATCH_SIZE + 1 }, (_, index) => ({
+      content: `chunk-${index}`,
+      page: 1,
+    }));
     createEmbedding.mockImplementation(async ({ input }) => ({
       data: input.map((_content: string, index: number) => ({
         index,
@@ -37,14 +45,12 @@ describe('EmbeddingServiceService', () => {
     );
 
     expect(createEmbedding).toHaveBeenCalledTimes(2);
-    expect(createEmbedding.mock.calls[0][0].input).toHaveLength(
-      INGESTION_BATCH_SIZE,
-    );
+    expect(createEmbedding.mock.calls[0][0].input).toHaveLength(BATCH_SIZE);
     expect(createEmbedding.mock.calls[1][0].input).toEqual([
-      `chunk-${INGESTION_BATCH_SIZE}`,
+      `chunk-${BATCH_SIZE}`,
     ]);
-    expect(result).toHaveLength(INGESTION_BATCH_SIZE + 1);
+    expect(result).toHaveLength(BATCH_SIZE + 1);
     expect(result[0].index).toBe(10);
-    expect(result[result.length - 1].index).toBe(10 + INGESTION_BATCH_SIZE);
+    expect(result[result.length - 1].index).toBe(10 + BATCH_SIZE);
   });
 });

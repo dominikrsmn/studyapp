@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import type { Chunk, EmbeddedChunk } from '../ingestion.service';
 import { CreateEmbeddingResponse } from 'openai/resources/embeddings';
-import { INGESTION_BATCH_SIZE } from '../ingestion-limits';
+import { ConfigService } from '@nestjs/config';
+import type { Env } from '../../../infrastructure/config/env.schema';
 
 type SourceIdWithUserId = {
   id: string;
@@ -11,7 +12,14 @@ type SourceIdWithUserId = {
 
 @Injectable()
 export class EmbeddingService {
-  constructor(private readonly openAIService: OpenAiService) {}
+  private readonly batchSize: number;
+
+  constructor(
+    private readonly openAIService: OpenAiService,
+    config: ConfigService<Env, true>,
+  ) {
+    this.batchSize = config.get('INGESTION_BATCH_SIZE', { infer: true });
+  }
 
   async embedChunks(
     source: SourceIdWithUserId,
@@ -20,12 +28,8 @@ export class EmbeddingService {
   ): Promise<EmbeddedChunk[]> {
     const embeddedChunks: EmbeddedChunk[] = [];
 
-    for (
-      let offset = 0;
-      offset < chunks.length;
-      offset += INGESTION_BATCH_SIZE
-    ) {
-      const batch = chunks.slice(offset, offset + INGESTION_BATCH_SIZE);
+    for (let offset = 0; offset < chunks.length; offset += this.batchSize) {
+      const batch = chunks.slice(offset, offset + this.batchSize);
       const response = await this.openAIService.client.embeddings.create({
         input: batch.map((chunk) => chunk.content),
         model: 'text-embedding-3-small',
