@@ -27,6 +27,7 @@ export class SemanticSearchService {
       INNER JOIN "Semester" AS semester ON semester."id" = module."semesterId"
       WHERE semester."userId" = ${userId}
         AND module."id" = ${moduleId}
+        AND source."status" = 'READY'
         AND chunk."embedding" IS NOT NULL
       ORDER BY chunk."embedding" <=> ${vector}::vector
       LIMIT ${topK}
