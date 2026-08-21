@@ -4,7 +4,9 @@ import { IngestionService } from './ingestion.service';
 import type { SourceIngestionJobData } from './source-ingestion.queue';
 import { sourceIngestionConfig } from './source-ingestion.config';
 
-@Processor(sourceIngestionConfig().queueName)
+@Processor(sourceIngestionConfig().queueName, {
+  concurrency: sourceIngestionConfig().concurrency,
+})
 export class SourceIngestionProcessor extends WorkerHost {
   constructor(private readonly ingestionService: IngestionService) {
     super();
