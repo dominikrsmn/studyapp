@@ -2,12 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { CreateSemester, SemesterDto } from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { Semester } from '../../infrastructure/database/generated/client';
+import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 
 const semesterSelect = { id: true, startDate: true, endDate: true } as const;
 
 @Injectable()
 export class SemesterService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
   async create(userId: string, input: CreateSemester): Promise<SemesterDto> {
     const semester = await this.prisma.semester.create({
@@ -33,12 +37,12 @@ export class SemesterService {
   async findOne(userId: string, id: string): Promise<SemesterDto> {
     const semester = await this.prisma.semester.findUnique({
       where: { userId, id },
-      select: semesterSelect
-      });
+      select: semesterSelect,
+    });
     if (!semester) {
       throw new NotFoundException(`Semester with id "${id}" was not found`);
     }
-    return this.toDto(semester)
+    return this.toDto(semester);
   }
 
   async remove(userId: string, id: string): Promise<SemesterDto> {
@@ -49,7 +53,14 @@ export class SemesterService {
     if (!semester) {
       throw new NotFoundException(`Semester with id "${id}" was not found`);
     }
+    const sources = await this.prisma.source.findMany({
+      where: { module: { semesterId: id } },
+      select: { storageKey: true },
+    });
     await this.prisma.semester.delete({ where: { id } });
+    await this.fileStorageService.deleteMany(
+      sources.flatMap(({ storageKey }) => (storageKey ? [storageKey] : [])),
+    );
     return this.toDto(semester);
   }
 
@@ -68,10 +79,10 @@ export class SemesterService {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        activeSemesterId: id
-      }
-    })
-    return this.toDto(semester)
+        activeSemesterId: id,
+      },
+    });
+    return this.toDto(semester);
   }
 
   private toDto(semester: {

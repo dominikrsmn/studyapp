@@ -1,8 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SourceDto } from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
-import { join } from 'node:path';
-import { unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { IngestionService } from '../ingestion/ingestion.service';
@@ -94,9 +92,7 @@ export class SourceService {
       select: sourceSelect,
     });
     if (source.storageKey) {
-      await unlink(join(process.cwd(), 'uploads', source.storageKey)).catch(
-        () => undefined,
-      );
+      await this.fileStorageService.deleteMany([source.storageKey]);
     }
     return deletedSource;
   }

@@ -11,12 +11,6 @@ jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
 jest.mock('../ingestion/ingestion.service', () => ({
   IngestionService: class IngestionService {},
 }));
-jest.mock('node:fs/promises', () => ({
-  mkdir: jest.fn(),
-  unlink: jest.fn(),
-  writeFile: jest.fn(),
-}));
-
 describe('SourceService', () => {
   let service: SourceService;
   const moduleDelegate = {
@@ -31,6 +25,7 @@ describe('SourceService', () => {
   const fileStorageService = {
     save: jest.fn(),
     delete: jest.fn(),
+    deleteAll: jest.fn(),
   };
   const ingestionService = {
     ingest: jest.fn(),
@@ -57,6 +52,7 @@ describe('SourceService', () => {
     jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     fileStorageService.save.mockResolvedValue(undefined);
     fileStorageService.delete.mockResolvedValue(undefined);
+    fileStorageService.deleteAll.mockResolvedValue(undefined);
     ingestionService.ingest.mockResolvedValue(undefined);
   });
 
@@ -198,6 +194,33 @@ describe('SourceService', () => {
       NotFoundException,
     );
     expect(sourceDelegate.delete).not.toHaveBeenCalled();
+  });
+
+  it('deletes source storage through FileStorageService', async () => {
+    sourceDelegate.findFirst.mockResolvedValue({
+      id: 'source-id',
+      name: 'notes.pdf',
+      type: 'DOCUMENT',
+      mimeType: 'application/pdf',
+      status: 'READY',
+      moduleId: 'module-id',
+      storageKey: 'storage-key',
+    });
+    sourceDelegate.delete.mockResolvedValue({
+      id: 'source-id',
+      name: 'notes.pdf',
+      type: 'DOCUMENT',
+      mimeType: 'application/pdf',
+      status: 'READY',
+      moduleId: 'module-id',
+    });
+
+    await service.remove('user-id', 'source-id');
+
+    expect(fileStorageService.deleteAll).toHaveBeenCalledWith(['storage-key']);
+    expect(sourceDelegate.delete.mock.invocationCallOrder[0]).toBeLessThan(
+      fileStorageService.deleteAll.mock.invocationCallOrder[0],
+    );
   });
 });
 

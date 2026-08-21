@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 
 @Injectable()
@@ -14,7 +14,15 @@ export class FileStorageService {
   }
 
   async delete(key: string): Promise<void> {
-    return await unlink(this.filePath(key));
+    await this.deleteMany([key]);
+  }
+
+  async deleteMany(keys: readonly string[]): Promise<void> {
+    await Promise.all(
+      keys.map((key) =>
+        rm(this.fileDir(key), { recursive: true, force: true }),
+      ),
+    );
   }
 
   private fileDir(key: string) {

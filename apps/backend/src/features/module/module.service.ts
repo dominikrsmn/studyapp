@@ -7,10 +7,14 @@ import {
 } from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { Module } from '../../infrastructure/database/generated/client';
+import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 
 @Injectable()
 export class ModuleService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
   async create(
     semesterId: string,
@@ -78,13 +82,18 @@ export class ModuleService {
   }
 
   async remove(semesterId: string, id: string): Promise<ModuleDto> {
-    await this.findOne(semesterId, id);
+    const module = await this.findOne(semesterId, id);
+    const sources = await this.prisma.source.findMany({
+      where: { moduleId: id },
+      select: { storageKey: true },
+    });
 
-    return this.toDto(
-      await this.prisma.module.delete({
-        where: { id },
-      }),
+    await this.prisma.module.delete({ where: { id } });
+    await this.fileStorageService.deleteMany(
+      sources.flatMap(({ storageKey }) => (storageKey ? [storageKey] : [])),
     );
+
+    return module;
   }
 
   private toDto(module: Module): ModuleDto {
