@@ -14,8 +14,8 @@ import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 import type { ClassValue } from 'clsx';
 
-import { ZardInputGroupComponent } from '@study/shared/components/input-group';
-import { mergeClasses, noopFn } from '@study/shared/utils/merge-classes';
+import { ZardInputGroupComponent } from '../input-group/input-group.component';
+import { mergeClasses, noopFn } from '../../utils/merge-classes';
 
 import { inputGroupInputVariants, inputVariants } from './input.variants';
 

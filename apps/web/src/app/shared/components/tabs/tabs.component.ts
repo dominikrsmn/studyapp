@@ -1,11 +1,12 @@
 import { NgTemplateOutlet } from '@angular/common';
+import type {
+  ElementRef} from '@angular/core';
 import {
   booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
   contentChildren,
-  ElementRef,
   effect,
   input,
   output,

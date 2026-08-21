@@ -1,8 +1,10 @@
-import { Injectable, MessageEvent, NotFoundException } from '@nestjs/common';
+import type { MessageEvent} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { SourceStateChangedEvent } from '@study/contracts';
-import { filter, from, map, Observable, Subject, switchMap } from 'rxjs';
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import type { SourceStateChangedEvent } from '@study/contracts';
+import type { Observable} from 'rxjs';
+import { filter, from, map, Subject, switchMap } from 'rxjs';
+import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { sourceConfig } from './source.config';
 
 @Injectable()

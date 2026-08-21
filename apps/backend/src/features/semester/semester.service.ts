@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { CreateSemester, SemesterDto } from '@study/contracts';
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
-import { Semester } from '../../infrastructure/database/generated/client';
-import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
+import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import type { Semester } from '../../infrastructure/database/generated/client';
+import type { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 
 const semesterSelect = { id: true, startDate: true, endDate: true } as const;
 

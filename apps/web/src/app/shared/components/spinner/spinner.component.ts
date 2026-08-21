@@ -9,8 +9,8 @@ import {
 
 import type { ClassValue } from 'clsx';
 
-import { ZardStringTemplateOutletDirective } from '@study/shared/core/directives/string-template-outlet/string-template-outlet.directive';
-import { mergeClasses } from '@study/shared/utils/merge-classes';
+import { ZardStringTemplateOutletDirective } from '../../core/directives/string-template-outlet/string-template-outlet.directive';
+import { mergeClasses } from '../../utils/merge-classes';
 
 @Component({
   selector: 'z-spinner',

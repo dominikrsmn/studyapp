@@ -1,12 +1,13 @@
-import {
+import type {
   CanActivate,
-  ExecutionContext,
+  ExecutionContext} from '@nestjs/common';
+import {
   ForbiddenException,
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
-import { Request } from 'express';
+import type { ConfigType } from '@nestjs/config';
+import type { Request } from 'express';
 import { authConfig } from './auth.config';
 
 @Injectable()

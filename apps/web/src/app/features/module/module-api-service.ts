@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { CreateModule, ModuleDto, UpdateModule } from '@study/contracts';
-import { Observable } from 'rxjs';
+import type { CreateModule, ModuleDto, UpdateModule } from '@study/contracts';
+import type { Observable } from 'rxjs';
 
 @Service()
 export class ModuleApiService {

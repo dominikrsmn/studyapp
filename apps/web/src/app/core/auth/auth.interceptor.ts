@@ -1,7 +1,8 @@
-import {
-  HttpErrorResponse,
+import type {
   HttpInterceptorFn,
-  HttpRequest,
+  HttpRequest} from '@angular/common/http';
+import {
+  HttpErrorResponse
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';

@@ -6,7 +6,8 @@ import {
   inject,
   input,
 } from '@angular/core';
-import feather, { FeatherIcon, FeatherIconNames } from 'feather-icons';
+import type { FeatherIcon, FeatherIconNames } from 'feather-icons';
+import feather from 'feather-icons';
 
 
 @Directive({

@@ -1,5 +1,6 @@
+import type {
+  AfterViewInit} from '@angular/core';
 import {
-  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   inject,
@@ -10,13 +11,14 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { FeatherIconNames } from 'feather-icons';
+import type { FeatherIconNames } from 'feather-icons';
 
-import {
+import type {
   CreateModule,
+  ModuleDto} from '@study/contracts';
+import {
   dateOnlyToDate,
-  dateToDateOnly,
-  ModuleDto,
+  dateToDateOnly
 } from '@study/contracts';
 import { ZardDatePickerComponent } from '../../../shared/components/date-picker';
 import { ZardInputComponent } from '../../../shared/components/input';

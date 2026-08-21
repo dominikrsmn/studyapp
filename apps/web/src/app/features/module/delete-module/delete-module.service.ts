@@ -18,7 +18,7 @@ export class DeleteModuleService {
       zCancelText: 'Cancel',
       zOkDestructive: true,
       zOnOk: () => {
-        this.moduleService.delete(id).subscribe((value) => {
+        this.moduleService.delete(id).subscribe(() => {
           this.routerService.navigate(['workspace']);
         });
         return;

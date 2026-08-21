@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+import type { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import type { Chunk, EmbeddedChunk } from '../ingestion.service';
-import { CreateEmbeddingResponse } from 'openai/resources/embeddings';
-import { ConfigType } from '@nestjs/config';
+import type { CreateEmbeddingResponse } from 'openai/resources/embeddings';
+import type { ConfigType } from '@nestjs/config';
 import { ingestionConfig } from '../ingestion.config';
 
 type SourceIdWithUserId = {

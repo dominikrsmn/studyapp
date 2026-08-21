@@ -16,9 +16,9 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { SourceDto } from '@study/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { SourceService } from './source.service';
+import type { SourceService } from './source.service';
 import { RequireActiveSemester } from '../auth/active-semester.decorator';
-import { SourceEventService } from './source-event.service';
+import type { SourceEventService } from './source-event.service';
 import { sourceConfig } from './source.config';
 
 @RequireActiveSemester()

@@ -8,7 +8,7 @@ import {
 import { NavigationItemComponent } from './navigation-item/navigation-item.component';
 import type { NavigationItem } from './navigation.models';
 import { NavigationSectionComponent } from './navigation-section.component';
-import { ModuleDto } from '@study/contracts';
+import type { ModuleDto } from '@study/contracts';
 import { UserService } from '../../user/user.service';
 import { SemesterService } from '../../../features/semester/semester.service';
 import { formatSemesterLabel } from '../../../features/semester/semester.label';

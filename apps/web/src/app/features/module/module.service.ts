@@ -1,6 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
-import { CreateModule, ModuleDto, UpdateModule } from '@study/contracts';
+import type { Observable} from 'rxjs';
+import { tap } from 'rxjs';
+import type { CreateModule, ModuleDto, UpdateModule } from '@study/contracts';
 import { ModuleApiService } from './module-api-service';
 
 @Injectable({

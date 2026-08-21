@@ -6,13 +6,7 @@ export {
   ZardPopoverTitleComponent,
 } from '@study/shared/components/popover/popover.component';
 
-import {
-  ZardPopoverComponent,
-  ZardPopoverDescriptionComponent,
-  ZardPopoverDirective,
-  ZardPopoverHeaderComponent,
-  ZardPopoverTitleComponent,
-} from '@study/shared/components/popover/popover.component';
+import { ZardPopoverComponent, ZardPopoverDescriptionComponent, ZardPopoverDirective, ZardPopoverHeaderComponent, ZardPopoverTitleComponent } from './popover.component';
 
 export const ZardPopoverImports = [
   ZardPopoverDirective,

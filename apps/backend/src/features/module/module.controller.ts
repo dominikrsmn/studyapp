@@ -8,18 +8,11 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  Req,
 } from '@nestjs/common';
-import { ModuleService } from './module.service';
-import {
-  createModuleSchema,
-  ModuleDto,
-  updateModuleSchema,
-} from '@study/contracts';
+import type { ModuleService } from './module.service';
+import type { ModuleDto } from '@study/contracts';
+import { createModuleSchema, updateModuleSchema } from '@study/contracts';
 import { z } from 'zod';
-import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { CurrentUser } from '../auth/current-user.decorator';
-import { User } from '../../infrastructure/database/generated/client';
 import {
   ActiveSemesterId,
   RequireActiveSemester,
@@ -32,8 +25,6 @@ export class ModuleController {
 
   @Post()
   async create(
-    @Req() request: AuthenticatedRequest,
-    @CurrentUser() user: User,
     @ActiveSemesterId() semesterId: string,
     @Body() body: unknown,
   ): Promise<ModuleDto> {
@@ -47,17 +38,12 @@ export class ModuleController {
   }
 
   @Get()
-  async findAll(
-    @Req() request: AuthenticatedRequest,
-    @ActiveSemesterId() semesterId: string,
-    @CurrentUser() user: User,
-  ): Promise<ModuleDto[]> {
+  async findAll(@ActiveSemesterId() semesterId: string): Promise<ModuleDto[]> {
     return this.moduleService.findAll(semesterId);
   }
 
   @Get(':id')
   async findOne(
-    @Req() request: AuthenticatedRequest,
     @ActiveSemesterId() semesterId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ModuleDto> {
@@ -66,7 +52,6 @@ export class ModuleController {
 
   @Patch(':id')
   async update(
-    @Req() request: AuthenticatedRequest,
     @ActiveSemesterId() semesterId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
@@ -82,7 +67,6 @@ export class ModuleController {
 
   @Delete(':id')
   async remove(
-    @Req() request: AuthenticatedRequest,
     @ActiveSemesterId() semesterId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ModuleDto> {

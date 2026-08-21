@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { SemanticSearchResult } from '@study/contracts';
-import { OpenAiService } from '../../infrastructure/open-ai/open-ai.service';
-import { ConfigType } from '@nestjs/config';
+import type { OpenAiService } from '../../infrastructure/open-ai/open-ai.service';
+import type { ConfigType } from '@nestjs/config';
 import { aiConfig } from './ai.config';
 
 @Injectable()

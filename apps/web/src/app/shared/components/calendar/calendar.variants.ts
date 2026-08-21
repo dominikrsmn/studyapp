@@ -1,6 +1,6 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 
-import { mergeClasses } from '@study/shared/utils/merge-classes';
+import { mergeClasses } from '../../utils/merge-classes';
 
 /**
  * Every measurement of the calendar derives from two CSS variables declared on the root:

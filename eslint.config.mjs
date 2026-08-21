@@ -53,6 +53,8 @@ export default [
       '**/*.mjs',
     ],
     // Override or add rules here
-    rules: {},
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'error',
+    },
   },
 ];

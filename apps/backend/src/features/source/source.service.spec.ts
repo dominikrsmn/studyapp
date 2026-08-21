@@ -1,5 +1,6 @@
 import { Logger, NotFoundException } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { SourceIngestionQueue } from '../ingestion/source-ingestion.queue';

@@ -1,6 +1,6 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 
-import type { ZardButtonSizeVariants } from '@study/shared/components/button/button.variants';
+import type { ZardButtonSizeVariants } from '../button/button.variants';
 
 /**
  * Host wrapper. The width lives here — the trigger is `w-full` — so a single

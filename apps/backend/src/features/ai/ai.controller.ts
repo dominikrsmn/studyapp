@@ -14,7 +14,7 @@ import {
 import { z } from 'zod';
 import { RequireActiveSemester } from '../auth/active-semester.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { QuestionAnsweringService } from './question-answering.service';
+import type { QuestionAnsweringService } from './question-answering.service';
 
 @RequireActiveSemester()
 @Controller('module/:moduleId/ai')

@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourcesController } from './source.controller';
 import { SourceEventService } from './source-event.service';

@@ -1,13 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import {
+import type {
   CreateModule,
-  dateOnly,
   ModuleDto,
-  UpdateModule,
+  UpdateModule} from '@study/contracts';
+import {
+  dateOnly
 } from '@study/contracts';
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
-import { Module } from '../../infrastructure/database/generated/client';
-import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
+import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import type { Module } from '../../infrastructure/database/generated/client';
+import type { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 
 @Injectable()
 export class ModuleService {

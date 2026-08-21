@@ -7,7 +7,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import feather, { FeatherIconNames } from 'feather-icons';
+import type { FeatherIconNames } from 'feather-icons';
+import feather from 'feather-icons';
 
 import { ZardButtonComponent } from '../button';
 import { ZardInputComponent } from '../input';

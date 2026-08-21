@@ -18,29 +18,16 @@ import { NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
 
 import type { ClassValue } from 'clsx';
 
-import {
-  ZardButtonComponent,
-  type ZardButtonTypeVariants,
-} from '@study/shared/components/button';
-import { ZardCalendarComponent } from '@study/shared/components/calendar';
-import type {
-  CalendarMode,
-  CalendarValue,
-  ZardCalendarCaptionLayout,
-} from '@study/shared/components/calendar/calendar.types';
-import { normalizeCalendarValue } from '@study/shared/components/calendar/calendar.utils';
-import {
-  datePickerTriggerVariants,
-  datePickerVariants,
-  type ZardDatePickerIconVariants,
-  type ZardDatePickerSizeVariants,
-} from '@study/shared/components/date-picker/date-picker.variants';
-import {
-  ZardPopoverComponent,
-  ZardPopoverDirective,
-  type ZardPopoverAlign,
-} from '@study/shared/components/popover';
-import { mergeClasses, noopFn } from '@study/shared/utils/merge-classes';
+import { ZardButtonComponent } from '../button/button.component';
+import type { ZardButtonTypeVariants } from '../button/button.variants';
+import { ZardCalendarComponent } from '../calendar/calendar.component';
+import type { CalendarMode, CalendarValue, ZardCalendarCaptionLayout } from '../calendar/calendar.types';
+import { normalizeCalendarValue } from '../calendar/calendar.utils';
+import type { ZardDatePickerIconVariants, ZardDatePickerSizeVariants } from './date-picker.variants';
+import { datePickerTriggerVariants, datePickerVariants } from './date-picker.variants';
+import type { ZardPopoverAlign } from '../popover/popover.component';
+import { ZardPopoverComponent, ZardPopoverDirective } from '../popover/popover.component';
+import { mergeClasses, noopFn } from '../../utils/merge-classes';
 import { IconDirective } from '../../icons/icon.directive';
 
 /** Separates the two ends of a range in the trigger label. */

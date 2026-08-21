@@ -9,21 +9,23 @@ import {
 } from '@nestjs/common';
 import { type SemesterDto } from '@study/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
-import { SemesterService } from './semester.service';
+import type { SemesterService } from './semester.service';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { User } from '../../infrastructure/database/generated/client';
+import type { User } from '../../infrastructure/database/generated/client';
 
 @Controller('active-semester')
 export class ActiveSemestersController {
   constructor(private readonly semestersService: SemesterService) {}
 
-
   @Get()
-  getActiveSemester(@Req() request: AuthenticatedRequest, @CurrentUser() user: User): Promise<SemesterDto> {
-    if(!user.activeSemesterId) {
+  getActiveSemester(
+    @Req() request: AuthenticatedRequest,
+    @CurrentUser() user: User,
+  ): Promise<SemesterDto> {
+    if (!user.activeSemesterId) {
       throw new NotFoundException('No active semester is set');
     }
-    return this.semestersService.findOne(request.userId, user.activeSemesterId)
+    return this.semestersService.findOne(request.userId, user.activeSemesterId);
   }
 
   @Put(':id')

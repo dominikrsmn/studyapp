@@ -8,12 +8,9 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 
-import type { ZardCalendarCaptionLayout } from '@study/shared/components/calendar/calendar.types';
-import {
-  calendarMonths,
-  calendarMonthsLong,
-} from '@study/shared/components/calendar/calendar.utils';
-import { mergeClasses } from '@study/shared/utils/merge-classes';
+import type { ZardCalendarCaptionLayout } from './calendar.types';
+import { calendarMonths, calendarMonthsLong } from './calendar.utils';
+import { mergeClasses } from '../../utils/merge-classes';
 import { IconDirective } from '../../icons/icon.directive';
 
 import {
@@ -26,8 +23,8 @@ import {
   calendarNavSpacerVariants,
   calendarNavVariants,
 } from './calendar.variants';
-import { ZardButtonComponent } from '@study/shared/components/button/button.component';
-import type { ZardButtonTypeVariants } from '@study/shared/components/button/button.variants';
+import { ZardButtonComponent } from '../button/button.component';
+import type { ZardButtonTypeVariants } from '../button/button.variants';
 
 @Component({
   selector: 'z-calendar-navigation',

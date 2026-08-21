@@ -4,7 +4,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { SourceDto } from '@study/contracts';
+import type { SourceDto } from '@study/contracts';
 import { environment } from '../../../environments/environment';
 
 import { SourceApiService } from './source-api-service';

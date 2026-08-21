@@ -1,4 +1,4 @@
-import { Route } from '@angular/router';
+import type { Route } from '@angular/router';
 import { authGuard } from './core/auth/guards/auth.guard';
 import { MagicLinkVerificationComponent } from './core/auth/login/magic-link-verification.component';
 import { LayoutComponent } from './core/layout/layout.component';

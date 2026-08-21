@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import {
+import type {
   ActivatedRouteSnapshot,
+  RouterStateSnapshot} from '@angular/router';
+import {
   provideRouter,
   Router,
-  RouterStateSnapshot,
   UrlTree,
 } from '@angular/router';
 import { AuthTokenService } from '../auth-token.service';

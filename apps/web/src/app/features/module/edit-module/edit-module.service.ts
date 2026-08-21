@@ -1,7 +1,7 @@
 import { inject, Service } from '@angular/core';
 import { ZardDialogService } from '../../../shared/components/dialog';
 import { EditModuleComponent } from './edit-module.component';
-import { ModuleDto } from '@study/contracts';
+import type { ModuleDto } from '@study/contracts';
 import { ModuleService } from '../module.service';
 
 @Service()

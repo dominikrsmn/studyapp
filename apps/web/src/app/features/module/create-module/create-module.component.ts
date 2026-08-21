@@ -5,9 +5,10 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { FeatherIconNames } from 'feather-icons';
+import type { FeatherIconNames } from 'feather-icons';
 
-import { CreateModule, dateToDateOnly } from '@study/contracts';
+import type { CreateModule} from '@study/contracts';
+import { dateToDateOnly } from '@study/contracts';
 import { ZardDatePickerComponent } from '../../../shared/components/date-picker';
 import { ZardInputComponent } from '../../../shared/components/input';
 import { IconPickerComponent } from '../../../shared/components/icon-picker/icon-picker.component';

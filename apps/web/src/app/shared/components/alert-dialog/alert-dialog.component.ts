@@ -27,8 +27,8 @@ import {
 
 import type { ClassValue } from 'clsx';
 
-import { ZardIdDirective } from '@study/shared/core';
-import { mergeClasses, noopFn } from '@study/shared/utils/merge-classes';
+import { ZardIdDirective } from '../../core';
+import { mergeClasses, noopFn } from '../../utils';
 
 import type { ZardAlertDialogRef } from './alert-dialog-ref';
 import { ZardAlertDialogService } from './alert-dialog.service';
@@ -41,7 +41,7 @@ import {
   alertDialogVariants,
   type ZardAlertDialogSizeVariants,
 } from './alert-dialog.variants';
-import { ZardButtonComponent } from '@study/shared/components/button/button.component';
+import { ZardButtonComponent } from '../button';
 
 export type OnClickCallback<T> = (instance: T) => false | void | object;
 
@@ -77,7 +77,14 @@ export class ZardAlertDialogOptions<T> {
 
 @Component({
   selector: 'z-alert-dialog',
-  imports: [A11yModule, NgTemplateOutlet, OverlayModule, PortalModule, ZardButtonComponent, ZardIdDirective],
+  imports: [
+    A11yModule,
+    NgTemplateOutlet,
+    OverlayModule,
+    PortalModule,
+    ZardButtonComponent,
+    ZardIdDirective,
+  ],
   template: `
     <ng-container zardId="z-alert-dialog" #idRef="zardId">
       @if (config.zMedia || config.zTitle || config.zDescription) {
@@ -117,13 +124,22 @@ export class ZardAlertDialogOptions<T> {
 
         @if (isStringContent()) {
           <!-- Angular auto-sanitizes [innerHTML] by default; scripts/event handlers are stripped. -->
-          <div data-testid="z-alert-content" [innerHTML]="config.zContent"></div>
+          <div
+            data-testid="z-alert-content"
+            [innerHTML]="config.zContent"
+          ></div>
         }
       </main>
 
       <footer [class]="footerClasses()" data-slot="alert-dialog-footer">
         @if (config.zCancelText !== null) {
-          <button type="button" data-testid="z-alert-cancel-button" z-button zType="outline" (click)="onCancelClick()">
+          <button
+            type="button"
+            data-testid="z-alert-cancel-button"
+            z-button
+            zType="outline"
+            (click)="onCancelClick()"
+          >
             {{ config.zCancelText || 'Cancel' }}
           </button>
         }
@@ -189,18 +205,35 @@ export class ZardAlertDialogComponent<T> extends BasePortalOutlet {
   protected readonly config = inject(ZardAlertDialogOptions<T>);
   private readonly idRef = viewChild.required<ZardIdDirective>('idRef');
 
-  protected readonly size = computed<ZardAlertDialogSizeVariants>(() => this.config.zSize ?? 'default');
+  protected readonly size = computed<ZardAlertDialogSizeVariants>(
+    () => this.config.zSize ?? 'default',
+  );
   protected readonly classes = computed(() =>
-    mergeClasses(alertDialogVariants({ zSize: this.size() }), this.config.zCustomClasses),
+    mergeClasses(
+      alertDialogVariants({ zSize: this.size() }),
+      this.config.zCustomClasses,
+    ),
   );
 
-  protected readonly headerClasses = computed(() => alertDialogHeaderVariants());
+  protected readonly headerClasses = computed(() =>
+    alertDialogHeaderVariants(),
+  );
   protected readonly titleClasses = computed(() => alertDialogTitleVariants());
-  protected readonly descriptionClasses = computed(() => alertDialogDescriptionVariants());
-  protected readonly footerClasses = computed(() => alertDialogFooterVariants());
-  protected readonly mediaClasses = computed(() => mergeClasses(alertDialogMediaVariants(), this.config.zMediaClass));
-  protected readonly isStringContent = computed(() => typeof this.config.zContent === 'string');
-  protected readonly titleId = computed(() => (this.config.zTitle ? `${this.idRef().id()}-title` : null));
+  protected readonly descriptionClasses = computed(() =>
+    alertDialogDescriptionVariants(),
+  );
+  protected readonly footerClasses = computed(() =>
+    alertDialogFooterVariants(),
+  );
+  protected readonly mediaClasses = computed(() =>
+    mergeClasses(alertDialogMediaVariants(), this.config.zMediaClass),
+  );
+  protected readonly isStringContent = computed(
+    () => typeof this.config.zContent === 'string',
+  );
+  protected readonly titleId = computed(() =>
+    this.config.zTitle ? `${this.idRef().id()}-title` : null,
+  );
   protected readonly descriptionId = computed(() =>
     this.config.zDescription ? `${this.idRef().id()}-description` : null,
   );
@@ -222,14 +255,18 @@ export class ZardAlertDialogComponent<T> extends BasePortalOutlet {
 
   attachComponentPortal<C>(portal: ComponentPortal<C>): ComponentRef<C> {
     if (this.portalOutlet().hasAttached()) {
-      throw new Error('Attempting to attach alert dialog content after content is already attached');
+      throw new Error(
+        'Attempting to attach alert dialog content after content is already attached',
+      );
     }
     return this.portalOutlet().attachComponentPortal(portal);
   }
 
   attachTemplatePortal<C>(portal: TemplatePortal<C>): EmbeddedViewRef<C> {
     if (this.portalOutlet().hasAttached()) {
-      throw new Error('Attempting to attach alert dialog content after content is already attached');
+      throw new Error(
+        'Attempting to attach alert dialog content after content is already attached',
+      );
     }
     return this.portalOutlet().attachTemplatePortal(portal);
   }
@@ -244,7 +281,13 @@ export class ZardAlertDialogComponent<T> extends BasePortalOutlet {
 }
 
 @NgModule({
-  imports: [ZardButtonComponent, ZardAlertDialogComponent, OverlayModule, PortalModule, A11yModule],
+  imports: [
+    ZardButtonComponent,
+    ZardAlertDialogComponent,
+    OverlayModule,
+    PortalModule,
+    A11yModule,
+  ],
   providers: [ZardAlertDialogService],
 })
 export class ZardAlertDialogModule {}

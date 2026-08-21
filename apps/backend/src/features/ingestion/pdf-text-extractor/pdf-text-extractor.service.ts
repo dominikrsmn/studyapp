@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PageTextResult, PDFParse } from 'pdf-parse';
+import type { PageTextResult} from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 
 @Injectable()
 export class PdfTextExtractorService {

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
-import { AccessTokenResponse, AuthApiService } from './auth-api.service';
+import type { AccessTokenResponse} from './auth-api.service';
+import { AuthApiService } from './auth-api.service';
 import { AuthRefreshService } from './auth-refresh.service';
 import { AuthTokenService } from './auth-token.service';
 

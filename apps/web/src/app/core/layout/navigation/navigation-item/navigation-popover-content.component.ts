@@ -5,7 +5,7 @@ import {
   input,
 } from '@angular/core';
 
-import { NavigationItem } from '../navigation.models';
+import type { NavigationItem } from '../navigation.models';
 import { NavigationItemComponent } from './navigation-item.component';
 import { ZardPopoverComponent } from '../../../../shared/components/popover';
 
