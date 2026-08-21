@@ -29,6 +29,7 @@ import { redisConfig } from './infrastructure/config/redis.config';
       validate: (config) => envSchema.parse(config),
     }),
     BullModule.forRootAsync({
+      imports: [ConfigModule.forFeature(redisConfig)],
       inject: [redisConfig.KEY],
       useFactory: (config: ConfigType<typeof redisConfig>) => ({
         connection: {

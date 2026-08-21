@@ -31,6 +31,7 @@
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "feather-icons": "^4.29.2",
+    "ioredis": "^6.0.0",
     "openai": "^7.4.0",
     "pdf-parse": "^2.4.5",
     "pg": "^8.23.0",

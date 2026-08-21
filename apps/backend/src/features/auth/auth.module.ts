@@ -16,6 +16,7 @@ import { authConfig } from './auth.config';
     PrismaModule,
     ConfigModule.forFeature(authConfig),
     JwtModule.registerAsync({
+      imports: [ConfigModule.forFeature(authConfig)],
       inject: [authConfig.KEY],
       useFactory: async (config: ConfigType<typeof authConfig>) => ({
         secret: config.jwtSecret,

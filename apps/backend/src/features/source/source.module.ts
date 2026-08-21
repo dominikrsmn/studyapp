@@ -18,6 +18,7 @@ import { sourceConfig } from './source.config';
     ConfigModule.forFeature(sourceConfig),
     ConfigModule.forFeature(ingestionConfig),
     MulterModule.registerAsync({
+      imports: [ConfigModule.forFeature(ingestionConfig)],
       inject: [ingestionConfig.KEY],
       useFactory: (config: ConfigType<typeof ingestionConfig>) => ({
         limits: {
