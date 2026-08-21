@@ -19,6 +19,7 @@ import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SourceService } from './source.service';
 import { RequireActiveSemester } from '../auth/active-semester.decorator';
 import { SourceEventService } from './source-event.service';
+import { MAX_SOURCE_UPLOAD_BYTES } from '../ingestion/ingestion-limits';
 
 @RequireActiveSemester()
 @Controller('module/:moduleId/source')
@@ -30,7 +31,11 @@ export class SourcesController {
 
   @HttpCode(HttpStatus.CREATED)
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_SOURCE_UPLOAD_BYTES },
+    }),
+  )
   uploadSource(
     @Req() request: AuthenticatedRequest,
     @Param('moduleId', ParseUUIDPipe) moduleId: string,
@@ -41,8 +46,8 @@ export class SourcesController {
           errorMessage: 'File must be a PDF',
         })
         .addMaxSizeValidator({
-          maxSize: 50_000_000, // 50 MB
-          errorMessage: "File size can't be >50 MB",
+          maxSize: MAX_SOURCE_UPLOAD_BYTES,
+          errorMessage: "File size can't be >10 MB",
         })
         .build({
           errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,

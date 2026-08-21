@@ -4,8 +4,16 @@ import { PrismaService } from '../../infrastructure/database/prisma/prisma.servi
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { EmbeddingService } from './embedding/embedding.service';
 import { IngestionService } from './ingestion.service';
+import type { Chunk } from './ingestion.service';
 import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
 import { TextChunkerService } from './text-chunker/text-chunker.service';
+import {
+  INGESTION_BATCH_SIZE,
+  MAX_SOURCE_PAGES,
+  MAX_SOURCE_TEXT_CHARACTERS,
+} from './ingestion-limits';
+import { PayloadTooLargeException } from '@nestjs/common';
+import type { PageTextResult } from 'pdf-parse';
 
 jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
@@ -26,12 +34,15 @@ describe('IngestionService', () => {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    sourceChunk: {
+      deleteMany: jest.fn(),
+    },
     $executeRaw: jest.fn(),
   };
   const fileStorageService = { read: jest.fn() };
   const pdfTextExtractor = { extract: jest.fn() };
   const textChunker = { chunk: jest.fn() };
-  const embeddingService = { embed: jest.fn() };
+  const embeddingService = { embedChunks: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
 
   beforeEach(() => {
@@ -71,6 +82,9 @@ describe('IngestionService', () => {
       where: { id: sourceId },
       data: { status: 'FAILED' },
     });
+    expect(prismaService.sourceChunk.deleteMany).toHaveBeenCalledWith({
+      where: { sourceId },
+    });
     expect(eventEmitter.emit).toHaveBeenNthCalledWith(
       1,
       'source.stateChanged',
@@ -107,4 +121,82 @@ describe('IngestionService', () => {
       expect.any(String),
     );
   });
+
+  it('embeds and inserts chunks in bounded batches with global indexes', async () => {
+    const chunkContents = Array.from(
+      { length: INGESTION_BATCH_SIZE + 1 },
+      (_, index) => `chunk-${index}`,
+    );
+    prismaService.source.update
+      .mockResolvedValueOnce({
+        storageKey: sourceId,
+        module: { id: moduleId, semester: { userId: 'user-id' } },
+      })
+      .mockResolvedValueOnce({});
+    fileStorageService.read.mockResolvedValue(Buffer.from('pdf'));
+    pdfTextExtractor.extract.mockResolvedValue([page('text')]);
+    textChunker.chunk.mockReturnValue(chunkContents);
+    embeddingService.embedChunks.mockImplementation(
+      async (_source: unknown, chunks: Chunk[], startIndex: number) =>
+        chunks.map((chunk, index) => ({
+          ...chunk,
+          index: startIndex + index,
+          embedding: [index],
+        })),
+    );
+
+    await service.ingest(sourceId, moduleId);
+
+    expect(embeddingService.embedChunks).toHaveBeenCalledTimes(2);
+    expect(embeddingService.embedChunks.mock.calls[0][1]).toHaveLength(
+      INGESTION_BATCH_SIZE,
+    );
+    expect(embeddingService.embedChunks.mock.calls[0][2]).toBe(0);
+    expect(embeddingService.embedChunks.mock.calls[1][1]).toHaveLength(1);
+    expect(embeddingService.embedChunks.mock.calls[1][2]).toBe(
+      INGESTION_BATCH_SIZE,
+    );
+    expect(prismaService.$executeRaw).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects PDFs over the page limit before chunking', async () => {
+    arrangeDocument(
+      Array.from({ length: MAX_SOURCE_PAGES + 1 }, (_, index) =>
+        page('', index + 1),
+      ),
+    );
+
+    await expect(service.ingest(sourceId, moduleId)).rejects.toBeInstanceOf(
+      PayloadTooLargeException,
+    );
+
+    expect(textChunker.chunk).not.toHaveBeenCalled();
+    expect(embeddingService.embedChunks).not.toHaveBeenCalled();
+  });
+
+  it('rejects PDFs over the extracted-text limit before chunking', async () => {
+    arrangeDocument([page('x'.repeat(MAX_SOURCE_TEXT_CHARACTERS + 1))]);
+
+    await expect(service.ingest(sourceId, moduleId)).rejects.toBeInstanceOf(
+      PayloadTooLargeException,
+    );
+
+    expect(textChunker.chunk).not.toHaveBeenCalled();
+    expect(embeddingService.embedChunks).not.toHaveBeenCalled();
+  });
+
+  function arrangeDocument(pages: PageTextResult[]): void {
+    prismaService.source.update.mockResolvedValue({
+      storageKey: sourceId,
+      module: { id: moduleId, semester: { userId: 'user-id' } },
+    });
+    prismaService.source.updateMany.mockResolvedValue({ count: 1 });
+    prismaService.sourceChunk.deleteMany.mockResolvedValue({ count: 0 });
+    fileStorageService.read.mockResolvedValue(Buffer.from('pdf'));
+    pdfTextExtractor.extract.mockResolvedValue(pages);
+  }
 });
+
+function page(text: string, num = 1): PageTextResult {
+  return { text, num } as PageTextResult;
+}

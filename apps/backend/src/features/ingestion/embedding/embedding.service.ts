@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import { Chunk, EmbeddedChunk } from '../ingestion.service';
+import type { Chunk, EmbeddedChunk } from '../ingestion.service';
 import { CreateEmbeddingResponse } from 'openai/resources/embeddings';
+import { INGESTION_BATCH_SIZE } from '../ingestion-limits';
 
 type SourceIdWithUserId = {
   id: string;
@@ -15,21 +16,33 @@ export class EmbeddingService {
   async embedChunks(
     source: SourceIdWithUserId,
     chunks: Chunk[],
+    startIndex = 0,
   ): Promise<EmbeddedChunk[]> {
-    const chunkContents: string[] = chunks.flatMap((chunk) => chunk.content);
+    const embeddedChunks: EmbeddedChunk[] = [];
 
-    const response = await this.openAIService.client.embeddings.create({
-      input: chunkContents,
-      model: 'text-embedding-3-small',
-      encoding_format: 'float',
-      user: source.userId,
-    });
+    for (
+      let offset = 0;
+      offset < chunks.length;
+      offset += INGESTION_BATCH_SIZE
+    ) {
+      const batch = chunks.slice(offset, offset + INGESTION_BATCH_SIZE);
+      const response = await this.openAIService.client.embeddings.create({
+        input: batch.map((chunk) => chunk.content),
+        model: 'text-embedding-3-small',
+        encoding_format: 'float',
+        user: source.userId,
+      });
 
-    return response.data.map((item) => ({
-      ...chunks[item.index],
-      index: item.index,
-      embedding: item.embedding,
-    }));
+      embeddedChunks.push(
+        ...response.data.map((item) => ({
+          ...batch[item.index],
+          index: startIndex + offset + item.index,
+          embedding: item.embedding,
+        })),
+      );
+    }
+
+    return embeddedChunks;
   }
 
   async embedQuery(query: string, userId: string): Promise<number[]> {

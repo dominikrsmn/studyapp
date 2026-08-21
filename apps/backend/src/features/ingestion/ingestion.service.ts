@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
 import { TextChunkerService } from './text-chunker/text-chunker.service';
@@ -13,6 +18,11 @@ import {
   SourceStateChangedEvent,
   sourceStateChangedEventSchema,
 } from '@study/contracts';
+import {
+  INGESTION_BATCH_SIZE,
+  MAX_SOURCE_PAGES,
+  MAX_SOURCE_TEXT_CHARACTERS,
+} from './ingestion-limits';
 
 export type Chunk = {
   content: string;
@@ -80,17 +90,8 @@ export class IngestionService {
 
       const pages: PageTextResult[] = await this.pdfTextExtractor.extract(file);
 
-      const chunks: Chunk[] = this.chunkPages(pages);
-
-      const embeddedChunks = await this.embeddingService.embedChunks(
-        {
-          id: sourceId,
-          userId: source.module.semester.userId,
-        },
-        chunks,
-      );
-
-      await this.persistChunks(embeddedChunks, sourceId);
+      this.validateDocumentSize(pages);
+      await this.processPages(pages, sourceId, source.module.semester.userId);
 
       await this.prismaService.source.update({
         where: { id: sourceId },
@@ -107,12 +108,24 @@ export class IngestionService {
 
       this.eventEmitter.emit('source.stateChanged', event);
     } catch (error) {
+      await this.deletePartialChunks(sourceId);
       await this.markFailed(sourceId, moduleId);
       this.logger.error(
         `Ingestion failed for source "${sourceId}"`,
         error instanceof Error ? error.stack : undefined,
       );
       throw error;
+    }
+  }
+
+  private async deletePartialChunks(sourceId: string): Promise<void> {
+    try {
+      await this.prismaService.sourceChunk.deleteMany({ where: { sourceId } });
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete partial chunks for source "${sourceId}"`,
+        error instanceof Error ? error.stack : undefined,
+      );
     }
   }
 
@@ -168,20 +181,66 @@ export class IngestionService {
     `;
   }
 
-  private chunkPages(pages: PageTextResult[]) {
-    const chunks: Chunk[] = [];
+  private validateDocumentSize(pages: PageTextResult[]): void {
+    if (pages.length > MAX_SOURCE_PAGES) {
+      throw new PayloadTooLargeException(
+        `PDF can't have more than ${MAX_SOURCE_PAGES} pages`,
+      );
+    }
 
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i];
-      const pageChunks = this.textChunker.chunk(page.text);
-
-      for (let j = 0; j < pageChunks.length; j++) {
-        chunks.push({
-          page: page.num,
-          content: pageChunks[j],
-        });
+    let characterCount = 0;
+    for (const page of pages) {
+      characterCount += page.text.length;
+      if (characterCount > MAX_SOURCE_TEXT_CHARACTERS) {
+        throw new PayloadTooLargeException(
+          `Extracted PDF text can't exceed ${MAX_SOURCE_TEXT_CHARACTERS} characters`,
+        );
       }
     }
-    return chunks;
+  }
+
+  private async processPages(
+    pages: PageTextResult[],
+    sourceId: string,
+    userId: string,
+  ): Promise<void> {
+    let batch: Chunk[] = [];
+    let chunkIndex = 0;
+
+    for (const page of pages) {
+      const pageChunks = this.textChunker.chunk(page.text);
+
+      for (const content of pageChunks) {
+        batch.push({
+          page: page.num,
+          content,
+        });
+
+        if (batch.length === INGESTION_BATCH_SIZE) {
+          await this.embedAndPersistBatch(batch, sourceId, userId, chunkIndex);
+          chunkIndex += batch.length;
+          batch = [];
+        }
+      }
+    }
+
+    if (batch.length > 0) {
+      await this.embedAndPersistBatch(batch, sourceId, userId, chunkIndex);
+    }
+  }
+
+  private async embedAndPersistBatch(
+    chunks: Chunk[],
+    sourceId: string,
+    userId: string,
+    startIndex: number,
+  ): Promise<void> {
+    const embeddedChunks = await this.embeddingService.embedChunks(
+      { id: sourceId, userId },
+      chunks,
+      startIndex,
+    );
+
+    await this.persistChunks(embeddedChunks, sourceId);
   }
 }
