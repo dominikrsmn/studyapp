@@ -24,7 +24,10 @@ describe('TextProcessingService', () => {
         { provide: PrismaService, useValue: prismaService },
         {
           provide: ingestionConfig.KEY,
-          useValue: { ...ingestionConfig(), chunkSize: 5, chunkOverlap: 2 },
+          useValue: {
+            ...ingestionConfig(),
+            chunking: { size: 5, overlap: 2 },
+          },
         },
         {
           provide: topicAnalysisConfig.KEY,

@@ -22,7 +22,7 @@ import { sourceConfig } from './source.config';
       inject: [ingestionConfig.KEY],
       useFactory: (config: ConfigType<typeof ingestionConfig>) => ({
         limits: {
-          fileSize: config.maxUploadBytes,
+          fileSize: config.upload.maxBytes,
         },
       }),
     }),

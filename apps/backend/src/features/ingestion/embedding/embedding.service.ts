@@ -21,9 +21,9 @@ export class EmbeddingService {
     @Inject(ingestionConfig.KEY)
     config: ConfigType<typeof ingestionConfig>,
   ) {
-    this.batchSize = config.batchSize;
-    this.model = config.embeddingModel;
-    this.encodingFormat = config.embeddingEncodingFormat;
+    this.batchSize = config.embedding.batchSize;
+    this.model = config.embedding.model;
+    this.encodingFormat = config.embedding.encodingFormat;
   }
 
   async embedChunks(

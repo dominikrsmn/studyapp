@@ -15,7 +15,10 @@ describe('EmbeddingServiceService', () => {
       {
         client: { embeddings: { create: createEmbedding } },
       } as unknown as OpenAiService,
-      { ...ingestionConfig(), batchSize: BATCH_SIZE },
+      {
+        ...ingestionConfig(),
+        embedding: { ...ingestionConfig().embedding, batchSize: BATCH_SIZE },
+      },
     );
   });
 

@@ -19,8 +19,8 @@ export class TextProcessingService {
   chunkForRag(text: string): string[] {
     return this.chunkFixedSize(
       text,
-      this.ingestionConfiguration.chunkSize,
-      this.ingestionConfiguration.chunkOverlap,
+      this.ingestionConfiguration.chunking.size,
+      this.ingestionConfiguration.chunking.overlap,
     );
   }
 

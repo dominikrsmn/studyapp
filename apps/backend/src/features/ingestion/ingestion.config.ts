@@ -1,12 +1,19 @@
 import { registerAs } from '@nestjs/config';
 
 export const ingestionConfig = registerAs('ingestion', () => ({
-  maxUploadBytes: 10_000_000,
-  maxPages: 300,
-  maxTextCharacters: 2_000_000,
-  batchSize: 64,
-  chunkSize: 1_000,
-  chunkOverlap: 200,
-  embeddingModel: 'text-embedding-3-small',
-  embeddingEncodingFormat: 'float' as const,
+  upload: { maxBytes: 10_000_000 },
+  document: { maxPages: 300, maxTextCharacters: 2_000_000 },
+  embedding: {
+    model: 'text-embedding-3-small',
+    encodingFormat: 'float' as const,
+    batchSize: 64,
+  },
+  chunking: { size: 1_000, overlap: 200 },
+  queue: {
+    name: 'source-ingestion',
+    jobName: 'ingest-source',
+    concurrency: 3,
+    attempts: 5,
+    backoffDelay: 1_000,
+  },
 }));

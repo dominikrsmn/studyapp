@@ -8,7 +8,6 @@ import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
 import { ConfigModule } from '@nestjs/config';
 import { ingestionConfig } from './ingestion.config';
 import { BullModule } from '@nestjs/bullmq';
-import { sourceIngestionConfig } from './source-ingestion.config';
 import { SourceIngestionQueue } from './source-ingestion.queue';
 import { SourceIngestionProcessor } from './source-ingestion.processor';
 import { TopicModule } from '../topic/topic.module';
@@ -17,8 +16,7 @@ import { TextProcessingModule } from '../../shared/text-processing/text-processi
 @Module({
   imports: [
     ConfigModule.forFeature(ingestionConfig),
-    ConfigModule.forFeature(sourceIngestionConfig),
-    BullModule.registerQueue({ name: sourceIngestionConfig().queueName }),
+    BullModule.registerQueue({ name: ingestionConfig().queue.name }),
     FileStorageModule,
     PrismaModule,
     OpenAiModule,

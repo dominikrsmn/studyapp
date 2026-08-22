@@ -51,9 +51,9 @@ export class IngestionService {
     @Inject(ingestionConfig.KEY)
     config: ConfigType<typeof ingestionConfig>,
   ) {
-    this.batchSize = config.batchSize;
-    this.maxPages = config.maxPages;
-    this.maxTextCharacters = config.maxTextCharacters;
+    this.batchSize = config.embedding.batchSize;
+    this.maxPages = config.document.maxPages;
+    this.maxTextCharacters = config.document.maxTextCharacters;
   }
 
   async ingest(sourceId: string): Promise<void> {

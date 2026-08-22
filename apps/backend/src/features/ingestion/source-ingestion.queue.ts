@@ -2,7 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import { sourceIngestionConfig } from './source-ingestion.config';
+import { ingestionConfig } from './ingestion.config';
 
 export type SourceIngestionJobData = {
   sourceId: string;
@@ -11,22 +11,22 @@ export type SourceIngestionJobData = {
 @Injectable()
 export class SourceIngestionQueue {
   constructor(
-    @InjectQueue(sourceIngestionConfig().queueName)
+    @InjectQueue(ingestionConfig().queue.name)
     private readonly queue: Queue<SourceIngestionJobData>,
-    @Inject(sourceIngestionConfig.KEY)
-    private readonly config: ConfigType<typeof sourceIngestionConfig>,
+    @Inject(ingestionConfig.KEY)
+    private readonly config: ConfigType<typeof ingestionConfig>,
   ) {}
 
   async enqueue(sourceId: string): Promise<void> {
     await this.queue.add(
-      this.config.jobName,
+      this.config.queue.jobName,
       { sourceId },
       {
         jobId: sourceId,
-        attempts: this.config.attempts,
+        attempts: this.config.queue.attempts,
         backoff: {
           type: 'exponential',
-          delay: this.config.backoffDelay,
+          delay: this.config.queue.backoffDelay,
         },
       },
     );

@@ -48,9 +48,11 @@ describe('IngestionService', () => {
   const topicAnalysisQueue = { enqueue: jest.fn() };
   const config = {
     ...ingestionConfig(),
-    batchSize: BATCH_SIZE,
-    maxPages: MAX_PAGES,
-    maxTextCharacters: MAX_TEXT_CHARACTERS,
+    embedding: { ...ingestionConfig().embedding, batchSize: BATCH_SIZE },
+    document: {
+      maxPages: MAX_PAGES,
+      maxTextCharacters: MAX_TEXT_CHARACTERS,
+    },
   };
 
   beforeEach(() => {
