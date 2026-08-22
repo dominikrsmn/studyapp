@@ -1,29 +1,37 @@
 model Topic {
-  id       String        @id @default(uuid())
-  title    String
-  state    TopicState    @default(SUGGESTED)
-  summary  String?
-  evidence TopicEvidence @relation(fields: [topicEvidenceId], references: [id])
+  id          String     @id @default(uuid())
+  title       String
+  description String
+  state       TopicState @default(SUGGESTED)
+  summary     String?
 
-  moduleId        String
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  evidence TopicEvidence[]
+
   // parentId  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   //parent    Topic?     @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   //children  Topic[]    @relation("TopicHierarchy")
   //exercises Exercise[] @relation("ExerciseToTopic")
   //exerciseId String?
   //@@index([parentId])
-  topicEvidenceId String
 
   @@index([moduleId])
 }
 
 model TopicEvidence {
-  id      String  @id @default(uuid())
+  id      String @id @default(uuid())
+  content String
+
   topicId String
-  topics  Topic[]
+  topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([topicId])
 }
 
 enum TopicState {

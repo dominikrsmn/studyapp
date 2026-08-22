@@ -8,6 +8,9 @@ export const topicAnalysisConfig = registerAs('topicAnalysis', () => ({
   consolidation: {
     model: 'gpt-5.6-luna',
   },
+  reconciliation: {
+    model: 'gpt-5.6-sol',
+  },
   chunks: {
     chunkSize: 5_000,
     chunkOverlap: 1_000,

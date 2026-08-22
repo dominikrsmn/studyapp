@@ -10,7 +10,7 @@ import { TopicService } from './topic.service';
 import { TextProcessingModule } from '../../shared/text-processing/text-processing.module';
 import { TopicCandidateExtractionService } from './topic-candidate-extractor/topic-candidate-extraction.service';
 import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
-import { TopicReconcilerService } from './topic-reconciler/topic-reconciler.service';
+import { TopicReconciliationService } from './topic-reconciler/topic-reconciliation.service';
 import { TopicSummaryGeneratorService } from './topic-summary-generator/topic-summary-generator.service';
 
 @Module({
@@ -27,7 +27,7 @@ import { TopicSummaryGeneratorService } from './topic-summary-generator/topic-su
     TopicAnalysisProcessor,
     TopicCandidateExtractionService,
     TopicCandidateConsolidationService,
-    TopicReconcilerService,
+    TopicReconciliationService,
     TopicSummaryGeneratorService,
   ],
   exports: [TopicService, TopicAnalysisService, TopicAnalysisQueue],
