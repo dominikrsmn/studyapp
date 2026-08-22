@@ -12,6 +12,6 @@ export class TopicAnalysisProcessor extends WorkerHost {
   }
 
   process(job: Job<TopicAnalysisJobData>): Promise<void> {
-    return this.topicAnalysisService.analyze(job.data.moduleId);
+    return this.topicAnalysisService.analyze(job.data.sourceId);
   }
 }

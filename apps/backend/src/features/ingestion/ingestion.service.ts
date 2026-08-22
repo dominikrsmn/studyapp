@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
-import { TextChunkerService } from './text-chunker/text-chunker.service';
+import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 import { EmbeddingService } from './embedding/embedding.service';
 import type { PageTextResult } from 'pdf-parse';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
@@ -44,7 +44,7 @@ export class IngestionService {
     private readonly prismaService: PrismaService,
     private readonly fileStorageService: FileStorageService,
     private readonly pdfTextExtractor: PdfTextExtractorService,
-    private readonly textChunker: TextChunkerService,
+    private readonly textProcessingService: TextProcessingService,
     private readonly embeddingService: EmbeddingService,
     private readonly eventEmitter: EventEmitter2,
     private readonly topicAnalysisQueue: TopicAnalysisQueue,
@@ -121,8 +121,7 @@ export class IngestionService {
 
       this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
 
-      await this.topicAnalysisQueue.enqueue(source.module.id);
-
+      await this.topicAnalysisQueue.enqueue(sourceId);
     } catch (error) {
       await this.deletePartialChunks(sourceId);
       await this.markFailed(sourceId, moduleId);
@@ -229,7 +228,7 @@ export class IngestionService {
     let chunkIndex = 0;
 
     for (const page of pages) {
-      const pageChunks = this.textChunker.chunk(page.text);
+      const pageChunks = this.textProcessingService.chunkForRag(page.text);
 
       for (const content of pageChunks) {
         batch.push({

@@ -6,7 +6,8 @@ import { EmbeddingService } from './embedding/embedding.service';
 import { IngestionService } from './ingestion.service';
 import type { Chunk } from './ingestion.service';
 import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
-import { TextChunkerService } from './text-chunker/text-chunker.service';
+import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
+import { TopicAnalysisQueue } from '../topic/topic-analysis.queue';
 import { PayloadTooLargeException } from '@nestjs/common';
 import type { PageTextResult } from 'pdf-parse';
 import { ingestionConfig } from './ingestion.config';
@@ -41,9 +42,10 @@ describe('IngestionService', () => {
   };
   const fileStorageService = { read: jest.fn() };
   const pdfTextExtractor = { extract: jest.fn() };
-  const textChunker = { chunk: jest.fn() };
+  const textProcessingService = { chunkForRag: jest.fn() };
   const embeddingService = { embedChunks: jest.fn() };
   const eventEmitter = { emit: jest.fn() };
+  const topicAnalysisQueue = { enqueue: jest.fn() };
   const config = {
     ...ingestionConfig(),
     batchSize: BATCH_SIZE,
@@ -58,9 +60,10 @@ describe('IngestionService', () => {
       prismaService as unknown as PrismaService,
       fileStorageService as unknown as FileStorageService,
       pdfTextExtractor as unknown as PdfTextExtractorService,
-      textChunker as unknown as TextChunkerService,
+      textProcessingService as unknown as TextProcessingService,
       embeddingService as unknown as EmbeddingService,
       eventEmitter as unknown as EventEmitter2,
+      topicAnalysisQueue as unknown as TopicAnalysisQueue,
       config,
     );
   });
@@ -138,7 +141,7 @@ describe('IngestionService', () => {
       .mockResolvedValueOnce({});
     fileStorageService.read.mockResolvedValue(Buffer.from('pdf'));
     pdfTextExtractor.extract.mockResolvedValue([page('text')]);
-    textChunker.chunk.mockReturnValue(chunkContents);
+    textProcessingService.chunkForRag.mockReturnValue(chunkContents);
     embeddingService.embedChunks.mockImplementation(
       async (_source: unknown, chunks: Chunk[], startIndex: number) =>
         chunks.map((chunk, index) => ({
@@ -164,6 +167,7 @@ describe('IngestionService', () => {
     expect(embeddingService.embedChunks.mock.calls[1][1]).toHaveLength(1);
     expect(embeddingService.embedChunks.mock.calls[1][2]).toBe(BATCH_SIZE);
     expect(prismaService.$executeRaw).toHaveBeenCalledTimes(2);
+    expect(topicAnalysisQueue.enqueue).toHaveBeenCalledWith(sourceId);
   });
 
   it('rejects PDFs over the page limit before chunking', async () => {
@@ -175,7 +179,7 @@ describe('IngestionService', () => {
       PayloadTooLargeException,
     );
 
-    expect(textChunker.chunk).not.toHaveBeenCalled();
+    expect(textProcessingService.chunkForRag).not.toHaveBeenCalled();
     expect(embeddingService.embedChunks).not.toHaveBeenCalled();
   });
 
@@ -186,7 +190,7 @@ describe('IngestionService', () => {
       PayloadTooLargeException,
     );
 
-    expect(textChunker.chunk).not.toHaveBeenCalled();
+    expect(textProcessingService.chunkForRag).not.toHaveBeenCalled();
     expect(embeddingService.embedChunks).not.toHaveBeenCalled();
   });
 

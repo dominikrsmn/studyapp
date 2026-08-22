@@ -5,4 +5,6 @@ export const topicAnalysisConfig = registerAs('topicAnalysis', () => ({
   jobName: 'analyze-topics',
   attempts: 5,
   backoffDelay: 1_000,
+  chunkSize: 1_000,
+  chunkOverlap: 200,
 }));

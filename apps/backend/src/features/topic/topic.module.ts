@@ -7,12 +7,14 @@ import { TopicAnalysisProcessor } from './topic-analysis.processor';
 import { TopicAnalysisQueue } from './topic-analysis.queue';
 import { TopicAnalysisService } from './topic-analysis.service';
 import { TopicService } from './topic.service';
+import { TextProcessingModule } from '../../shared/text-processing/text-processing.module';
 
 @Module({
   imports: [
     ConfigModule.forFeature(topicAnalysisConfig),
     BullModule.registerQueue({ name: topicAnalysisConfig().queueName }),
     PrismaModule,
+    TextProcessingModule,
   ],
   providers: [
     TopicService,

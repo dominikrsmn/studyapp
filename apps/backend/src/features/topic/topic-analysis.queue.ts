@@ -5,7 +5,7 @@ import { Queue } from 'bullmq';
 import { topicAnalysisConfig } from './topic-analysis.config';
 
 export type TopicAnalysisJobData = {
-  moduleId: string;
+  sourceId: string;
 };
 
 @Injectable()
@@ -17,12 +17,12 @@ export class TopicAnalysisQueue {
     private readonly config: ConfigType<typeof topicAnalysisConfig>,
   ) {}
 
-  async enqueue(moduleId: string): Promise<void> {
+  async enqueue(sourceId: string): Promise<void> {
     await this.queue.add(
       this.config.jobName,
-      { moduleId },
+      { sourceId },
       {
-        jobId: moduleId,
+        jobId: sourceId,
         attempts: this.config.attempts,
         backoff: {
           type: 'exponential',

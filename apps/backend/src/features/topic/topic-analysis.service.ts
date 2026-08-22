@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 
 @Injectable()
 export class TopicAnalysisService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly textProcessingService: TextProcessingService,
+  ) {}
 
   async analyze(sourceId: string): Promise<void> {
     let moduleId: string | undefined;
@@ -31,6 +35,7 @@ export class TopicAnalysisService {
       }
 
       moduleId = source.module.id;
+      await this.textProcessingService.chunkForAnalysis(moduleId);
     } catch (error) {
       throw error;
     }
