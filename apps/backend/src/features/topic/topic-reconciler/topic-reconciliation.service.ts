@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   Fact,
-  GeneratedTopic,
-  generatedTopicsSchema,
   ModuleTopic,
   TopicCandidate,
+  TopicReconciliation,
+  topicReconciliationSchema,
 } from '../topic.types';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import { topicAnalysisConfig } from '../topic-analysis.config';
@@ -24,7 +24,7 @@ export class TopicReconciliationService {
   async reconcile(
     candidates: TopicCandidate[],
     topics: ModuleTopic[],
-  ): Promise<GeneratedTopic[]> {
+  ): Promise<TopicReconciliation> {
     const response = await this.openAiService.client.responses.parse({
       model: this.topicAnalysisConfiguration.reconciliation.model,
       input: [
@@ -137,11 +137,15 @@ export class TopicReconciliationService {
         },
       ],
       text: {
-        format: zodTextFormat(generatedTopicsSchema, 'topics'),
+        format: zodTextFormat(topicReconciliationSchema, 'topics'),
       },
     });
 
-    return response.output_parsed?.topics ?? [];
+    if (!response.output_parsed) {
+      throw new Error('Topic reconciliation returned no parsed output');
+    }
+
+    return response.output_parsed;
   }
 
   private escapeXml = (value: string): string =>

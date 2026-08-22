@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Prisma } from '../../infrastructure/database/generated/client';
+import type { Prisma } from '../../infrastructure/database/generated/client';
 
 export const factSchema = z.object({
   content: z.string(),
@@ -15,21 +15,23 @@ export const topicCandidateSchema = z.object({
 export const topicCandidatesSchema = z.object({
   candidates: z.array(topicCandidateSchema),
 });
+export const existingTopicMatchSchema = z.object({
+  topicId: z.uuid(),
+  candidateIndexes: z.array(z.number().int().nonnegative()).min(1),
+});
 
-export const generatedTopicSchema = z.object({
-  id: z.uuid().optional(),
+export const newTopicSchema = z.object({
   title: z.string(),
   description: z.string(),
-  state: z.string(),
-  summary: z.string().optional(),
-  evidence: z.array(factSchema),
+  candidateIndexes: z.array(z.number().int().nonnegative()).min(1),
 });
 
-export const generatedTopicsSchema = z.object({
-  topics: z.array(generatedTopicSchema),
+export const topicReconciliationSchema = z.object({
+  existingTopicMatches: z.array(existingTopicMatchSchema),
+  newTopics: z.array(newTopicSchema),
 });
 
-export type GeneratedTopic = z.infer<typeof generatedTopicSchema>;
+export type TopicReconciliation = z.infer<typeof topicReconciliationSchema>;
 
 export type TopicCandidate = z.infer<typeof topicCandidateSchema>;
 

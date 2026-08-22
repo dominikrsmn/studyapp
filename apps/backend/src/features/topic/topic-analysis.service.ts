@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
-import { SourcePage } from '../../infrastructure/database/generated/client';
+import type { SourcePage } from '../../infrastructure/database/generated/client';
 import {
   AnalysisChunk,
-  GeneratedTopic,
   ModuleTopic,
   TopicCandidate,
+  TopicReconciliation,
 } from './topic.types';
 import { TopicCandidateExtractionService } from './topic-candidate-extractor/topic-candidate-extraction.service';
 import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
@@ -27,6 +27,13 @@ export class TopicAnalysisService {
       const pages = await this.prismaService.sourcePage.findMany({
         where: {
           sourceId: sourceId,
+        },
+        include: {
+          source: {
+            select: {
+              moduleId: true,
+            },
+          },
         },
       });
       if (!pages.length) {
@@ -66,13 +73,11 @@ export class TopicAnalysisService {
           },
         });
 
-      const topicResults: GeneratedTopic[] =
+      const topicResults: TopicReconciliation =
         await this.topicReconcilidationService.reconcile(
           finalTopicCandidates,
           moduleTopics,
         );
-
-
     } catch (error) {
       throw error;
     }
