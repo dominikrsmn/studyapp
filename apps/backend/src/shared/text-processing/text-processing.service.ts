@@ -24,21 +24,9 @@ export class TextProcessingService {
     );
   }
 
-  async chunkForAnalysis(moduleId: string): Promise<string[]> {
-    const sourceChunks = await this.prismaService.sourceChunk.findMany({
-      where: {
-        source: {
-          moduleId,
-        },
-      },
-      select: {
-        content: true,
-      },
-      orderBy: [{ sourceId: 'asc' }, { chunkIndex: 'asc' }],
-    });
-
+  async chunkForAnalysis(text: string): Promise<string[]> {
     return this.chunkFixedSize(
-      sourceChunks.map(({ content }) => content).join('\n'),
+      text,
       this.topicAnalysisConfiguration.chunkSize,
       this.topicAnalysisConfiguration.chunkOverlap,
     );

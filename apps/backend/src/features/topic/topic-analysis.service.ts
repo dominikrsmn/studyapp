@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
+import { SourcePage } from '../../infrastructure/database/generated/client';
 
 type TopicCandidate = {
   title: string;
@@ -12,6 +13,12 @@ type Fact = {
   content: string;
   chunkIds: string[];
 };
+
+type AnalysisChunk = {
+  content: string;
+  pageNumber: number;
+};
+
 @Injectable()
 export class TopicAnalysisService {
   constructor(
@@ -20,34 +27,38 @@ export class TopicAnalysisService {
   ) {}
 
   async analyze(sourceId: string): Promise<void> {
-    let moduleId: string | undefined;
     try {
-      const source = await this.prismaService.source.findFirst({
+      const pages = await this.prismaService.sourcePage.findMany({
         where: {
-          id: sourceId,
-        },
-        select: {
-          module: {
-            select: {
-              id: true,
-              semester: {
-                select: {
-                  userId: true,
-                },
-              },
-            },
-          },
+          sourceId: sourceId,
         },
       });
-      if (!source) {
-        throw new NotFoundException(`Source was not found`);
+      if (!pages.length) {
+        throw new NotFoundException(`Source Pages were not found`);
       }
 
-      moduleId = source.module.id;
-      const analysisChunks =
-        await this.textProcessingService.chunkForAnalysis(moduleId);
+      const analysisChunks: AnalysisChunk[] = await this.processPages(pages);
+
+      const topicCandidates: TopicCandidate[] = await this.
+
     } catch (error) {
       throw error;
     }
+  }
+
+  private async processPages(pages: SourcePage[]): Promise<AnalysisChunk[]> {
+    const analysisChunks: AnalysisChunk[] = [];
+    for (const page of pages) {
+      const chunks = await this.textProcessingService.chunkForAnalysis(
+        page.content,
+      );
+      for (const chunk of chunks) {
+        analysisChunks.push({
+          content: chunk,
+          pageNumber: page.pageNumber,
+        });
+      }
+    }
+    return analysisChunks;
   }
 }
