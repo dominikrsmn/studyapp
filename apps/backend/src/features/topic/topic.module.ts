@@ -12,6 +12,7 @@ import { TopicCandidateExtractionService } from './topic-candidate-extractor/top
 import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
 import { TopicReconciliationService } from './topic-reconciler/topic-reconciliation.service';
 import { TopicSummaryGeneratorService } from './topic-summary-generator/topic-summary-generator.service';
+import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TopicSummaryGeneratorService } from './topic-summary-generator/topic-su
     BullModule.registerQueue({ name: topicAnalysisConfig().queue.queueName }),
     PrismaModule,
     TextProcessingModule,
+    OpenAiModule,
   ],
   providers: [
     TopicService,

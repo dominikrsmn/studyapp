@@ -11,7 +11,7 @@ export type TopicAnalysisJobData = {
 @Injectable()
 export class TopicAnalysisQueue {
   constructor(
-    @InjectQueue(topicAnalysisConfig().queueName)
+    @InjectQueue(topicAnalysisConfig().queue.queueName)
     private readonly queue: Queue<TopicAnalysisJobData>,
     @Inject(topicAnalysisConfig.KEY)
     private readonly config: ConfigType<typeof topicAnalysisConfig>,
@@ -19,14 +19,14 @@ export class TopicAnalysisQueue {
 
   async enqueue(sourceId: string): Promise<void> {
     await this.queue.add(
-      this.config.jobName,
+      this.config.queue.jobName,
       { sourceId },
       {
         jobId: sourceId,
-        attempts: this.config.attempts,
+        attempts: this.config.queue.attempts,
         backoff: {
           type: 'exponential',
-          delay: this.config.backoffDelay,
+          delay: this.config.queue.backoffDelay,
         },
       },
     );
