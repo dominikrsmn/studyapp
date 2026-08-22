@@ -1,5 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Fact, TopicCandidate, topicCandidatesSchema } from '../topic.types';
+import {
+  Fact,
+  TopicCandidate,
+  TopicCandidateConsolidation,
+  topicCandidateConsolidationSchema,
+} from '../topic.types';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import { topicAnalysisConfig } from '../topic-analysis.config';
 import { ConfigType } from '@nestjs/config';
@@ -17,11 +22,10 @@ export class TopicCandidateConsolidationService {
   ) {}
 
   async consolidate(candidates: TopicCandidate[]): Promise<TopicCandidate[]> {
-    const allowedChunkIds = new Set(
-      candidates.flatMap((candidate) =>
-        candidate.facts.flatMap((fact) => fact.chunkIds),
-      ),
-    );
+    if (candidates.length === 0) {
+      return [];
+    }
+
     const response = await this.openAiService.client.responses.parse({
       model: this.topicAnalysisConfiguration.consolidation.model,
       input: [
@@ -29,53 +33,59 @@ export class TopicCandidateConsolidationService {
           role: 'developer',
           content: `
 
-          You consolidate topic candidates extracted from different parts of the same source into a coherent, non-redundant set of topic candidates.
+          You group topic candidates extracted from different parts of the same source into a coherent, non-redundant set of academic topics.
 
           The input contains multiple \`<candidate>\` elements. Each candidate includes:
 
-          * an \`index\`
+          * a stable \`index\` within this request
           * a topic \`title\`
           * a \`description\`
-          * a list of \`facts\`
-          * the chunk IDs supporting each fact
+          * a list of immutable evidence \`facts\`
 
           The candidates were extracted independently from different analysis chunks. As a result, multiple candidates may refer to the same underlying academic topic using different titles, descriptions, or levels of specificity.
 
-          Your task is to identify such overlaps and consolidate them.
+          Your task is only to decide which candidate indexes belong together and to provide the resulting title and description for each group. Application code will copy all original facts and provenance into the result. Do not return facts or provenance.
 
           ## Consolidation rules
 
-          1. Merge candidates only when they represent the same underlying academic topic.
+          1. Group candidates when they are semantic duplicates, or when they are distinct but sufficiently closely related subtopics that they form one coherent and useful academic topic under a shared title.
 
-          2. Do not merge topics merely because they are related. Closely related but conceptually distinct topics must remain separate.
+          2. Do not group candidates merely because they belong to the same broad subject area. The resulting topic must remain specific and useful for organizing university course material.
 
-          3. Prefer concise, canonical academic topic titles that would be suitable for organizing a university course.
+          3. Do not group candidates whose facts are contradictory or mutually incompatible.
 
-          4. When merging candidates, create a description that accurately represents the combined scope of the merged candidates.
+          4. Prefer concise, canonical academic topic titles. When grouping multiple candidates, create a broader or clearer title when appropriate.
 
-          5. Preserve all relevant factual information from the input candidates.
+          5. Create a precise description of the combined topic using only the scope supported by the grouped candidates.
 
-          6. Remove factual duplicates and near-duplicates when they communicate the same information.
+          6. Keep a distinct, coherent candidate in its own single-index group. Preserve its title and description unless a clearer canonical formulation is genuinely useful.
 
-          7. When equivalent facts are merged, preserve the union of all chunk IDs that support that information.
+          7. Do not use outside knowledge or add unsupported concepts, facts, explanations, or relationships to a title or description.
 
-          8. Never invent new facts, explanations, relationships, or supporting chunk IDs.
+          ## Immutable evidence
 
-          9. Do not use outside knowledge. Consolidate only based on the provided candidates.
+          Facts are included only so you can judge semantic compatibility and topic scope. They are immutable evidence.
 
-          10. Preserve provenance. Every fact in the output must be traceable to one or more chunk IDs from the input.
+          * Never rewrite or rephrase fact content.
+          * Never merge or deduplicate facts.
+          * Never invent, remove, or return facts.
+          * Never modify or return provenance or chunk IDs.
+          * Never try to reconstruct a fact from its text.
 
-          11. Avoid unnecessary fragmentation. If several candidates are simply different formulations of the same topic, consolidate them.
+          Candidate indexes are the only references the application will use to carry the original evidence into the result.
 
-          12. Avoid excessive generalization. Do not merge distinct subtopics into a broad parent topic solely to reduce the number of candidates.
+          ## Completeness and consistency
 
-          13. Do not reconcile candidates with existing module topics. This step only consolidates candidates extracted from the current source. A later processing step handles reconciliation with persisted module topics.
+          * Every provided candidate index must appear exactly once across all groups.
+          * Never omit, duplicate, or invent a candidate index.
+          * Each group must contain at least one candidate index.
+          * Do not create duplicate groups for the same resulting topic.
+          * Do not reconcile candidates with existing module topics. A later step handles that.
+          * Do not decide whether a topic should be accepted, rejected, or confirmed by the user.
 
-          14. Do not decide whether a topic should be accepted, rejected, or confirmed by the user.
+          ## Output
 
-          15. If a candidate is already distinct and coherent, preserve it without unnecessary rewriting.
-
-          The resulting set should contain the smallest reasonable number of topic candidates while preserving meaningful academic distinctions and all supported information.
+          Return only the structured consolidation result. Each group contains a resulting \`title\`, \`description\`, and the \`candidateIndexes\` assigned to it. Do not include reasoning, facts, chunk IDs, or additional fields.
           `,
         },
         {
@@ -92,9 +102,7 @@ export class TopicCandidateConsolidationService {
                           ${candidate.facts
                             .map(
                               (fact: Fact) => `
-                            <fact chunkIds="${escapeXml(fact.chunkIds.join(','))}">
-                              ${escapeXml(fact.content)}
-                            </fact>
+                            <fact>${escapeXml(fact.content)}</fact>
                           `,
                             )
                             .join('\n')}
@@ -108,7 +116,10 @@ export class TopicCandidateConsolidationService {
         },
       ],
       text: {
-        format: zodTextFormat(topicCandidatesSchema, 'topic_candidates'),
+        format: zodTextFormat(
+          topicCandidateConsolidationSchema,
+          'topic_candidate_consolidation',
+        ),
       },
     });
 
@@ -118,20 +129,62 @@ export class TopicCandidateConsolidationService {
       );
     }
 
-    const consolidatedCandidates = response.output_parsed.candidates;
-    for (const candidate of consolidatedCandidates) {
-      for (const fact of candidate.facts) {
-        fact.chunkIds = [...new Set(fact.chunkIds)];
-        for (const chunkId of fact.chunkIds) {
-          if (!allowedChunkIds.has(chunkId)) {
-            throw new Error(
-              `Topic consolidation returned unknown analysis chunk ID "${chunkId}"`,
-            );
-          }
+    return this.reconstructCandidates(candidates, response.output_parsed);
+  }
+
+  private reconstructCandidates(
+    candidates: TopicCandidate[],
+    consolidation: TopicCandidateConsolidation,
+  ): TopicCandidate[] {
+    const referencedIndexes = new Set<number>();
+    const groups = consolidation.groups.map((group) => {
+      const candidateIndexes = [...group.candidateIndexes].sort(
+        (left, right) => left - right,
+      );
+
+      for (const candidateIndex of candidateIndexes) {
+        if (
+          !Number.isInteger(candidateIndex) ||
+          candidateIndex < 0 ||
+          candidateIndex >= candidates.length
+        ) {
+          throw new Error(
+            `Topic consolidation returned unknown candidate index "${candidateIndex}"`,
+          );
         }
+
+        if (referencedIndexes.has(candidateIndex)) {
+          throw new Error(
+            `Topic consolidation returned candidate index "${candidateIndex}" more than once`,
+          );
+        }
+
+        referencedIndexes.add(candidateIndex);
       }
+
+      return { ...group, candidateIndexes };
+    });
+
+    const missingIndexes = candidates
+      .map((_, index) => index)
+      .filter((index) => !referencedIndexes.has(index));
+
+    if (missingIndexes.length > 0) {
+      throw new Error(
+        `Topic consolidation omitted candidate indexes: ${missingIndexes.join(', ')}`,
+      );
     }
 
-    return consolidatedCandidates;
+    return groups
+      .sort(
+        (left, right) => left.candidateIndexes[0] - right.candidateIndexes[0],
+      )
+      .map(({ title, description, candidateIndexes }) => ({
+        title,
+        description,
+        facts: candidateIndexes.flatMap(
+          (candidateIndex) => candidates[candidateIndex].facts,
+        ),
+      }));
   }
 }

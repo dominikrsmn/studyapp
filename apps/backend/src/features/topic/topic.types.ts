@@ -15,6 +15,17 @@ export const topicCandidateSchema = z.object({
 export const topicCandidatesSchema = z.object({
   candidates: z.array(topicCandidateSchema),
 });
+
+export const topicCandidateConsolidationGroupSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  candidateIndexes: z.array(z.number().int().nonnegative()).min(1),
+});
+
+export const topicCandidateConsolidationSchema = z.object({
+  groups: z.array(topicCandidateConsolidationGroupSchema),
+});
+
 export const existingTopicMatchSchema = z.object({
   topicId: z.uuid(),
   candidateIndexes: z.array(z.number().int().nonnegative()).min(1),
@@ -32,6 +43,10 @@ export const topicReconciliationSchema = z.object({
 });
 
 export type TopicReconciliation = z.infer<typeof topicReconciliationSchema>;
+
+export type TopicCandidateConsolidation = z.infer<
+  typeof topicCandidateConsolidationSchema
+>;
 
 export type TopicCandidate = z.infer<typeof topicCandidateSchema>;
 
