@@ -8,6 +8,10 @@ import { TopicAnalysisQueue } from './topic-analysis.queue';
 import { TopicAnalysisService } from './topic-analysis.service';
 import { TopicService } from './topic.service';
 import { TextProcessingModule } from '../../shared/text-processing/text-processing.module';
+import { TopicCandidateExtractorService } from './topic-candidate-extractor/topic-candidate-extractor.service';
+import { TopicCandidateConsolidatorService } from './topic-candidate-consolidator/topic-candidate-consolidator.service';
+import { TopicReconcilerService } from './topic-reconciler/topic-reconciler.service';
+import { TopicSummaryGeneratorService } from './topic-summary-generator/topic-summary-generator.service';
 
 @Module({
   imports: [
@@ -21,6 +25,10 @@ import { TextProcessingModule } from '../../shared/text-processing/text-processi
     TopicAnalysisService,
     TopicAnalysisQueue,
     TopicAnalysisProcessor,
+    TopicCandidateExtractorService,
+    TopicCandidateConsolidatorService,
+    TopicReconcilerService,
+    TopicSummaryGeneratorService,
   ],
   exports: [TopicService, TopicAnalysisService, TopicAnalysisQueue],
 })
