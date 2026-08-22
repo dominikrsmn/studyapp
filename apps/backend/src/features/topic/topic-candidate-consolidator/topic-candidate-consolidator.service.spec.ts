@@ -42,6 +42,18 @@ describe('TopicCandidateConsolidationService', () => {
     );
   });
 
+  it('rejects a response without parsed output', async () => {
+    const parse = jest.fn().mockResolvedValue({ output_parsed: null });
+    const service = new TopicCandidateConsolidationService(
+      { client: { responses: { parse } } } as never,
+      { consolidation: { model: 'test-model' } } as never,
+    );
+
+    await expect(service.consolidate(candidates)).rejects.toThrow(
+      'Topic consolidation response did not contain parsed output',
+    );
+  });
+
   it('escapes model-returned chunk IDs before inserting them into XML', async () => {
     const untrustedCandidates = [
       {

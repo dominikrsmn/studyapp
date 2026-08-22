@@ -107,7 +107,13 @@ export class TopicCandidateExtractionService {
       },
     });
 
-    const candidates = response.output_parsed?.candidates ?? [];
+    if (!response.output_parsed) {
+      throw new Error(
+        'Topic extraction response did not contain parsed output',
+      );
+    }
+
+    const candidates = response.output_parsed.candidates;
     this.assertValidChunkReferences(
       candidates,
       new Set(batch.map(({ id }) => id)),

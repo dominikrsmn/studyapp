@@ -112,7 +112,13 @@ export class TopicCandidateConsolidationService {
       },
     });
 
-    const consolidatedCandidates = response.output_parsed?.candidates ?? [];
+    if (!response.output_parsed) {
+      throw new Error(
+        'Topic consolidation response did not contain parsed output',
+      );
+    }
+
+    const consolidatedCandidates = response.output_parsed.candidates;
     for (const candidate of consolidatedCandidates) {
       for (const fact of candidate.facts) {
         fact.chunkIds = [...new Set(fact.chunkIds)];

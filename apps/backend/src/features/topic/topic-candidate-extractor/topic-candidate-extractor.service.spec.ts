@@ -78,6 +78,20 @@ describe('TopicCandidateExtractionService', () => {
     ).rejects.toThrow('unknown analysis chunk ID "fabricated-id"');
   });
 
+  it('rejects a response without parsed output', async () => {
+    const parse = jest.fn().mockResolvedValue({ output_parsed: null });
+    const service = new TopicCandidateExtractionService(
+      { client: { responses: { parse } } } as never,
+      { extraction: { batchSize: 1, model: 'test-model' } } as never,
+    );
+
+    await expect(
+      service.extract([makeChunk('analysis-chunk:real', 1)]),
+    ).rejects.toThrow(
+      'Topic extraction response did not contain parsed output',
+    );
+  });
+
   it('escapes untrusted chunk content and XML attributes', async () => {
     const parse = jest.fn().mockResolvedValue({
       output_parsed: { candidates: [] },
