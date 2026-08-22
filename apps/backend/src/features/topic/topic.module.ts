@@ -8,10 +8,10 @@ import { TopicAnalysisQueue } from './topic-analysis.queue';
 import { TopicAnalysisService } from './topic-analysis.service';
 import { TopicService } from './topic.service';
 import { TextProcessingModule } from '../../shared/text-processing/text-processing.module';
-import { TopicCandidateExtractionService } from './topic-candidate-extractor/topic-candidate-extraction.service';
-import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
-import { TopicReconciliationService } from './topic-reconciler/topic-reconciliation.service';
-import { TopicSummaryGeneratorService } from './topic-summary-generator/topic-summary-generator.service';
+import { TopicCandidateExtractionService } from './topic-candidate-extraction/topic-candidate-extraction.service';
+import { TopicCandidateGroupingService } from './topic-candidate-grouping/topic-candidate-grouping.service';
+import { TopicMergingService } from './topic-merging/topic-merging.service';
+import { TopicSummaryGenerationService } from './topic-summary-generation/topic-summary-generation.service';
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
 
 @Module({
@@ -28,9 +28,9 @@ import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
     TopicAnalysisQueue,
     TopicAnalysisProcessor,
     TopicCandidateExtractionService,
-    TopicCandidateConsolidationService,
-    TopicReconciliationService,
-    TopicSummaryGeneratorService,
+    TopicCandidateGroupingService,
+    TopicMergingService,
+    TopicSummaryGenerationService,
   ],
   exports: [TopicService, TopicAnalysisService, TopicAnalysisQueue],
 })

@@ -1,9 +1,9 @@
-import { TopicCandidateConsolidationService } from './topic-candidate-consolidation.service';
+import { TopicCandidateGroupingService } from './topic-candidate-grouping.service';
 import type { TopicCandidate } from '../topic.types';
 
-describe('TopicCandidateConsolidationService', () => {
+describe('TopicCandidateGrouperService', () => {
   const createService = (parse: jest.Mock) =>
-    new TopicCandidateConsolidationService(
+    new TopicCandidateGroupingService(
       { client: { responses: { parse } } } as never,
       { consolidation: { model: 'test-model' } } as never,
     );
@@ -61,7 +61,7 @@ describe('TopicCandidateConsolidationService', () => {
       },
     });
 
-    const result = await createService(parse).consolidate(candidates);
+    const result = await createService(parse).group(candidates);
 
     expect(result).toEqual([
       {
@@ -103,7 +103,7 @@ describe('TopicCandidateConsolidationService', () => {
     });
 
     await expect(
-      createService(parse).consolidate([
+      createService(parse).group([
         {
           title: 'Topic',
           description: 'Description',
@@ -132,7 +132,7 @@ describe('TopicCandidateConsolidationService', () => {
     });
 
     await expect(
-      createService(parse).consolidate([
+      createService(parse).group([
         {
           title: 'First topic',
           description: 'First description',
@@ -161,7 +161,7 @@ describe('TopicCandidateConsolidationService', () => {
     });
 
     await expect(
-      createService(parse).consolidate([
+      createService(parse).group([
         {
           title: 'First topic',
           description: 'First description',
@@ -180,7 +180,7 @@ describe('TopicCandidateConsolidationService', () => {
     const parse = jest.fn().mockResolvedValue({ output_parsed: null });
 
     await expect(
-      createService(parse).consolidate([
+      createService(parse).group([
         {
           title: 'Topic',
           description: 'Description',
@@ -195,7 +195,7 @@ describe('TopicCandidateConsolidationService', () => {
   it('returns immediately when there are no candidates', async () => {
     const parse = jest.fn();
 
-    await expect(createService(parse).consolidate([])).resolves.toEqual([]);
+    await expect(createService(parse).group([])).resolves.toEqual([]);
     expect(parse).not.toHaveBeenCalled();
   });
 
@@ -224,7 +224,7 @@ describe('TopicCandidateConsolidationService', () => {
       },
     ];
 
-    await createService(parse).consolidate(candidates);
+    await createService(parse).group(candidates);
 
     const prompt = parse.mock.calls[0][0].input[1].content as string;
     expect(prompt).toContain(

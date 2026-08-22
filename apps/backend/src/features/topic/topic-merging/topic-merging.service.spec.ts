@@ -1,17 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { TopicReconciliationService } from './topic-reconciliation.service';
+import { TopicMergingService } from './topic-merging.service';
 
 describe('TopicReconcilerService', () => {
-  let service: TopicReconciliationService;
+  let service: TopicMergingService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TopicReconciliationService],
+      providers: [TopicMergingService],
     }).compile();
 
-    service = module.get<TopicReconciliationService>(
-      TopicReconciliationService,
-    );
+    service = module.get<TopicMergingService>(TopicMergingService);
   });
 
   it('should be defined', () => {

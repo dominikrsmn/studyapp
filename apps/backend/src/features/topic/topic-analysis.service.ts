@@ -6,11 +6,11 @@ import {
   AnalysisChunk,
   ModuleTopic,
   TopicCandidate,
-  TopicReconciliation,
+  TopicMerging,
 } from './topic.types';
-import { TopicCandidateExtractionService } from './topic-candidate-extractor/topic-candidate-extraction.service';
-import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
-import { TopicReconciliationService } from './topic-reconciler/topic-reconciliation.service';
+import { TopicCandidateExtractionService } from './topic-candidate-extraction/topic-candidate-extraction.service';
+import { TopicCandidateGroupingService } from './topic-candidate-grouping/topic-candidate-grouping.service';
+import { TopicMergingService } from './topic-merging/topic-merging.service';
 
 @Injectable()
 export class TopicAnalysisService {
@@ -18,8 +18,8 @@ export class TopicAnalysisService {
     private readonly prismaService: PrismaService,
     private readonly textProcessingService: TextProcessingService,
     private readonly candidateExtractionService: TopicCandidateExtractionService,
-    private readonly candidateConsolidationService: TopicCandidateConsolidationService,
-    private readonly topicReconciliationService: TopicReconciliationService,
+    private readonly candidateConsolidationService: TopicCandidateGroupingService,
+    private readonly topicReconciliationService: TopicMergingService,
   ) {}
 
   async analyze(sourceId: string): Promise<void> {
@@ -48,7 +48,7 @@ export class TopicAnalysisService {
       await this.candidateExtractionService.extract(analysisChunks);
 
     const finalTopicCandidates: TopicCandidate[] =
-      await this.candidateConsolidationService.consolidate(topicCandidates);
+      await this.candidateConsolidationService.group(topicCandidates);
 
     const moduleTopics: ModuleTopic[] = await this.prismaService.topic.findMany(
       {
@@ -81,8 +81,8 @@ export class TopicAnalysisService {
       },
     );
 
-    const topicResults: TopicReconciliation =
-      await this.topicReconciliationService.reconcile(
+    const topicResults: TopicMerging =
+      await this.topicReconciliationService.merge(
         finalTopicCandidates,
         moduleTopics,
       );

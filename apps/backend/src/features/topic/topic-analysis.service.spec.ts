@@ -2,9 +2,9 @@ import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 import { TopicAnalysisService } from './topic-analysis.service';
-import { TopicCandidateExtractionService } from './topic-candidate-extractor/topic-candidate-extraction.service';
-import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
-import { TopicReconciliationService } from './topic-reconciler/topic-reconciliation.service';
+import { TopicCandidateExtractionService } from './topic-candidate-extraction/topic-candidate-extraction.service';
+import { TopicCandidateGroupingService } from './topic-candidate-grouping/topic-candidate-grouping.service';
+import { TopicMergingService } from './topic-merging/topic-merging.service';
 import type { AnalysisChunk } from './topic.types';
 
 jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
@@ -41,8 +41,8 @@ describe('TopicAnalysisService', () => {
     prismaService as unknown as PrismaService,
     textProcessingService as unknown as TextProcessingService,
     candidateExtractionService as unknown as TopicCandidateExtractionService,
-    candidateConsolidationService as unknown as TopicCandidateConsolidationService,
-    topicReconciliationService as unknown as TopicReconciliationService,
+    candidateConsolidationService as unknown as TopicCandidateGroupingService,
+    topicReconciliationService as unknown as TopicMergingService,
   );
 
   beforeEach(() => {

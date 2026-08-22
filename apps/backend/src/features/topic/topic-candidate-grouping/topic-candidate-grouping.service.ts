@@ -12,7 +12,7 @@ import { zodTextFormat } from 'openai/helpers/zod';
 import { escapeXml } from '../topic-xml.utils';
 
 @Injectable()
-export class TopicCandidateConsolidationService {
+export class TopicCandidateGroupingService {
   constructor(
     private readonly openAiService: OpenAiService,
     @Inject(topicAnalysisConfig.KEY)
@@ -21,13 +21,13 @@ export class TopicCandidateConsolidationService {
     >,
   ) {}
 
-  async consolidate(candidates: TopicCandidate[]): Promise<TopicCandidate[]> {
+  async group(candidates: TopicCandidate[]): Promise<TopicCandidate[]> {
     if (candidates.length === 0) {
       return [];
     }
 
     const response = await this.openAiService.client.responses.parse({
-      model: this.topicAnalysisConfiguration.consolidation.model,
+      model: this.topicAnalysisConfiguration.grouping.model,
       input: [
         {
           role: 'developer',
@@ -85,7 +85,7 @@ export class TopicCandidateConsolidationService {
 
           ## Output
 
-          Return only the structured consolidation result. Each group contains a resulting \`title\`, \`description\`, and the \`candidateIndexes\` assigned to it. Do not include reasoning, facts, chunk IDs, or additional fields.
+          Return only the structured grouping result. Each group contains a resulting \`title\`, \`description\`, and the \`candidateIndexes\` assigned to it. Do not include reasoning, facts, chunk IDs, or additional fields.
           `,
         },
         {
@@ -118,15 +118,13 @@ export class TopicCandidateConsolidationService {
       text: {
         format: zodTextFormat(
           topicCandidateConsolidationSchema,
-          'topic_candidate_consolidation',
+          'topic_candidate_grouping',
         ),
       },
     });
 
     if (!response.output_parsed) {
-      throw new Error(
-        'Topic consolidation response did not contain parsed output',
-      );
+      throw new Error('Topic grouping response did not contain parsed output');
     }
 
     return this.reconstructCandidates(candidates, response.output_parsed);
@@ -134,10 +132,10 @@ export class TopicCandidateConsolidationService {
 
   private reconstructCandidates(
     candidates: TopicCandidate[],
-    consolidation: TopicCandidateConsolidation,
+    grouping: TopicCandidateConsolidation,
   ): TopicCandidate[] {
     const referencedIndexes = new Set<number>();
-    const groups = consolidation.groups.map((group) => {
+    const groups = grouping.groups.map((group) => {
       const candidateIndexes = [...group.candidateIndexes].sort(
         (left, right) => left - right,
       );
@@ -149,13 +147,13 @@ export class TopicCandidateConsolidationService {
           candidateIndex >= candidates.length
         ) {
           throw new Error(
-            `Topic consolidation returned unknown candidate index "${candidateIndex}"`,
+            `Topic grouping returned unknown candidate index "${candidateIndex}"`,
           );
         }
 
         if (referencedIndexes.has(candidateIndex)) {
           throw new Error(
-            `Topic consolidation returned candidate index "${candidateIndex}" more than once`,
+            `Topic grouping returned candidate index "${candidateIndex}" more than once`,
           );
         }
 
@@ -171,7 +169,7 @@ export class TopicCandidateConsolidationService {
 
     if (missingIndexes.length > 0) {
       throw new Error(
-        `Topic consolidation omitted candidate indexes: ${missingIndexes.join(', ')}`,
+        `Topic grouping omitted candidate indexes: ${missingIndexes.join(', ')}`,
       );
     }
 

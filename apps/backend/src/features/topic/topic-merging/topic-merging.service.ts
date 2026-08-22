@@ -3,8 +3,8 @@ import {
   Fact,
   ModuleTopic,
   TopicCandidate,
-  TopicReconciliation,
-  topicReconciliationSchema,
+  TopicMerging,
+  topicMergingSchema,
 } from '../topic.types';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import { topicAnalysisConfig } from '../topic-analysis.config';
@@ -13,7 +13,7 @@ import { zodTextFormat } from 'openai/helpers/zod';
 import { escapeXml } from '../topic-xml.utils';
 
 @Injectable()
-export class TopicReconciliationService {
+export class TopicMergingService {
   constructor(
     private readonly openAiService: OpenAiService,
     @Inject(topicAnalysisConfig.KEY)
@@ -22,12 +22,12 @@ export class TopicReconciliationService {
     >,
   ) {}
 
-  async reconcile(
+  async merge(
     candidates: TopicCandidate[],
     topics: ModuleTopic[],
-  ): Promise<TopicReconciliation> {
+  ): Promise<TopicMerging> {
     const response = await this.openAiService.client.responses.parse({
-      model: this.topicAnalysisConfiguration.reconciliation.model,
+      model: this.topicAnalysisConfiguration.merging.model,
       input: [
         {
           role: 'developer',
@@ -240,12 +240,12 @@ export class TopicReconciliationService {
         },
       ],
       text: {
-        format: zodTextFormat(topicReconciliationSchema, 'topics'),
+        format: zodTextFormat(topicMergingSchema, 'topics'),
       },
     });
 
     if (!response.output_parsed) {
-      throw new Error('Topic reconciliation returned no parsed output');
+      throw new Error('Topic merging returned no parsed output');
     }
 
     return response.output_parsed;

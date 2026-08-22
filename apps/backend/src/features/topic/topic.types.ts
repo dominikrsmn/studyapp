@@ -37,12 +37,12 @@ export const newTopicSchema = z.object({
   candidateIndexes: z.array(z.number().int().nonnegative()).min(1),
 });
 
-export const topicReconciliationSchema = z.object({
+export const topicMergingSchema = z.object({
   existingTopicMatches: z.array(existingTopicMatchSchema),
   newTopics: z.array(newTopicSchema),
 });
 
-export type TopicReconciliation = z.infer<typeof topicReconciliationSchema>;
+export type TopicMerging = z.infer<typeof topicMergingSchema>;
 
 export type TopicCandidateConsolidation = z.infer<
   typeof topicCandidateConsolidationSchema

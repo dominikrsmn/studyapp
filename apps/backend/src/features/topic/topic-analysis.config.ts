@@ -5,10 +5,10 @@ export const topicAnalysisConfig = registerAs('topicAnalysis', () => ({
     model: 'gpt-5.6-luna',
     batchSize: 15,
   },
-  consolidation: {
+  grouping: {
     model: 'gpt-5.6-luna',
   },
-  reconciliation: {
+  merging: {
     model: 'gpt-5.6-sol',
   },
   chunks: {
