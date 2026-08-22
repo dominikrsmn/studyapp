@@ -2,6 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 
+type TopicCandidate = {
+  title: string;
+  description: string;
+  facts: Fact[];
+};
+
+type Fact = {
+  content: string;
+  chunkIds: string[];
+};
 @Injectable()
 export class TopicAnalysisService {
   constructor(
@@ -11,7 +21,6 @@ export class TopicAnalysisService {
 
   async analyze(sourceId: string): Promise<void> {
     let moduleId: string | undefined;
-    // eslint-disable-next-line no-useless-catch
     try {
       const source = await this.prismaService.source.findFirst({
         where: {
@@ -35,7 +44,8 @@ export class TopicAnalysisService {
       }
 
       moduleId = source.module.id;
-      await this.textProcessingService.chunkForAnalysis(moduleId);
+      const analysisChunks =
+        await this.textProcessingService.chunkForAnalysis(moduleId);
     } catch (error) {
       throw error;
     }

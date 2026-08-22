@@ -11,9 +11,22 @@ model Source {
   exercises  Exercise[]
   module     Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   chunks     SourceChunk[]
+  pages      SourcePage[]
 
   @@index([moduleId])
   @@index([status])
+}
+
+model SourcePage {
+  id         String   @id @default(uuid())
+  pageNumber Int
+  content    String
+  sourceId   String
+  createdAt  DateTime @default(now())
+  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, pageNumber])
+  @@index([sourceId])
 }
 
 model SourceChunk {

@@ -38,6 +38,10 @@ describe('IngestionService', () => {
     sourceChunk: {
       deleteMany: jest.fn(),
     },
+    sourcePage: {
+      createMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
     $executeRaw: jest.fn(),
   };
   const fileStorageService = { read: jest.fn() };
@@ -95,6 +99,9 @@ describe('IngestionService', () => {
     expect(prismaService.sourceChunk.deleteMany).toHaveBeenCalledWith({
       where: { sourceId },
     });
+    expect(prismaService.sourcePage.deleteMany).toHaveBeenCalledWith({
+      where: { sourceId },
+    });
     expect(eventEmitter.emit).toHaveBeenNthCalledWith(
       1,
       'source.stateChanged',
@@ -130,6 +137,30 @@ describe('IngestionService', () => {
     );
   });
 
+  it('persists extracted pages before embedding chunks', async () => {
+    const pages = [page('first page', 1), page('second page', 2)];
+    arrangeDocument(pages);
+    prismaService.source.update.mockResolvedValueOnce({
+      storageKey: sourceId,
+      module: { id: moduleId, semester: { userId: 'user-id' } },
+    });
+    textProcessingService.chunkForRag.mockReturnValue([]);
+
+    await service.ingest(sourceId);
+
+    expect(prismaService.sourcePage.createMany).toHaveBeenCalledWith({
+      data: [
+        { sourceId, pageNumber: 1, content: 'first page' },
+        { sourceId, pageNumber: 2, content: 'second page' },
+      ],
+    });
+    expect(
+      prismaService.sourcePage.createMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      textProcessingService.chunkForRag.mock.invocationCallOrder[0],
+    );
+  });
+
   it('embeds and inserts chunks in bounded batches with global indexes', async () => {
     const chunkContents = Array.from(
       { length: BATCH_SIZE + 1 },
@@ -158,6 +189,9 @@ describe('IngestionService', () => {
     expect(prismaService.sourceChunk.deleteMany).toHaveBeenCalledWith({
       where: { sourceId },
     });
+    expect(prismaService.sourcePage.deleteMany).toHaveBeenCalledWith({
+      where: { sourceId },
+    });
     expect(
       prismaService.sourceChunk.deleteMany.mock.invocationCallOrder[0],
     ).toBeLessThan(prismaService.$executeRaw.mock.invocationCallOrder[0]);
@@ -183,6 +217,7 @@ describe('IngestionService', () => {
 
     expect(textProcessingService.chunkForRag).not.toHaveBeenCalled();
     expect(embeddingService.embedChunks).not.toHaveBeenCalled();
+    expect(prismaService.sourcePage.createMany).not.toHaveBeenCalled();
   });
 
   it('rejects PDFs over the extracted-text limit before chunking', async () => {
@@ -194,6 +229,7 @@ describe('IngestionService', () => {
 
     expect(textProcessingService.chunkForRag).not.toHaveBeenCalled();
     expect(embeddingService.embedChunks).not.toHaveBeenCalled();
+    expect(prismaService.sourcePage.createMany).not.toHaveBeenCalled();
   });
 
   function arrangeDocument(pages: PageTextResult[]): void {
@@ -203,6 +239,10 @@ describe('IngestionService', () => {
     });
     prismaService.source.updateMany.mockResolvedValue({ count: 1 });
     prismaService.sourceChunk.deleteMany.mockResolvedValue({ count: 0 });
+    prismaService.sourcePage.deleteMany.mockResolvedValue({ count: 0 });
+    prismaService.sourcePage.createMany.mockResolvedValue({
+      count: pages.length,
+    });
     fileStorageService.read.mockResolvedValue(Buffer.from('pdf'));
     pdfTextExtractor.extract.mockResolvedValue(pages);
   }

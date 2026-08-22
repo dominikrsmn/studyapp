@@ -93,9 +93,9 @@ export class IngestionService {
         throw new NotFoundException('Source was not found');
       }
 
-      // A retry always starts from a clean slate, making chunk persistence
+      // A retry always starts from a clean slate, making persistence
       // idempotent even if a previous attempt failed between batches.
-      await this.deletePartialChunks(sourceId);
+      await this.deletePartialIngestionData(sourceId);
 
       const file: Buffer = await this.fileStorageService.read(
         source.storageKey,
@@ -104,6 +104,7 @@ export class IngestionService {
       const pages: PageTextResult[] = await this.pdfTextExtractor.extract(file);
 
       this.validateDocumentSize(pages);
+      await this.persistPages(pages, sourceId);
       await this.processPages(pages, sourceId, source.module.semester.userId);
 
       await this.prismaService.source.update({
@@ -123,7 +124,7 @@ export class IngestionService {
 
       await this.topicAnalysisQueue.enqueue(sourceId);
     } catch (error) {
-      await this.deletePartialChunks(sourceId);
+      await this.deletePartialIngestionData(sourceId);
       await this.markFailed(sourceId, moduleId);
       this.logger.error(
         `Ingestion failed for source "${sourceId}"`,
@@ -133,15 +134,31 @@ export class IngestionService {
     }
   }
 
-  private async deletePartialChunks(sourceId: string): Promise<void> {
+  private async deletePartialIngestionData(sourceId: string): Promise<void> {
     try {
-      await this.prismaService.sourceChunk.deleteMany({ where: { sourceId } });
+      await Promise.all([
+        this.prismaService.sourceChunk.deleteMany({ where: { sourceId } }),
+        this.prismaService.sourcePage.deleteMany({ where: { sourceId } }),
+      ]);
     } catch (error) {
       this.logger.error(
-        `Failed to delete partial chunks for source "${sourceId}"`,
+        `Failed to delete partial ingestion data for source "${sourceId}"`,
         error instanceof Error ? error.stack : undefined,
       );
     }
+  }
+
+  private async persistPages(
+    pages: PageTextResult[],
+    sourceId: string,
+  ): Promise<void> {
+    await this.prismaService.sourcePage.createMany({
+      data: pages.map((page) => ({
+        sourceId,
+        pageNumber: page.num,
+        content: page.text,
+      })),
+    });
   }
 
   private async markFailed(
