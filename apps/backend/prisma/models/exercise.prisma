@@ -1,0 +1,50 @@
+model Exercise {
+  id            String            @id @default(uuid())
+  title         String?
+  content       String
+  type          ExerciseType
+  origin        ExerciseOrigin
+  estimatedTime Int?
+  moduleId      String
+  sourceId      String?
+  sourcePage    Int?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  module        Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  source        Source?           @relation(fields: [sourceId], references: [id])
+  attempts      ExerciseAttempt[]
+  //topics        Topic[]           @relation("ExerciseToTopic")
+
+  @@index([moduleId])
+  @@index([sourceId])
+}
+
+model ExerciseAttempt {
+  id          String    @id @default(uuid())
+  exerciseId  String
+  answer      String?
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([exerciseId])
+}
+
+enum ExerciseOrigin {
+  MANUAL
+  SOURCE
+  GENERATED
+}
+
+enum ExerciseType {
+  EXERCISE
+  QUESTION
+}
+
+enum ExerciseAttemptResult {
+  CORRENT
+  PARTIALLY_CORRENT
+  INCORRECT
+}

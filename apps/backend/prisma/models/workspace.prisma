@@ -1,0 +1,30 @@
+model Semester {
+  id            String   @id @default(uuid())
+  startDate     DateTime
+  endDate       DateTime
+  userId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  modules       Module[]
+  user          User     @relation("UserSemesters", fields: [userId], references: [id], onDelete: Cascade)
+  activeForUser User?    @relation("ActiveSemester")
+
+  @@index([userId])
+}
+
+model Module {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  icon        String     @default("book")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  examDate    DateTime?
+  semesterId  String
+  exercises   Exercise[]
+  semester    Semester   @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  sources     Source[]
+  topics      Topic[]
+
+  @@index([semesterId])
+}

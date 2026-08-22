@@ -1,0 +1,46 @@
+model Source {
+  id         String        @id @default(uuid())
+  name       String
+  type       SourceType
+  mimeType   String
+  status     SourceStatus  @default(PENDING)
+  storageKey String?
+  moduleId   String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  exercises  Exercise[]
+  module     Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  chunks     SourceChunk[]
+
+  @@index([moduleId])
+  @@index([status])
+}
+
+model SourceChunk {
+  id         String                 @id @default(uuid())
+  content    String
+  sourceId   String
+  createdAt  DateTime               @default(now())
+  chunkIndex Int
+  pageEnd    Int?
+  pageStart  Int?
+  embedding  Unsupported("vector")?
+  source     Source                 @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+}
+
+enum SourceStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum SourceType {
+  DOCUMENT
+  IMAGE
+  AUDIO
+  TEXT
+  WEB
+}
