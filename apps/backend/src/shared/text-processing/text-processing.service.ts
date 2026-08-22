@@ -27,8 +27,8 @@ export class TextProcessingService {
   async chunkForAnalysis(text: string): Promise<string[]> {
     return this.chunkFixedSize(
       text,
-      this.topicAnalysisConfiguration.chunkSize,
-      this.topicAnalysisConfiguration.chunkOverlap,
+      this.topicAnalysisConfiguration.chunks.chunkSize,
+      this.topicAnalysisConfiguration.chunks.chunkOverlap,
     );
   }
 
