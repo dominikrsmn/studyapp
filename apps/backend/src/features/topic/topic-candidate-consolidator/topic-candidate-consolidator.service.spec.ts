@@ -1,15 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { TopicCandidateConsolidatorService } from './topic-candidate-consolidator.service';
+import { TopicCandidateConsolidationService } from './topic-candidate-consolidation.service';
 
 describe('TopicCandidateConsolidatorService', () => {
-  let service: TopicCandidateConsolidatorService;
+  let service: TopicCandidateConsolidationService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TopicCandidateConsolidatorService],
+      providers: [TopicCandidateConsolidationService],
     }).compile();
 
-    service = module.get<TopicCandidateConsolidatorService>(TopicCandidateConsolidatorService);
+    service = module.get<TopicCandidateConsolidationService>(
+      TopicCandidateConsolidationService,
+    );
   });
 
   it('should be defined', () => {

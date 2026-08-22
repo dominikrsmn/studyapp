@@ -2,28 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 import { SourcePage } from '../../infrastructure/database/generated/client';
-
-type TopicCandidate = {
-  title: string;
-  description: string;
-  facts: Fact[];
-};
-
-type Fact = {
-  content: string;
-  chunkIds: string[];
-};
-
-type AnalysisChunk = {
-  content: string;
-  pageNumber: number;
-};
+import { AnalysisChunk, TopicCandidate } from './topic.types';
+import { TopicCandidateExtractionService } from './topic-candidate-extractor/topic-candidate-extraction.service';
+import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
 
 @Injectable()
 export class TopicAnalysisService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly textProcessingService: TextProcessingService,
+    private readonly candidateExtractionService: TopicCandidateExtractionService,
+    private readonly candidateConsolidationService: TopicCandidateConsolidationService
   ) {}
 
   async analyze(sourceId: string): Promise<void> {
@@ -39,8 +28,10 @@ export class TopicAnalysisService {
 
       const analysisChunks: AnalysisChunk[] = await this.processPages(pages);
 
-      const topicCandidates: TopicCandidate[] = await this.
+      const topicCandidates: TopicCandidate[] =
+        await this.candidateExtractionService.extract(analysisChunks);
 
+      const finalTopicCandidates: TopicCandidate[] = this.
     } catch (error) {
       throw error;
     }

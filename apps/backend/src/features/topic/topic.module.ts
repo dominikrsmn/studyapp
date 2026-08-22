@@ -8,15 +8,15 @@ import { TopicAnalysisQueue } from './topic-analysis.queue';
 import { TopicAnalysisService } from './topic-analysis.service';
 import { TopicService } from './topic.service';
 import { TextProcessingModule } from '../../shared/text-processing/text-processing.module';
-import { TopicCandidateExtractorService } from './topic-candidate-extractor/topic-candidate-extractor.service';
-import { TopicCandidateConsolidatorService } from './topic-candidate-consolidator/topic-candidate-consolidator.service';
+import { TopicCandidateExtractionService } from './topic-candidate-extractor/topic-candidate-extraction.service';
+import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
 import { TopicReconcilerService } from './topic-reconciler/topic-reconciler.service';
 import { TopicSummaryGeneratorService } from './topic-summary-generator/topic-summary-generator.service';
 
 @Module({
   imports: [
     ConfigModule.forFeature(topicAnalysisConfig),
-    BullModule.registerQueue({ name: topicAnalysisConfig().queueName }),
+    BullModule.registerQueue({ name: topicAnalysisConfig().queue.queueName }),
     PrismaModule,
     TextProcessingModule,
   ],
@@ -25,8 +25,8 @@ import { TopicSummaryGeneratorService } from './topic-summary-generator/topic-su
     TopicAnalysisService,
     TopicAnalysisQueue,
     TopicAnalysisProcessor,
-    TopicCandidateExtractorService,
-    TopicCandidateConsolidatorService,
+    TopicCandidateExtractionService,
+    TopicCandidateConsolidationService,
     TopicReconcilerService,
     TopicSummaryGeneratorService,
   ],
