@@ -126,19 +126,29 @@ model SourceChunk {
 }
 
 model Topic {
-  id        String     @id @default(uuid())
-  title     String
+  id    String     @id @default(uuid())
+  title String
+  state TopicState @default(SUGGESTED)
+  summary String?
+  evidence TopicEvidence
+
   moduleId  String
-  parentId  String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  parent    Topic?     @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children  Topic[]    @relation("TopicHierarchy")
-  exercises Exercise[] @relation("ExerciseToTopic")
+  // parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  //parent    Topic?     @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  //children  Topic[]    @relation("TopicHierarchy")
+  //exercises Exercise[] @relation("ExerciseToTopic")
+  //exerciseId String?
+  //@@index([parentId])
 
   @@index([moduleId])
-  @@index([parentId])
+}
+
+model TopicEvidence {
+  id String @id @default(uuid())
+  topicId String
 }
 
 model Exercise {
@@ -156,7 +166,7 @@ model Exercise {
   module        Module            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   source        Source?           @relation(fields: [sourceId], references: [id])
   attempts      ExerciseAttempt[]
-  topics        Topic[]           @relation("ExerciseToTopic")
+  //topics        Topic[]           @relation("ExerciseToTopic")
 
   @@index([moduleId])
   @@index([sourceId])
@@ -205,4 +215,10 @@ enum ExerciseAttemptResult {
   CORRENT
   PARTIALLY_CORRENT
   INCORRECT
+}
+
+enum TopicState {
+  SUGGESTED
+  CONFIRMED
+  REJECTED
 }
