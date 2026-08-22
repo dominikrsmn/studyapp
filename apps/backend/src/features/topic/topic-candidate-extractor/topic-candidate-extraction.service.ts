@@ -8,6 +8,7 @@ import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import { topicAnalysisConfig } from '../topic-analysis.config';
 import { ConfigType } from '@nestjs/config';
 import { zodTextFormat } from 'openai/helpers/zod';
+import { escapeXml } from '../topic-xml.utils';
 
 @Injectable()
 export class TopicCandidateExtractionService {
@@ -91,8 +92,8 @@ export class TopicCandidateExtractionService {
                 ${batch
                   .map(
                     (chunk) => `
-                      <chunk id="${chunk.id}" sourceId="${chunk.sourceId}" sourcePageId="${chunk.sourcePageId}" pageNumber="${chunk.pageNumber}" chunkIndex="${chunk.chunkIndex}" startOffset="${chunk.startOffset}" endOffset="${chunk.endOffset}">
-                        ${this.escapeXml(chunk.content)}
+                      <chunk id="${escapeXml(chunk.id)}" sourceId="${escapeXml(chunk.sourceId)}" sourcePageId="${escapeXml(chunk.sourcePageId)}" pageNumber="${chunk.pageNumber}" chunkIndex="${chunk.chunkIndex}" startOffset="${chunk.startOffset}" endOffset="${chunk.endOffset}">
+                        ${escapeXml(chunk.content)}
                       </chunk>
                     `,
                   )
@@ -130,14 +131,5 @@ export class TopicCandidateExtractionService {
         }
       }
     }
-  }
-
-  private escapeXml(value: string): string {
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
   }
 }

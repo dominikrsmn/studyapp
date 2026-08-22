@@ -10,6 +10,7 @@ import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import { topicAnalysisConfig } from '../topic-analysis.config';
 import { ConfigType } from '@nestjs/config';
 import { zodTextFormat } from 'openai/helpers/zod';
+import { escapeXml } from '../topic-xml.utils';
 
 @Injectable()
 export class TopicReconciliationService {
@@ -190,16 +191,16 @@ export class TopicReconciliationService {
                 ${topics
                   .map(
                     (topic: ModuleTopic) => `
-                     <topic id="${topic.id}">
-                      <title>${this.escapeXml(topic.title)}</title>
-                      <description>${this.escapeXml(topic.description)}</description>
-                      ${topic.summary && `<summary>${this.escapeXml(topic.summary)}</summary>`}
+                     <topic id="${escapeXml(topic.id)}">
+                      <title>${escapeXml(topic.title)}</title>
+                      <description>${escapeXml(topic.description)}</description>
+                      ${topic.summary && `<summary>${escapeXml(topic.summary)}</summary>`}
                       <full_evidence>
                         ${topic.evidence
                           .map(
                             (evidence) => `
-                          <evidence id="${evidence.id}">
-                            ${this.escapeXml(evidence.content)}
+                          <evidence id="${escapeXml(evidence.id)}">
+                            ${escapeXml(evidence.content)}
                           </evidence>
                         `,
                           )
@@ -216,14 +217,14 @@ export class TopicReconciliationService {
                   .map(
                     (candidate: TopicCandidate, index) => `
                       <candidate index="${index}">
-                        <title>${this.escapeXml(candidate.title)}</title>
-                        <description>${this.escapeXml(candidate.description)}</description>
+                        <title>${escapeXml(candidate.title)}</title>
+                        <description>${escapeXml(candidate.description)}</description>
                         <facts>
                           ${candidate.facts
                             .map(
                               (fact: Fact) => `
-                            <fact chunkIds="${fact.chunkIds.join(',')}">
-                              ${this.escapeXml(fact.content)}
+                            <fact chunkIds="${escapeXml(fact.chunkIds.join(','))}">
+                              ${escapeXml(fact.content)}
                             </fact>
                           `,
                             )
@@ -249,12 +250,4 @@ export class TopicReconciliationService {
 
     return response.output_parsed;
   }
-
-  private escapeXml = (value: string): string =>
-    value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
 }

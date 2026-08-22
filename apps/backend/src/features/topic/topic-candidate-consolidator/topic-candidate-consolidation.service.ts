@@ -4,6 +4,7 @@ import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import { topicAnalysisConfig } from '../topic-analysis.config';
 import { ConfigType } from '@nestjs/config';
 import { zodTextFormat } from 'openai/helpers/zod';
+import { escapeXml } from '../topic-xml.utils';
 
 @Injectable()
 export class TopicCandidateConsolidationService {
@@ -85,14 +86,14 @@ export class TopicCandidateConsolidationService {
                   .map(
                     (candidate: TopicCandidate, index) => `
                       <candidate index="${index}">
-                        <title>${this.escapeXml(candidate.title)}</title>
-                        <description>${this.escapeXml(candidate.description)}</description>
+                        <title>${escapeXml(candidate.title)}</title>
+                        <description>${escapeXml(candidate.description)}</description>
                         <facts>
                           ${candidate.facts
                             .map(
                               (fact: Fact) => `
-                            <fact chunkIds="${fact.chunkIds.join(',')}">
-                              ${this.escapeXml(fact.content)}
+                            <fact chunkIds="${escapeXml(fact.chunkIds.join(','))}">
+                              ${escapeXml(fact.content)}
                             </fact>
                           `,
                             )
@@ -127,12 +128,4 @@ export class TopicCandidateConsolidationService {
 
     return consolidatedCandidates;
   }
-
-  private escapeXml = (value: string): string =>
-    value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
 }
