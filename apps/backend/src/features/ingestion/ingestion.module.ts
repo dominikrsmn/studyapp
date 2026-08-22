@@ -12,6 +12,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { sourceIngestionConfig } from './source-ingestion.config';
 import { SourceIngestionQueue } from './source-ingestion.queue';
 import { SourceIngestionProcessor } from './source-ingestion.processor';
+import { TopicModule } from '../topic/topic.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SourceIngestionProcessor } from './source-ingestion.processor';
     FileStorageModule,
     PrismaModule,
     OpenAiModule,
+    TopicModule,
   ],
   providers: [
     IngestionService,

@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -19,9 +20,9 @@ import {
   sourceStateChangedEventSchema,
 } from '@study/contracts';
 import { ConfigType } from '@nestjs/config';
-import { Inject } from '@nestjs/common';
 import { ingestionConfig } from './ingestion.config';
 import { sourceConfig } from '../source/source.config';
+import { TopicAnalysisQueue } from '../topic/topic-analysis.queue';
 
 export type Chunk = {
   content: string;
@@ -46,6 +47,7 @@ export class IngestionService {
     private readonly textChunker: TextChunkerService,
     private readonly embeddingService: EmbeddingService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly topicAnalysisQueue: TopicAnalysisQueue,
     @Inject(ingestionConfig.KEY)
     config: ConfigType<typeof ingestionConfig>,
   ) {
@@ -118,6 +120,9 @@ export class IngestionService {
       });
 
       this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
+
+      await this.topicAnalysisQueue.enqueue(source.module.id);
+
     } catch (error) {
       await this.deletePartialChunks(sourceId);
       await this.markFailed(sourceId, moduleId);

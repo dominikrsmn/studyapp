@@ -4,9 +4,8 @@ import { topicAnalysisConfig } from './topic-analysis.config';
 import type { TopicAnalysisJobData } from './topic-analysis.queue';
 import { TopicAnalysisService } from './topic-analysis.service';
 
-@Processor(topicAnalysisConfig().queueName, {
-  concurrency: topicAnalysisConfig().concurrency,
-})
+// keep concurrency at 1 since each analysis depends on their predecessors results
+@Processor(topicAnalysisConfig().queueName)
 export class TopicAnalysisProcessor extends WorkerHost {
   constructor(private readonly topicAnalysisService: TopicAnalysisService) {
     super();
