@@ -59,7 +59,15 @@ describe('TopicAnalysisService', () => {
     textProcessingService.chunkForAnalysis.mockResolvedValue(['chunk']);
     candidateExtractionService.extract.mockResolvedValue([]);
     candidateConsolidationService.consolidate.mockResolvedValue([]);
-    prismaService.topic.findMany.mockResolvedValue([]);
+    prismaService.topic.findMany.mockResolvedValue([
+      {
+        id: existingTopicId,
+        title: 'Existing topic',
+        description: 'Existing description',
+        summary: null,
+        evidence: [{ id: 'evidence-id', content: 'Existing evidence' }],
+      },
+    ]);
     prismaService.topic.update.mockResolvedValue({ id: existingTopicId });
     prismaService.topic.create.mockResolvedValue({ id: 'new-topic-id' });
     prismaService.$transaction.mockImplementation((operations) =>
@@ -68,34 +76,44 @@ describe('TopicAnalysisService', () => {
   });
 
   it('updates existing topics and creates new topics in one transaction', async () => {
-    topicReconciliationService.reconcile.mockResolvedValue([
+    const candidates = [
       {
-        id: existingTopicId,
-        title: 'Updated topic',
-        description: 'Updated description',
-        state: 'CONFIRMED',
-        summary: 'Updated summary',
-        evidence: [{ content: 'Updated evidence', chunkIds: ['chunk-1'] }],
+        title: 'Existing candidate',
+        description: 'Existing candidate description',
+        facts: [
+          { content: 'Existing evidence', chunkIds: ['chunk-1'] },
+          { content: 'Updated evidence', chunkIds: ['chunk-1'] },
+        ],
       },
       {
-        title: 'New topic',
-        description: 'New description',
-        state: 'SUGGESTED',
-        evidence: [{ content: 'New evidence', chunkIds: ['chunk-2'] }],
+        title: 'New candidate',
+        description: 'New candidate description',
+        facts: [{ content: 'New evidence', chunkIds: ['chunk-2'] }],
       },
-    ]);
+    ];
+    candidateConsolidationService.consolidate.mockResolvedValue(candidates);
+    topicReconciliationService.reconcile.mockResolvedValue({
+      existingTopicMatches: [
+        {
+          topicId: existingTopicId,
+          candidateIndexes: [0],
+        },
+      ],
+      newTopics: [
+        {
+          title: 'New topic',
+          description: 'New description',
+          candidateIndexes: [1],
+        },
+      ],
+    });
 
     await service.analyze('source-id');
 
     expect(prismaService.topic.update).toHaveBeenCalledWith({
       where: { id: existingTopicId, moduleId },
       data: {
-        title: 'Updated topic',
-        description: 'Updated description',
-        state: 'CONFIRMED',
-        summary: 'Updated summary',
         evidence: {
-          deleteMany: {},
           create: [{ content: 'Updated evidence' }],
         },
       },
@@ -104,8 +122,6 @@ describe('TopicAnalysisService', () => {
       data: {
         title: 'New topic',
         description: 'New description',
-        state: 'SUGGESTED',
-        summary: null,
         moduleId,
         evidence: {
           create: [{ content: 'New evidence' }],
