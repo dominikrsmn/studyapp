@@ -48,15 +48,17 @@ export class TopicCandidateExtractionService {
 
               The input contains multiple \`<chunk>\` elements. Each chunk includes:
 
-              * an \`index\`
+              * a globally stable \`id\`
+              * stable source and source-page IDs
               * a \`pageNumber\`
+              * page-relative character offsets
               * the chunk text
 
               For each relevant topic you identify, return a topic candidate that contains:
 
               * a concise canonical topic title
               * a precise description of the information about that topic contained in the provided chunks
-              * references to the chunk indexes that support the candidate
+              * one or more exact chunk IDs supporting every fact
 
               ## Extraction rules
 
@@ -75,6 +77,8 @@ export class TopicCandidateExtractionService {
               13. Do not create duplicate candidates within this batch.
               14. If a chunk contains no meaningful academic topic, it may contribute to no candidate.
               15. If the same information appears repeatedly because of overlapping chunks, include it only once in the candidate description.
+              16. Copy chunk IDs exactly from the input. Never invent, shorten, or rewrite an ID.
+              17. Every returned fact must have at least one supporting chunk ID.
 
               The output should reflect the topics contained in this batch as faithfully as possible while minimizing duplication and unnecessary fragmentation.
 
@@ -86,9 +90,9 @@ export class TopicCandidateExtractionService {
               <analysis_chunks>
                 ${batch
                   .map(
-                    (chunk, index) => `
-                      <chunk index="${index}" pageNumber="${chunk.pageNumber}">
-                        ${chunk.content}
+                    (chunk) => `
+                      <chunk id="${chunk.id}" sourceId="${chunk.sourceId}" sourcePageId="${chunk.sourcePageId}" pageNumber="${chunk.pageNumber}" chunkIndex="${chunk.chunkIndex}" startOffset="${chunk.startOffset}" endOffset="${chunk.endOffset}">
+                        ${this.escapeXml(chunk.content)}
                       </chunk>
                     `,
                   )
@@ -102,6 +106,38 @@ export class TopicCandidateExtractionService {
       },
     });
 
-    return response.output_parsed?.candidates ?? [];
+    const candidates = response.output_parsed?.candidates ?? [];
+    this.assertValidChunkReferences(
+      candidates,
+      new Set(batch.map(({ id }) => id)),
+    );
+    return candidates;
+  }
+
+  private assertValidChunkReferences(
+    candidates: TopicCandidate[],
+    allowedChunkIds: Set<string>,
+  ): void {
+    for (const candidate of candidates) {
+      for (const fact of candidate.facts) {
+        fact.chunkIds = [...new Set(fact.chunkIds)];
+        for (const chunkId of fact.chunkIds) {
+          if (!allowedChunkIds.has(chunkId)) {
+            throw new Error(
+              `Topic extraction returned unknown analysis chunk ID "${chunkId}"`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  private escapeXml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 }

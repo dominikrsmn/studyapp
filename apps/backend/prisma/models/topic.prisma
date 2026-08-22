@@ -29,9 +29,33 @@ model TopicEvidence {
   topicId String
   topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
+  provenance TopicEvidenceProvenance[]
+
   createdAt DateTime @default(now())
 
   @@index([topicId])
+}
+
+model TopicEvidenceProvenance {
+  id              String @id @default(uuid())
+  analysisChunkId String
+  sourceId        String
+  sourcePageId    String
+  pageNumber      Int
+  chunkIndex      Int
+  startOffset     Int
+  endOffset       Int
+  content         String
+
+  topicEvidenceId String
+  topicEvidence   TopicEvidence @relation(fields: [topicEvidenceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([topicEvidenceId, analysisChunkId])
+  @@index([analysisChunkId])
+  @@index([sourceId])
+  @@index([sourcePageId])
 }
 
 enum TopicState {

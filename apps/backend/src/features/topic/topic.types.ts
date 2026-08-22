@@ -3,7 +3,7 @@ import type { Prisma } from '../../infrastructure/database/generated/client';
 
 export const factSchema = z.object({
   content: z.string(),
-  chunkIds: z.array(z.string()),
+  chunkIds: z.array(z.string()).min(1),
 });
 
 export const topicCandidateSchema = z.object({
@@ -38,8 +38,27 @@ export type TopicCandidate = z.infer<typeof topicCandidateSchema>;
 export type Fact = z.infer<typeof factSchema>;
 
 export type AnalysisChunk = {
+  id: string;
   content: string;
+  sourceId: string;
+  sourcePageId: string;
   pageNumber: number;
+  chunkIndex: number;
+  startOffset: number;
+  endOffset: number;
+};
+
+export type EvidenceProvenance = Pick<
+  AnalysisChunk,
+  | 'sourceId'
+  | 'sourcePageId'
+  | 'pageNumber'
+  | 'chunkIndex'
+  | 'startOffset'
+  | 'endOffset'
+  | 'content'
+> & {
+  analysisChunkId: string;
 };
 
 export type ModuleTopic = Prisma.TopicGetPayload<{
@@ -52,6 +71,11 @@ export type ModuleTopic = Prisma.TopicGetPayload<{
       select: {
         id: true;
         content: true;
+        provenance: {
+          select: {
+            analysisChunkId: true;
+          };
+        };
       };
     };
   };

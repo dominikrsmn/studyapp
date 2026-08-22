@@ -34,6 +34,9 @@ export class TopicAnalysisService {
           },
         },
       },
+      orderBy: {
+        pageNumber: 'asc',
+      },
     });
     if (!pages.length) {
       throw new NotFoundException(`Source Pages were not found`);
@@ -67,6 +70,11 @@ export class TopicAnalysisService {
             select: {
               id: true,
               content: true,
+              provenance: {
+                select: {
+                  analysisChunkId: true,
+                },
+              },
             },
           },
         },
@@ -80,6 +88,9 @@ export class TopicAnalysisService {
       );
 
     const moduleId = pages[0].source.moduleId;
+    const chunksById = new Map(
+      analysisChunks.map((chunk) => [chunk.id, chunk]),
+    );
     const moduleTopicsById = new Map(
       moduleTopics.map((topic) => [topic.id, topic]),
     );
@@ -103,8 +114,14 @@ export class TopicAnalysisService {
               create: this.collectEvidence(
                 finalTopicCandidates,
                 candidateIndexes,
+                chunksById,
                 new Set(
-                  existingTopic.evidence.map((evidence) => evidence.content),
+                  existingTopic.evidence.flatMap((evidence) =>
+                    evidence.provenance.map(
+                      ({ analysisChunkId }) =>
+                        `${evidence.content}\u0000${analysisChunkId}`,
+                    ),
+                  ),
                 ),
               ),
             },
@@ -124,6 +141,7 @@ export class TopicAnalysisService {
               create: this.collectEvidence(
                 finalTopicCandidates,
                 candidateIndexes,
+                chunksById,
               ),
             },
           },
@@ -136,16 +154,26 @@ export class TopicAnalysisService {
     ]);
   }
 
-  private async processPages(pages: SourcePage[]): Promise<AnalysisChunk[]> {
+  private processPages(pages: SourcePage[]): AnalysisChunk[] {
     const analysisChunks: AnalysisChunk[] = [];
     for (const page of pages) {
-      const chunks = await this.textProcessingService.chunkForAnalysis(
-        page.content,
-      );
-      for (const chunk of chunks) {
+      const chunks = this.textProcessingService.chunkForAnalysis(page.content);
+      for (const [chunkIndex, chunk] of chunks.entries()) {
         analysisChunks.push({
-          content: chunk,
+          id: [
+            'analysis-chunk:v1',
+            page.sourceId,
+            `page:${page.pageNumber}`,
+            `chunk:${chunkIndex}`,
+            `offsets:${chunk.startOffset}-${chunk.endOffset}`,
+          ].join(':'),
+          content: chunk.content,
+          sourceId: page.sourceId,
+          sourcePageId: page.id,
           pageNumber: page.pageNumber,
+          chunkIndex,
+          startOffset: chunk.startOffset,
+          endOffset: chunk.endOffset,
         });
       }
     }
@@ -155,9 +183,10 @@ export class TopicAnalysisService {
   private collectEvidence(
     candidates: TopicCandidate[],
     candidateIndexes: number[],
-    excludedContent: Set<string> = new Set(),
-  ): { content: string }[] {
-    const evidenceByContent = new Map<string, { content: string }>();
+    chunksById: Map<string, AnalysisChunk>,
+    excludedReferences: Set<string> = new Set(),
+  ) {
+    const evidenceByContent = new Map<string, Map<string, AnalysisChunk>>();
 
     for (const candidateIndex of candidateIndexes) {
       const candidate = candidates[candidateIndex];
@@ -168,12 +197,39 @@ export class TopicAnalysisService {
       }
 
       for (const fact of candidate.facts) {
-        if (!excludedContent.has(fact.content)) {
-          evidenceByContent.set(fact.content, { content: fact.content });
+        const chunksForFact = evidenceByContent.get(fact.content) ?? new Map();
+        for (const chunkId of fact.chunkIds) {
+          const chunk = chunksById.get(chunkId);
+          if (!chunk) {
+            throw new Error(
+              `Topic evidence referenced unknown analysis chunk ID "${chunkId}"`,
+            );
+          }
+
+          if (!excludedReferences.has(`${fact.content}\u0000${chunkId}`)) {
+            chunksForFact.set(chunkId, chunk);
+          }
+        }
+        if (chunksForFact.size > 0) {
+          evidenceByContent.set(fact.content, chunksForFact);
         }
       }
     }
 
-    return [...evidenceByContent.values()];
+    return [...evidenceByContent].map(([content, chunks]) => ({
+      content,
+      provenance: {
+        create: [...chunks.values()].map((chunk) => ({
+          analysisChunkId: chunk.id,
+          sourceId: chunk.sourceId,
+          sourcePageId: chunk.sourcePageId,
+          pageNumber: chunk.pageNumber,
+          chunkIndex: chunk.chunkIndex,
+          startOffset: chunk.startOffset,
+          endOffset: chunk.endOffset,
+          content: chunk.content,
+        })),
+      },
+    }));
   }
 }

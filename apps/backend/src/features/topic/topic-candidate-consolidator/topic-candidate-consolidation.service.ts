@@ -16,6 +16,11 @@ export class TopicCandidateConsolidationService {
   ) {}
 
   async consolidate(candidates: TopicCandidate[]): Promise<TopicCandidate[]> {
+    const allowedChunkIds = new Set(
+      candidates.flatMap((candidate) =>
+        candidate.facts.flatMap((fact) => fact.chunkIds),
+      ),
+    );
     const response = await this.openAiService.client.responses.parse({
       model: this.topicAnalysisConfiguration.consolidation.model,
       input: [
@@ -106,7 +111,21 @@ export class TopicCandidateConsolidationService {
       },
     });
 
-    return response.output_parsed?.candidates ?? [];
+    const consolidatedCandidates = response.output_parsed?.candidates ?? [];
+    for (const candidate of consolidatedCandidates) {
+      for (const fact of candidate.facts) {
+        fact.chunkIds = [...new Set(fact.chunkIds)];
+        for (const chunkId of fact.chunkIds) {
+          if (!allowedChunkIds.has(chunkId)) {
+            throw new Error(
+              `Topic consolidation returned unknown analysis chunk ID "${chunkId}"`,
+            );
+          }
+        }
+      }
+    }
+
+    return consolidatedCandidates;
   }
 
   private escapeXml = (value: string): string =>

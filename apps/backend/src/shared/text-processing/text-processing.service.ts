@@ -2,12 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { ingestionConfig } from '../../features/ingestion/ingestion.config';
 import { topicAnalysisConfig } from '../../features/topic/topic-analysis.config';
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+
+export type AnalysisTextChunk = {
+  content: string;
+  startOffset: number;
+  endOffset: number;
+};
 
 @Injectable()
 export class TextProcessingService {
   constructor(
-    private readonly prismaService: PrismaService,
     @Inject(ingestionConfig.KEY)
     private readonly ingestionConfiguration: ConfigType<typeof ingestionConfig>,
     @Inject(topicAnalysisConfig.KEY)
@@ -24,8 +28,8 @@ export class TextProcessingService {
     );
   }
 
-  async chunkForAnalysis(text: string): Promise<string[]> {
-    return this.chunkFixedSize(
+  chunkForAnalysis(text: string): AnalysisTextChunk[] {
+    return this.chunkFixedSizeWithOffsets(
       text,
       this.topicAnalysisConfiguration.chunks.chunkSize,
       this.topicAnalysisConfiguration.chunks.chunkOverlap,
@@ -37,6 +41,16 @@ export class TextProcessingService {
     chunkSize: number,
     overlap: number,
   ): string[] {
+    return this.chunkFixedSizeWithOffsets(text, chunkSize, overlap).map(
+      ({ content }) => content,
+    );
+  }
+
+  private chunkFixedSizeWithOffsets(
+    text: string,
+    chunkSize: number,
+    overlap: number,
+  ): AnalysisTextChunk[] {
     if (chunkSize <= 0) {
       throw new RangeError('Chunk size must be greater than zero');
     }
@@ -46,9 +60,14 @@ export class TextProcessingService {
       );
     }
 
-    const chunks: string[] = [];
+    const chunks: AnalysisTextChunk[] = [];
     for (let start = 0; start < text.length; start += chunkSize - overlap) {
-      chunks.push(text.slice(start, start + chunkSize));
+      const end = Math.min(start + chunkSize, text.length);
+      chunks.push({
+        content: text.slice(start, end),
+        startOffset: start,
+        endOffset: end,
+      });
       if (start + chunkSize >= text.length) {
         break;
       }

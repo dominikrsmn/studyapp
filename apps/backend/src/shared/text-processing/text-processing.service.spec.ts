@@ -11,11 +11,7 @@ jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
 describe('TextProcessingService', () => {
   let service: TextProcessingService;
 
-  const prismaService = {
-    sourceChunk: {
-      findMany: jest.fn(),
-    },
-  };
+  const prismaService = {};
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -33,15 +29,13 @@ describe('TextProcessingService', () => {
           provide: topicAnalysisConfig.KEY,
           useValue: {
             ...topicAnalysisConfig(),
-            chunkSize: 8,
-            chunkOverlap: 2,
+            chunks: { chunkSize: 8, chunkOverlap: 2 },
           },
         },
       ],
     }).compile();
 
     service = module.get<TextProcessingService>(TextProcessingService);
-    prismaService.sourceChunk.findMany.mockReset();
   });
 
   it('creates fixed-size RAG chunks with the configured overlap', () => {
@@ -53,20 +47,10 @@ describe('TextProcessingService', () => {
     ]);
   });
 
-  it('creates analysis chunks from all source chunks in a module', async () => {
-    prismaService.sourceChunk.findMany.mockResolvedValue([
-      { content: 'first' },
-      { content: 'second' },
+  it('creates analysis chunks with page-relative offsets', () => {
+    expect(service.chunkForAnalysis('abcdefghijkl')).resolves.toEqual([
+      { content: 'abcdefgh', startOffset: 0, endOffset: 8 },
+      { content: 'ghijkl', startOffset: 6, endOffset: 12 },
     ]);
-
-    await expect(service.chunkForAnalysis('module-id')).resolves.toEqual([
-      'first\nse',
-      'second',
-    ]);
-    expect(prismaService.sourceChunk.findMany).toHaveBeenCalledWith({
-      where: { source: { moduleId: 'module-id' } },
-      select: { content: true },
-      orderBy: [{ sourceId: 'asc' }, { chunkIndex: 'asc' }],
-    });
   });
 });

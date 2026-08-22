@@ -5,6 +5,7 @@ import { TopicAnalysisService } from './topic-analysis.service';
 import { TopicCandidateExtractionService } from './topic-candidate-extractor/topic-candidate-extraction.service';
 import { TopicCandidateConsolidationService } from './topic-candidate-consolidator/topic-candidate-consolidation.service';
 import { TopicReconciliationService } from './topic-reconciler/topic-reconciliation.service';
+import type { AnalysisChunk } from './topic.types';
 
 jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
@@ -56,7 +57,18 @@ describe('TopicAnalysisService', () => {
         source: { moduleId },
       },
     ]);
-    textProcessingService.chunkForAnalysis.mockResolvedValue(['chunk']);
+    textProcessingService.chunkForAnalysis.mockResolvedValue([
+      {
+        content: 'first chunk',
+        startOffset: 0,
+        endOffset: 11,
+      },
+      {
+        content: 'second chunk',
+        startOffset: 9,
+        endOffset: 21,
+      },
+    ]);
     candidateExtractionService.extract.mockResolvedValue([]);
     candidateConsolidationService.consolidate.mockResolvedValue([]);
     prismaService.topic.findMany.mockResolvedValue([
@@ -65,7 +77,9 @@ describe('TopicAnalysisService', () => {
         title: 'Existing topic',
         description: 'Existing description',
         summary: null,
-        evidence: [{ id: 'evidence-id', content: 'Existing evidence' }],
+        evidence: [
+          { id: 'evidence-id', content: 'Existing evidence', provenance: [] },
+        ],
       },
     ]);
     prismaService.topic.update.mockResolvedValue({ id: existingTopicId });
@@ -76,22 +90,24 @@ describe('TopicAnalysisService', () => {
   });
 
   it('updates existing topics and creates new topics in one transaction', async () => {
-    const candidates = [
+    candidateExtractionService.extract.mockImplementation((chunks) => [
       {
         title: 'Existing candidate',
         description: 'Existing candidate description',
         facts: [
-          { content: 'Existing evidence', chunkIds: ['chunk-1'] },
-          { content: 'Updated evidence', chunkIds: ['chunk-1'] },
+          { content: 'Existing evidence', chunkIds: [chunks[0].id] },
+          { content: 'Updated evidence', chunkIds: [chunks[0].id] },
         ],
       },
       {
         title: 'New candidate',
         description: 'New candidate description',
-        facts: [{ content: 'New evidence', chunkIds: ['chunk-2'] }],
+        facts: [{ content: 'New evidence', chunkIds: [chunks[1].id] }],
       },
-    ];
-    candidateConsolidationService.consolidate.mockResolvedValue(candidates);
+    ]);
+    candidateConsolidationService.consolidate.mockImplementation(
+      (candidates) => candidates,
+    );
     topicReconciliationService.reconcile.mockResolvedValue({
       existingTopicMatches: [
         {
@@ -114,7 +130,35 @@ describe('TopicAnalysisService', () => {
       where: { id: existingTopicId, moduleId },
       data: {
         evidence: {
-          create: [{ content: 'Updated evidence' }],
+          create: [
+            {
+              content: 'Existing evidence',
+              provenance: {
+                create: [
+                  expect.objectContaining({
+                    analysisChunkId: expect.stringMatching(/^analysis-chunk:/),
+                    sourceId: 'source-id',
+                    sourcePageId: 'page-id',
+                    pageNumber: 1,
+                    chunkIndex: 0,
+                    startOffset: 0,
+                    endOffset: 11,
+                    content: 'first chunk',
+                  }),
+                ],
+              },
+            },
+            {
+              content: 'Updated evidence',
+              provenance: {
+                create: [
+                  expect.objectContaining({
+                    analysisChunkId: expect.stringMatching(/^analysis-chunk:/),
+                  }),
+                ],
+              },
+            },
+          ],
         },
       },
     });
@@ -124,7 +168,25 @@ describe('TopicAnalysisService', () => {
         description: 'New description',
         moduleId,
         evidence: {
-          create: [{ content: 'New evidence' }],
+          create: [
+            {
+              content: 'New evidence',
+              provenance: {
+                create: [
+                  expect.objectContaining({
+                    analysisChunkId: expect.stringMatching(/^analysis-chunk:/),
+                    sourceId: 'source-id',
+                    sourcePageId: 'page-id',
+                    pageNumber: 1,
+                    chunkIndex: 1,
+                    startOffset: 9,
+                    endOffset: 21,
+                    content: 'second chunk',
+                  }),
+                ],
+              },
+            },
+          ],
         },
       },
     });
@@ -143,5 +205,42 @@ describe('TopicAnalysisService', () => {
     );
     expect(topicReconciliationService.reconcile).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('creates distinct deterministic IDs while retaining the current page ID', async () => {
+    topicReconciliationService.reconcile.mockResolvedValue({
+      existingTopicMatches: [],
+      newTopics: [],
+    });
+
+    await service.analyze('source-id');
+    const firstRunChunks = candidateExtractionService.extract.mock
+      .calls[0][0] as AnalysisChunk[];
+
+    prismaService.sourcePage.findMany.mockResolvedValue([
+      {
+        id: 'recreated-page-id',
+        sourceId: 'source-id',
+        pageNumber: 1,
+        content: 'page content',
+        createdAt: new Date(),
+        source: { moduleId },
+      },
+    ]);
+    await service.analyze('source-id');
+    const secondRunChunks = candidateExtractionService.extract.mock
+      .calls[1][0] as AnalysisChunk[];
+
+    expect(firstRunChunks.map(({ id }) => id)).toEqual([
+      'analysis-chunk:v1:source-id:page:1:chunk:0:offsets:0-11',
+      'analysis-chunk:v1:source-id:page:1:chunk:1:offsets:9-21',
+    ]);
+    expect(secondRunChunks.map(({ id }) => id)).toEqual(
+      firstRunChunks.map(({ id }) => id),
+    );
+    expect(secondRunChunks.map(({ sourcePageId }) => sourcePageId)).toEqual([
+      'recreated-page-id',
+      'recreated-page-id',
+    ]);
   });
 });
