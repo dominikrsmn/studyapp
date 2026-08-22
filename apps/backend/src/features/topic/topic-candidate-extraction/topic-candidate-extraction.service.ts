@@ -74,7 +74,7 @@ export class TopicCandidateExtractionService {
               9. Preserve important definitions, methods, conditions, properties, relationships, and limitations mentioned in the material.
               10. Keep descriptions concise but information-dense. Do not write a general textbook summary of the topic; summarize only what the provided chunks contribute.
               11. Topic titles should be stable and canonical enough that a later consolidation step can compare candidates extracted from other parts of the course.
-              12. Do not try to reconcile the extracted candidates with topics from other batches or existing module topics. A later processing step handles global consolidation and reconciliation.
+              12. Do not compare the extracted candidates with topics from other batches or existing module topics. Later processing steps handle global grouping and merging.
               13. Do not create duplicate candidates within this batch.
               14. If a chunk contains no meaningful academic topic, it may contribute to no candidate.
               15. If the same information appears repeatedly because of overlapping chunks, include it only once in the candidate description.

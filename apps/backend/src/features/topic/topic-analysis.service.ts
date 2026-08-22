@@ -19,7 +19,7 @@ export class TopicAnalysisService {
     private readonly textProcessingService: TextProcessingService,
     private readonly candidateExtractionService: TopicCandidateExtractionService,
     private readonly candidateConsolidationService: TopicCandidateGroupingService,
-    private readonly topicReconciliationService: TopicMergingService,
+    private readonly topicMergingService: TopicMergingService,
   ) {}
 
   async analyze(sourceId: string): Promise<void> {
@@ -81,11 +81,10 @@ export class TopicAnalysisService {
       },
     );
 
-    const topicResults: TopicMerging =
-      await this.topicReconciliationService.merge(
-        finalTopicCandidates,
-        moduleTopics,
-      );
+    const topicResults: TopicMerging = await this.topicMergingService.merge(
+      finalTopicCandidates,
+      moduleTopics,
+    );
 
     const moduleId = pages[0].source.moduleId;
     const chunksById = new Map(
@@ -100,7 +99,7 @@ export class TopicAnalysisService {
         const existingTopic = moduleTopicsById.get(topicId);
         if (!existingTopic) {
           throw new Error(
-            `Topic reconciliation referenced unknown topic "${topicId}"`,
+            `Topic merging referenced unknown topic "${topicId}"`,
           );
         }
 
@@ -192,7 +191,7 @@ export class TopicAnalysisService {
       const candidate = candidates[candidateIndex];
       if (!candidate) {
         throw new Error(
-          `Topic reconciliation referenced unknown candidate index ${candidateIndex}`,
+          `Topic merging referenced unknown candidate index ${candidateIndex}`,
         );
       }
 

@@ -80,7 +80,7 @@ export class TopicCandidateGroupingService {
           * Never omit, duplicate, or invent a candidate index.
           * Each group must contain at least one candidate index.
           * Do not create duplicate groups for the same resulting topic.
-          * Do not reconcile candidates with existing module topics. A later step handles that.
+          * Do not match candidates with existing module topics. A later merging step handles that.
           * Do not decide whether a topic should be accepted, rejected, or confirmed by the user.
 
           ## Output

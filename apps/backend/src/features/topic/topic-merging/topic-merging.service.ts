@@ -32,7 +32,7 @@ export class TopicMergingService {
         {
           role: 'developer',
           content: `
-            You are responsible for reconciling newly extracted topic candidates with the existing topics of a university course module.
+            You are responsible for merging newly extracted topic candidates with the existing topics of a university course module.
 
             Your task is to produce a canonical mapping between the provided topic candidates and the module's existing topics.
 
@@ -41,7 +41,7 @@ export class TopicMergingService {
             1. Which topic candidates represent an already existing topic.
             2. Which topic candidates describe the same new topic and should be consolidated into one new topic.
 
-            Do not summarize the course material and do not rewrite or reproduce evidence. Evidence and provenance are preserved outside this reconciliation step through the candidate indexes.
+            Do not summarize the course material and do not rewrite or reproduce evidence. Evidence and provenance are preserved outside this merging step through the candidate indexes.
 
             ## Input
 
@@ -76,7 +76,7 @@ export class TopicMergingService {
 
             Facts may contain provenance metadata such as chunk IDs. Use the facts to understand the candidate, but do not reproduce or modify them in your output.
 
-            ## Reconciliation
+            ## Merging
 
             Every topic candidate must be assigned to exactly one canonical topic.
 
@@ -166,13 +166,13 @@ export class TopicMergingService {
             * every new topic contains at least one candidate
             * semantically equivalent new candidates are consolidated rather than duplicated
 
-            If there are no existing topics, reconcile the candidates only against each other and return all resulting canonical topics under \`newTopics\`.
+            If there are no existing topics, merge the candidates only with each other and return all resulting canonical topics under \`newTopics\`.
 
             If there are no topic candidates, return empty arrays for both output fields.
 
             ## Output
 
-            Return only the structured reconciliation result matching the provided output schema.
+            Return only the structured merging result matching the provided output schema.
 
             The output consists of:
 
@@ -248,6 +248,71 @@ export class TopicMergingService {
       throw new Error('Topic merging returned no parsed output');
     }
 
-    return response.output_parsed;
+    return this.validateMerging(candidates, topics, response.output_parsed);
+  }
+
+  private validateMerging(
+    candidates: TopicCandidate[],
+    topics: ModuleTopic[],
+    merging: TopicMerging,
+  ): TopicMerging {
+    const validTopicIds = new Set(topics.map(({ id }) => id));
+    const referencedTopicIds = new Set<string>();
+    const referencedCandidateIndexes = new Set<number>();
+
+    const validateCandidateIndexes = (candidateIndexes: number[]) => {
+      for (const candidateIndex of candidateIndexes) {
+        if (
+          !Number.isInteger(candidateIndex) ||
+          candidateIndex < 0 ||
+          candidateIndex >= candidates.length
+        ) {
+          throw new Error(
+            `Topic merging returned unknown candidate index "${candidateIndex}"`,
+          );
+        }
+
+        if (referencedCandidateIndexes.has(candidateIndex)) {
+          throw new Error(
+            `Topic merging returned candidate index "${candidateIndex}" more than once`,
+          );
+        }
+
+        referencedCandidateIndexes.add(candidateIndex);
+      }
+    };
+
+    for (const { topicId, candidateIndexes } of merging.existingTopicMatches) {
+      if (!validTopicIds.has(topicId)) {
+        throw new Error(
+          `Topic merging returned unknown existing topic ID "${topicId}"`,
+        );
+      }
+
+      if (referencedTopicIds.has(topicId)) {
+        throw new Error(
+          `Topic merging returned existing topic "${topicId}" more than once`,
+        );
+      }
+
+      referencedTopicIds.add(topicId);
+      validateCandidateIndexes(candidateIndexes);
+    }
+
+    for (const { candidateIndexes } of merging.newTopics) {
+      validateCandidateIndexes(candidateIndexes);
+    }
+
+    const missingIndexes = candidates
+      .map((_, index) => index)
+      .filter((index) => !referencedCandidateIndexes.has(index));
+
+    if (missingIndexes.length > 0) {
+      throw new Error(
+        `Topic merging omitted candidate indexes: ${missingIndexes.join(', ')}`,
+      );
+    }
+
+    return merging;
   }
 }

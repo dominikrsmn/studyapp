@@ -31,18 +31,18 @@ describe('TopicAnalysisService', () => {
   const candidateExtractionService = {
     extract: jest.fn(),
   };
-  const candidateConsolidationService = {
-    consolidate: jest.fn(),
+  const candidateGroupingService = {
+    group: jest.fn(),
   };
-  const topicReconciliationService = {
-    reconcile: jest.fn(),
+  const topicMergingService = {
+    merge: jest.fn(),
   };
   const service = new TopicAnalysisService(
     prismaService as unknown as PrismaService,
     textProcessingService as unknown as TextProcessingService,
     candidateExtractionService as unknown as TopicCandidateExtractionService,
-    candidateConsolidationService as unknown as TopicCandidateGroupingService,
-    topicReconciliationService as unknown as TopicMergingService,
+    candidateGroupingService as unknown as TopicCandidateGroupingService,
+    topicMergingService as unknown as TopicMergingService,
   );
 
   beforeEach(() => {
@@ -57,7 +57,7 @@ describe('TopicAnalysisService', () => {
         source: { moduleId },
       },
     ]);
-    textProcessingService.chunkForAnalysis.mockResolvedValue([
+    textProcessingService.chunkForAnalysis.mockReturnValue([
       {
         content: 'first chunk',
         startOffset: 0,
@@ -70,7 +70,7 @@ describe('TopicAnalysisService', () => {
       },
     ]);
     candidateExtractionService.extract.mockResolvedValue([]);
-    candidateConsolidationService.consolidate.mockResolvedValue([]);
+    candidateGroupingService.group.mockResolvedValue([]);
     prismaService.topic.findMany.mockResolvedValue([
       {
         id: existingTopicId,
@@ -105,10 +105,10 @@ describe('TopicAnalysisService', () => {
         facts: [{ content: 'New evidence', chunkIds: [chunks[1].id] }],
       },
     ]);
-    candidateConsolidationService.consolidate.mockImplementation(
+    candidateGroupingService.group.mockImplementation(
       (candidates) => candidates,
     );
-    topicReconciliationService.reconcile.mockResolvedValue({
+    topicMergingService.merge.mockResolvedValue({
       existingTopicMatches: [
         {
           topicId: existingTopicId,
@@ -203,12 +203,12 @@ describe('TopicAnalysisService', () => {
     await expect(service.analyze('missing-source')).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    expect(topicReconciliationService.reconcile).not.toHaveBeenCalled();
+    expect(topicMergingService.merge).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
 
   it('creates distinct deterministic IDs while retaining the current page ID', async () => {
-    topicReconciliationService.reconcile.mockResolvedValue({
+    topicMergingService.merge.mockResolvedValue({
       existingTopicMatches: [],
       newTopics: [],
     });
