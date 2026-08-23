@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   Fact,
   TopicCandidate,
@@ -13,6 +13,8 @@ import { escapeXml } from '../topic-xml.utils';
 
 @Injectable()
 export class TopicCandidateGroupingService {
+  private readonly logger = new Logger(TopicCandidateGroupingService.name);
+
   constructor(
     private readonly openAiService: OpenAiService,
     @Inject(topicAnalysisConfig.KEY)
@@ -124,7 +126,31 @@ export class TopicCandidateGroupingService {
     });
 
     if (!response.output_parsed) {
-      throw new Error('Topic grouping response did not contain parsed output');
+      const output = response.output ?? [];
+      const refusals = output
+        .filter((item) => item.type === 'message')
+        .flatMap((item) => item.content)
+        .filter((item) => item.type === 'refusal')
+        .map((item) => item.refusal);
+      const details = {
+        responseId: response.id,
+        status: response.status,
+        incompleteReason: response.incomplete_details?.reason,
+        errorCode: response.error?.code,
+        errorMessage: response.error?.message,
+        outputTypes: output.map((item) => item.type),
+        refusals,
+        inputTokens: response.usage?.input_tokens,
+        outputTokens: response.usage?.output_tokens,
+        reasoningTokens: response.usage?.output_tokens_details.reasoning_tokens,
+      };
+
+      this.logger.error(
+        `Topic grouping response did not contain parsed output: ${JSON.stringify(details)}`,
+      );
+      throw new Error(
+        `Topic grouping response did not contain parsed output (responseId="${response.id}", status="${response.status ?? 'unknown'}", incompleteReason="${response.incomplete_details?.reason ?? 'none'}")`,
+      );
     }
 
     return this.reconstructCandidates(candidates, response.output_parsed);

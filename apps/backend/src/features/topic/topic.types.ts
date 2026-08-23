@@ -42,6 +42,10 @@ export const topicMergingSchema = z.object({
   newTopics: z.array(newTopicSchema),
 });
 
+export const topicSummarySchema = z.object({
+  summary: z.string().min(1),
+});
+
 export type TopicMerging = z.infer<typeof topicMergingSchema>;
 
 export type TopicCandidateConsolidation = z.infer<
@@ -95,3 +99,7 @@ export type ModuleTopic = Prisma.TopicGetPayload<{
     };
   };
 }>;
+
+export type TopicSummaryInput = Pick<ModuleTopic, 'title' | 'description'> & {
+  evidence: Array<{ content: string }>;
+};

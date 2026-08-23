@@ -5,7 +5,7 @@ describe('TopicCandidateGrouperService', () => {
   const createService = (parse: jest.Mock) =>
     new TopicCandidateGroupingService(
       { client: { responses: { parse } } } as never,
-      { consolidation: { model: 'test-model' } } as never,
+      { grouping: { model: 'test-model' } } as never,
     );
 
   it('reconstructs groups from candidate indexes without changing any facts', async () => {
@@ -83,7 +83,7 @@ describe('TopicCandidateGrouperService', () => {
 
     const request = parse.mock.calls[0][0];
     const outputSchema = JSON.stringify(request.text.format);
-    expect(outputSchema).toContain('topic_candidate_consolidation');
+    expect(outputSchema).toContain('topic_candidate_grouping');
     expect(outputSchema).toContain('candidateIndexes');
     expect(outputSchema).not.toContain('chunkIds');
     expect(outputSchema).not.toContain('facts');
@@ -177,7 +177,19 @@ describe('TopicCandidateGrouperService', () => {
   });
 
   it('rejects a response without parsed output', async () => {
-    const parse = jest.fn().mockResolvedValue({ output_parsed: null });
+    const parse = jest.fn().mockResolvedValue({
+      id: 'resp-grouping',
+      status: 'incomplete',
+      incomplete_details: { reason: 'max_output_tokens' },
+      error: null,
+      output: [],
+      output_parsed: null,
+      usage: {
+        input_tokens: 100,
+        output_tokens: 50,
+        output_tokens_details: { reasoning_tokens: 50 },
+      },
+    });
 
     await expect(
       createService(parse).group([
@@ -188,7 +200,7 @@ describe('TopicCandidateGrouperService', () => {
         },
       ]),
     ).rejects.toThrow(
-      'Topic consolidation response did not contain parsed output',
+      'Topic grouping response did not contain parsed output (responseId="resp-grouping", status="incomplete", incompleteReason="max_output_tokens")',
     );
   });
 

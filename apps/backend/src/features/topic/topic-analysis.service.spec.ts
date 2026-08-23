@@ -5,6 +5,7 @@ import { TopicAnalysisService } from './topic-analysis.service';
 import { TopicCandidateExtractionService } from './topic-candidate-extraction/topic-candidate-extraction.service';
 import { TopicCandidateGroupingService } from './topic-candidate-grouping/topic-candidate-grouping.service';
 import { TopicMergingService } from './topic-merging/topic-merging.service';
+import { TopicSummaryGenerationService } from './topic-summary-generation/topic-summary-generation.service';
 import type { AnalysisChunk } from './topic.types';
 
 jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
@@ -37,12 +38,16 @@ describe('TopicAnalysisService', () => {
   const topicMergingService = {
     merge: jest.fn(),
   };
+  const topicSummaryGenerationService = {
+    generate: jest.fn(),
+  };
   const service = new TopicAnalysisService(
     prismaService as unknown as PrismaService,
     textProcessingService as unknown as TextProcessingService,
     candidateExtractionService as unknown as TopicCandidateExtractionService,
     candidateGroupingService as unknown as TopicCandidateGroupingService,
     topicMergingService as unknown as TopicMergingService,
+    topicSummaryGenerationService as unknown as TopicSummaryGenerationService,
   );
 
   beforeEach(() => {
@@ -84,6 +89,9 @@ describe('TopicAnalysisService', () => {
     ]);
     prismaService.topic.update.mockResolvedValue({ id: existingTopicId });
     prismaService.topic.create.mockResolvedValue({ id: 'new-topic-id' });
+    topicSummaryGenerationService.generate.mockImplementation(({ title }) =>
+      Promise.resolve(`Summary for ${title}`),
+    );
     prismaService.$transaction.mockImplementation((operations) =>
       Promise.all(operations),
     );
@@ -129,6 +137,7 @@ describe('TopicAnalysisService', () => {
     expect(prismaService.topic.update).toHaveBeenCalledWith({
       where: { id: existingTopicId, moduleId },
       data: {
+        summary: 'Summary for Existing topic',
         evidence: {
           create: [
             {
@@ -166,6 +175,7 @@ describe('TopicAnalysisService', () => {
       data: {
         title: 'New topic',
         description: 'New description',
+        summary: 'Summary for New topic',
         moduleId,
         evidence: {
           create: [
@@ -195,6 +205,22 @@ describe('TopicAnalysisService', () => {
       expect.any(Promise),
       expect.any(Promise),
     ]);
+    expect(topicSummaryGenerationService.generate).toHaveBeenNthCalledWith(1, {
+      title: 'Existing topic',
+      description: 'Existing description',
+      evidence: [
+        { content: 'Existing evidence' },
+        { content: 'Updated evidence' },
+      ],
+    });
+    expect(topicSummaryGenerationService.generate).toHaveBeenNthCalledWith(2, {
+      title: 'New topic',
+      description: 'New description',
+      evidence: [{ content: 'New evidence' }],
+    });
+    expect(topicMergingService.merge.mock.invocationCallOrder[0]).toBeLessThan(
+      topicSummaryGenerationService.generate.mock.invocationCallOrder[0],
+    );
   });
 
   it('rejects a source without pages', async () => {

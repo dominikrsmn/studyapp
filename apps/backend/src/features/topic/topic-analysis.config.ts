@@ -11,6 +11,9 @@ export const topicAnalysisConfig = registerAs('topicAnalysis', () => ({
   merging: {
     model: 'gpt-5.6-sol',
   },
+  summaryGeneration: {
+    model: 'gpt-5.6-sol',
+  },
   chunks: {
     chunkSize: 5_000,
     chunkOverlap: 1_000,

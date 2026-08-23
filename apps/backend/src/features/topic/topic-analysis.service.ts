@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 import type { SourcePage } from '../../infrastructure/database/generated/client';
@@ -11,18 +11,23 @@ import {
 import { TopicCandidateExtractionService } from './topic-candidate-extraction/topic-candidate-extraction.service';
 import { TopicCandidateGroupingService } from './topic-candidate-grouping/topic-candidate-grouping.service';
 import { TopicMergingService } from './topic-merging/topic-merging.service';
+import { TopicSummaryGenerationService } from './topic-summary-generation/topic-summary-generation.service';
 
 @Injectable()
 export class TopicAnalysisService {
+  private readonly logger = new Logger(TopicAnalysisService.name);
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly textProcessingService: TextProcessingService,
     private readonly candidateExtractionService: TopicCandidateExtractionService,
     private readonly candidateConsolidationService: TopicCandidateGroupingService,
     private readonly topicMergingService: TopicMergingService,
+    private readonly topicSummaryGenerationService: TopicSummaryGenerationService,
   ) {}
 
   async analyze(sourceId: string): Promise<void> {
+    this.logger.log(`Loading source pages (sourceId="${sourceId}")`);
     const pages = await this.prismaService.sourcePage.findMany({
       where: {
         sourceId: sourceId,
@@ -43,12 +48,21 @@ export class TopicAnalysisService {
     }
 
     const analysisChunks: AnalysisChunk[] = await this.processPages(pages);
+    this.logger.log(
+      `Starting topic extraction (sourceId="${sourceId}", pages=${pages.length}, chunks=${analysisChunks.length})`,
+    );
 
     const topicCandidates: TopicCandidate[] =
       await this.candidateExtractionService.extract(analysisChunks);
+    this.logger.log(
+      `Topic extraction completed; starting grouping (sourceId="${sourceId}", candidates=${topicCandidates.length})`,
+    );
 
     const finalTopicCandidates: TopicCandidate[] =
       await this.candidateConsolidationService.group(topicCandidates);
+    this.logger.log(
+      `Topic grouping completed; loading existing topics (sourceId="${sourceId}", groupedCandidates=${finalTopicCandidates.length})`,
+    );
 
     const moduleTopics: ModuleTopic[] = await this.prismaService.topic.findMany(
       {
@@ -80,10 +94,16 @@ export class TopicAnalysisService {
         },
       },
     );
+    this.logger.log(
+      `Existing topics loaded; starting topic merging (sourceId="${sourceId}", groupedCandidates=${finalTopicCandidates.length}, existingTopics=${moduleTopics.length})`,
+    );
 
     const topicResults: TopicMerging = await this.topicMergingService.merge(
       finalTopicCandidates,
       moduleTopics,
+    );
+    this.logger.log(
+      `Topic merging completed; starting summary generation (sourceId="${sourceId}", existingTopicMatches=${topicResults.existingTopicMatches.length}, newTopics=${topicResults.newTopics.length})`,
     );
 
     const moduleId = pages[0].source.moduleId;
@@ -94,8 +114,56 @@ export class TopicAnalysisService {
       moduleTopics.map((topic) => [topic.id, topic]),
     );
 
+    const summaryInputs = [
+      ...topicResults.existingTopicMatches.map(
+        ({ topicId, candidateIndexes }) => {
+          const existingTopic = moduleTopicsById.get(topicId);
+          if (!existingTopic) {
+            throw new Error(
+              `Topic merging referenced unknown topic "${topicId}"`,
+            );
+          }
+
+          return {
+            title: existingTopic.title,
+            description: existingTopic.description,
+            evidence: this.collectSummaryEvidence(
+              finalTopicCandidates,
+              candidateIndexes,
+              existingTopic.evidence,
+            ),
+          };
+        },
+      ),
+      ...topicResults.newTopics.map(
+        ({ title, description, candidateIndexes }) => ({
+          title,
+          description,
+          evidence: this.collectSummaryEvidence(
+            finalTopicCandidates,
+            candidateIndexes,
+          ),
+        }),
+      ),
+    ];
+    const summaries = await Promise.all(
+      summaryInputs.map((topic) =>
+        this.topicSummaryGenerationService.generate(topic),
+      ),
+    );
+    const existingTopicSummaries = summaries.slice(
+      0,
+      topicResults.existingTopicMatches.length,
+    );
+    const newTopicSummaries = summaries.slice(
+      topicResults.existingTopicMatches.length,
+    );
+    this.logger.log(
+      `Topic summary generation completed; persisting results (sourceId="${sourceId}", summaries=${summaries.length})`,
+    );
+
     const updateOperations = topicResults.existingTopicMatches.map(
-      ({ topicId, candidateIndexes }) => {
+      ({ topicId, candidateIndexes }, index) => {
         const existingTopic = moduleTopicsById.get(topicId);
         if (!existingTopic) {
           throw new Error(
@@ -109,6 +177,7 @@ export class TopicAnalysisService {
             moduleId,
           },
           data: {
+            summary: existingTopicSummaries[index],
             evidence: {
               create: this.collectEvidence(
                 finalTopicCandidates,
@@ -130,11 +199,12 @@ export class TopicAnalysisService {
     );
 
     const createOperations = topicResults.newTopics.map(
-      ({ title, description, candidateIndexes }) =>
+      ({ title, description, candidateIndexes }, index) =>
         this.prismaService.topic.create({
           data: {
             title,
             description,
+            summary: newTopicSummaries[index],
             moduleId,
             evidence: {
               create: this.collectEvidence(
@@ -151,6 +221,32 @@ export class TopicAnalysisService {
       ...updateOperations,
       ...createOperations,
     ]);
+    this.logger.log(`Topic analysis persisted (sourceId="${sourceId}")`);
+  }
+
+  private collectSummaryEvidence(
+    candidates: TopicCandidate[],
+    candidateIndexes: number[],
+    existingEvidence: Array<{ content: string }> = [],
+  ): Array<{ content: string }> {
+    const evidenceContents = new Set(
+      existingEvidence.map((evidence) => evidence.content),
+    );
+
+    for (const candidateIndex of candidateIndexes) {
+      const candidate = candidates[candidateIndex];
+      if (!candidate) {
+        throw new Error(
+          `Topic merging referenced unknown candidate index ${candidateIndex}`,
+        );
+      }
+
+      for (const fact of candidate.facts) {
+        evidenceContents.add(fact.content);
+      }
+    }
+
+    return [...evidenceContents].map((content) => ({ content }));
   }
 
   private processPages(pages: SourcePage[]): AnalysisChunk[] {
