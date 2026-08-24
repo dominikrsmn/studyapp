@@ -1,14 +1,13 @@
-import { Logger } from '@nestjs/common';
+import { Logger, PayloadTooLargeException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
-import { EmbeddingService } from './embedding/embedding.service';
-import { IngestionService } from './ingestion.service';
+import { EmbeddingService } from '../../infrastructure/embedding/embedding.service';
 import type { Chunk } from './ingestion.service';
+import { IngestionService } from './ingestion.service';
 import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 import { TopicAnalysisQueue } from '../topic/topic-analysis.queue';
-import { PayloadTooLargeException } from '@nestjs/common';
 import type { PageTextResult } from 'pdf-parse';
 import { ingestionConfig } from './ingestion.config';
 

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigType } from '@nestjs/config';
-import { envSchema } from './infrastructure/config/env.schema';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Env, envSchema } from './infrastructure/config/env.schema';
 import { ModuleModule } from './features/module/module.module';
 import { AuthModule } from './features/auth/auth.module';
 import { SourceModule } from './features/source/source.module';
@@ -10,34 +10,25 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AiModule } from './features/ai/ai.module';
 import { BullModule } from '@nestjs/bullmq';
 import { applicationConfig } from './infrastructure/config/application.config';
-import { databaseConfig } from './infrastructure/config/database.config';
 import { fileStorageConfig } from './infrastructure/config/filestorage.config';
-import { openAiConfig } from './infrastructure/config/open-ai.config';
-import { redisConfig } from './infrastructure/config/redis.config';
 import { TopicModule } from './features/topic/topic.module';
+import { embeddingConfig } from './infrastructure/config/embedding.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [
-        applicationConfig,
-        databaseConfig,
-        fileStorageConfig,
-        openAiConfig,
-        redisConfig,
-      ],
+      load: [applicationConfig, embeddingConfig, fileStorageConfig],
       validate: (config) => envSchema.parse(config),
     }),
     BullModule.forRootAsync({
-      imports: [ConfigModule.forFeature(redisConfig)],
-      inject: [redisConfig.KEY],
-      useFactory: (config: ConfigType<typeof redisConfig>) => ({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) => ({
         connection: {
-          host: config.host,
-          port: config.port,
-          username: config.username,
-          password: config.password,
+          host: config.getOrThrow('REDIS_HOST', { infer: true }),
+          port: config.getOrThrow('REDIS_PORT', { infer: true }),
+          username: config.getOrThrow('REDIS_USERNAME', { infer: true }),
+          password: config.getOrThrow('REDIS_PASSWORD', { infer: true }),
         },
       }),
     }),

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { SemanticSearchResult } from '@study/contracts';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { EmbeddingService } from '../../ingestion/embedding/embedding.service';
+import { EmbeddingService } from '../../../infrastructure/embedding/embedding.service';
 import { ConfigType } from '@nestjs/config';
 import { aiConfig } from '../ai.config';
 
