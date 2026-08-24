@@ -8,6 +8,10 @@ import { defer, firstValueFrom, Observable, tap } from 'rxjs';
 import { SourceApiService } from './source-api-service';
 import { SourceEventsService } from './source-events.service';
 
+type SourceListItem = SourceDto & {
+  processingInfo?: string;
+};
+
 @Injectable({
   providedIn: 'root',
 })
@@ -15,7 +19,7 @@ export class SourceService {
   private readonly sourceApiService = inject(SourceApiService);
   private readonly sourceEventsService = inject(SourceEventsService);
 
-  private readonly _sources = signal<SourceDto[]>([]);
+  private readonly _sources = signal<SourceListItem[]>([]);
   private latestLoadId = 0;
 
   readonly sources = this._sources.asReadonly();
@@ -83,14 +87,15 @@ export class SourceService {
   }
 
   private applyProcessingStateChange(
-    sources: SourceDto[],
+    sources: SourceListItem[],
     event: SourceStateChangedEvent,
-  ): SourceDto[] {
+  ): SourceListItem[] {
     return sources.map((source) =>
       source.id === event.sourceId
         ? {
             ...source,
             status: event.processingState,
+            processingInfo: event.info,
           }
         : source,
     );

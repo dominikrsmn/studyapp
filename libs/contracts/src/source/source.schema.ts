@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const sourceStatusSchema = z.enum([
   'PENDING',
   'PROCESSING',
-  'READY',
+  'PROCESSED',
   'FAILED',
 ]);
 

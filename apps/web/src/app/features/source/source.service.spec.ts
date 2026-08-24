@@ -16,7 +16,7 @@ describe('SourceService', () => {
     name: 'Lecture notes.pdf',
     type: 'DOCUMENT',
     mimeType: 'application/pdf',
-    status: 'READY',
+    status: 'PROCESSED',
   };
   const sourceApi = {
     findAll: vi.fn(),
@@ -81,5 +81,39 @@ describe('SourceService', () => {
     await reconnect;
 
     expect(service.sources()).toEqual([source]);
+  });
+
+  it('applies transient processing info from state events', () => {
+    sourceApi.findAll.mockReturnValue(of([source]));
+    const service = TestBed.inject(SourceService);
+
+    service.loadAll(moduleId).subscribe();
+    service.watchStateChanges(moduleId).subscribe();
+    stateChanges.next({
+      sourceId: source.id,
+      moduleId,
+      processingState: 'PROCESSING',
+      info: 'Extracting topics…',
+    });
+
+    expect(service.sources()).toEqual([
+      {
+        ...source,
+        status: 'PROCESSING',
+        processingInfo: 'Extracting topics…',
+      },
+    ]);
+
+    stateChanges.next({
+      sourceId: source.id,
+      moduleId,
+      processingState: 'PROCESSED',
+    });
+
+    expect(service.sources()[0]).toMatchObject({
+      ...source,
+      status: 'PROCESSED',
+      processingInfo: undefined,
+    });
   });
 });

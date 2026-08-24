@@ -198,23 +198,32 @@
                   </span>
                 </td>
                 <td z-table-cell class="px-8!">
-                  <span
-                    class="inline-flex items-center gap-2 text-sm font-bold"
-                    [class]="statusClass(source.status)"
-                  >
+                  <div>
+                    <span
+                      class="inline-flex items-center gap-2 text-sm font-bold"
+                      [class]="statusClass(source.status)"
+                    >
+                      @if (
+                        source.status === 'PROCESSING' ||
+                        source.status === 'PENDING'
+                      ) {
+                        <z-spinner></z-spinner>
+                      } @else {
+                        <span
+                          [appIcon]="statusIcon(source.status)"
+                          class="inline-flex size-4"
+                        ></span>
+                      }
+                      {{ statusLabel(source.status) }}
+                    </span>
                     @if (
-                      source.status === 'PROCESSING' ||
-                      source.status === 'PENDING'
+                      source.status === 'PROCESSING' && source.processingInfo
                     ) {
-                      <z-spinner></z-spinner>
-                    } @else {
-                      <span
-                        [appIcon]="statusIcon(source.status)"
-                        class="inline-flex size-4"
-                      ></span>
+                      <p class="mt-1 text-xs font-medium text-sage-500">
+                        {{ source.processingInfo }}
+                      </p>
                     }
-                    {{ statusLabel(source.status) }}
-                  </span>
+                  </div>
                 </td>
                 <td z-table-cell class="px-8! text-right">
                   <button

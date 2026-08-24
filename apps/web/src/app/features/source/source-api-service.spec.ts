@@ -20,7 +20,7 @@ describe('SourceApiService', () => {
     name: 'Lecture notes.pdf',
     type: 'DOCUMENT',
     mimeType: 'application/pdf',
-    status: 'READY',
+    status: 'PROCESSED',
   };
 
   beforeEach(() => {

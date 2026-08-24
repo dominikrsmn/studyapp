@@ -81,11 +81,13 @@ export class IngestionService {
         },
       });
       moduleId = source.module.id;
-      let event: SourceStateChangedEvent = sourceStateChangedEventSchema.parse({
-        sourceId: sourceId,
-        moduleId: source.module.id,
-        processingState: 'PROCESSING',
-      });
+      const event: SourceStateChangedEvent =
+        sourceStateChangedEventSchema.parse({
+          sourceId: sourceId,
+          moduleId: source.module.id,
+          processingState: 'PROCESSING',
+          info: 'Extracting and indexing document content…',
+        });
 
       this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
 
@@ -106,21 +108,6 @@ export class IngestionService {
       this.validateDocumentSize(pages);
       await this.persistPages(pages, sourceId);
       await this.processPages(pages, sourceId, source.module.semester.userId);
-
-      await this.prismaService.source.update({
-        where: { id: sourceId },
-        data: {
-          status: 'READY',
-        },
-      });
-
-      event = sourceStateChangedEventSchema.parse({
-        sourceId: sourceId,
-        moduleId: source.module.id,
-        processingState: 'READY',
-      });
-
-      this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
 
       await this.topicAnalysisQueue.enqueue(sourceId);
     } catch (error) {

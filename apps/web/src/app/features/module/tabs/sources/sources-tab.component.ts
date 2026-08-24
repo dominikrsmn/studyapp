@@ -212,7 +212,7 @@ export default class SourcesTabComponent {
     const icons: Record<SourceDto['status'], string> = {
       PENDING: 'clock',
       PROCESSING: 'loader',
-      READY: 'check-circle',
+      PROCESSED: 'check-circle',
       FAILED: 'x-circle',
     };
     return icons[status];
@@ -222,7 +222,7 @@ export default class SourcesTabComponent {
     const labels: Record<SourceDto['status'], string> = {
       PENDING: 'Pending',
       PROCESSING: 'Processing',
-      READY: 'Ready',
+      PROCESSED: 'Processed',
       FAILED: 'Failed',
     };
     return labels[status];
@@ -232,7 +232,7 @@ export default class SourcesTabComponent {
     if (status === 'FAILED') {
       return 'text-destructive';
     }
-    if (status === 'READY') {
+    if (status === 'PROCESSED') {
       return 'text-sage-800';
     }
     return 'text-sage-600';

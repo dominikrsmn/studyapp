@@ -209,7 +209,7 @@ describe('SourceService', () => {
       name: 'notes.pdf',
       type: 'DOCUMENT',
       mimeType: 'application/pdf',
-      status: 'READY',
+      status: 'PROCESSED',
       moduleId: 'module-id',
       storageKey: 'storage-key',
     });
@@ -218,7 +218,7 @@ describe('SourceService', () => {
       name: 'notes.pdf',
       type: 'DOCUMENT',
       mimeType: 'application/pdf',
-      status: 'READY',
+      status: 'PROCESSED',
       moduleId: 'module-id',
     });
 

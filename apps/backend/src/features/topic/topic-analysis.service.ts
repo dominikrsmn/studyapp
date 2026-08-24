@@ -1,7 +1,13 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  SourceStateChangedEvent,
+  sourceStateChangedEventSchema,
+} from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 import type { SourcePage } from '../../infrastructure/database/generated/client';
+import { sourceConfig } from '../source/source.config';
 import {
   AnalysisChunk,
   ModuleTopic,
@@ -12,6 +18,8 @@ import { TopicCandidateExtractionService } from './topic-candidate-extraction/to
 import { TopicCandidateGroupingService } from './topic-candidate-grouping/topic-candidate-grouping.service';
 import { TopicMergingService } from './topic-merging/topic-merging.service';
 import { TopicSummaryGenerationService } from './topic-summary-generation/topic-summary-generation.service';
+
+const TOPIC_PERSISTENCE_TIMEOUT_MS = 60_000;
 
 @Injectable()
 export class TopicAnalysisService {
@@ -24,20 +32,34 @@ export class TopicAnalysisService {
     private readonly candidateConsolidationService: TopicCandidateGroupingService,
     private readonly topicMergingService: TopicMergingService,
     private readonly topicSummaryGenerationService: TopicSummaryGenerationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async analyze(sourceId: string): Promise<void> {
+    const source = await this.prismaService.source.update({
+      where: { id: sourceId },
+      data: { status: 'PROCESSING' },
+      select: { moduleId: true },
+    });
+    const moduleId = source.moduleId;
+    this.emitProgress(sourceId, moduleId, 'Preparing topic analysis…');
+
+    try {
+      await this.analyzeTopics(sourceId, moduleId);
+    } catch (error) {
+      await this.markFailed(sourceId, moduleId);
+      throw error;
+    }
+  }
+
+  private async analyzeTopics(
+    sourceId: string,
+    moduleId: string,
+  ): Promise<void> {
     this.logger.log(`Loading source pages (sourceId="${sourceId}")`);
     const pages = await this.prismaService.sourcePage.findMany({
       where: {
         sourceId: sourceId,
-      },
-      include: {
-        source: {
-          select: {
-            moduleId: true,
-          },
-        },
       },
       orderBy: {
         pageNumber: 'asc',
@@ -51,12 +73,14 @@ export class TopicAnalysisService {
     this.logger.log(
       `Starting topic extraction (sourceId="${sourceId}", pages=${pages.length}, chunks=${analysisChunks.length})`,
     );
+    this.emitProgress(sourceId, moduleId, 'Extracting topics…');
 
     const topicCandidates: TopicCandidate[] =
       await this.candidateExtractionService.extract(analysisChunks);
     this.logger.log(
       `Topic extraction completed; starting grouping (sourceId="${sourceId}", candidates=${topicCandidates.length})`,
     );
+    this.emitProgress(sourceId, moduleId, 'Grouping related topics…');
 
     const finalTopicCandidates: TopicCandidate[] =
       await this.candidateConsolidationService.group(topicCandidates);
@@ -97,6 +121,7 @@ export class TopicAnalysisService {
     this.logger.log(
       `Existing topics loaded; starting topic merging (sourceId="${sourceId}", groupedCandidates=${finalTopicCandidates.length}, existingTopics=${moduleTopics.length})`,
     );
+    this.emitProgress(sourceId, moduleId, 'Merging topics into your module…');
 
     const topicResults: TopicMerging = await this.topicMergingService.merge(
       finalTopicCandidates,
@@ -105,8 +130,8 @@ export class TopicAnalysisService {
     this.logger.log(
       `Topic merging completed; starting summary generation (sourceId="${sourceId}", existingTopicMatches=${topicResults.existingTopicMatches.length}, newTopics=${topicResults.newTopics.length})`,
     );
+    this.emitProgress(sourceId, moduleId, 'Generating topic summaries…');
 
-    const moduleId = pages[0].source.moduleId;
     const chunksById = new Map(
       analysisChunks.map((chunk) => [chunk.id, chunk]),
     );
@@ -161,6 +186,7 @@ export class TopicAnalysisService {
     this.logger.log(
       `Topic summary generation completed; persisting results (sourceId="${sourceId}", summaries=${summaries.length})`,
     );
+    this.emitProgress(sourceId, moduleId, 'Saving topic analysis…');
 
     const updateOperations = topicResults.existingTopicMatches.map(
       ({ topicId, candidateIndexes }, index) => {
@@ -217,11 +243,53 @@ export class TopicAnalysisService {
         }),
     );
 
-    await this.prismaService.$transaction([
-      ...updateOperations,
-      ...createOperations,
-    ]);
+    await this.prismaService.$transaction(
+      [
+        ...updateOperations,
+        ...createOperations,
+        this.prismaService.source.update({
+          where: { id: sourceId },
+          data: { status: 'PROCESSED' },
+        }),
+      ],
+      { timeout: TOPIC_PERSISTENCE_TIMEOUT_MS },
+    );
+    this.emitStateChange(sourceId, moduleId, 'PROCESSED');
     this.logger.log(`Topic analysis persisted (sourceId="${sourceId}")`);
+  }
+
+  private emitProgress(sourceId: string, moduleId: string, info: string): void {
+    this.emitStateChange(sourceId, moduleId, 'PROCESSING', info);
+  }
+
+  private emitStateChange(
+    sourceId: string,
+    moduleId: string,
+    processingState: SourceStateChangedEvent['processingState'],
+    info?: string,
+  ): void {
+    const event = sourceStateChangedEventSchema.parse({
+      sourceId,
+      moduleId,
+      processingState,
+      ...(info ? { info } : {}),
+    });
+    this.eventEmitter.emit(sourceConfig().stateChangedEventName, event);
+  }
+
+  private async markFailed(sourceId: string, moduleId: string): Promise<void> {
+    try {
+      await this.prismaService.source.updateMany({
+        where: { id: sourceId },
+        data: { status: 'FAILED' },
+      });
+      this.emitStateChange(sourceId, moduleId, 'FAILED');
+    } catch (error) {
+      this.logger.error(
+        `Failed to mark source "${sourceId}" as failed`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 
   private collectSummaryEvidence(

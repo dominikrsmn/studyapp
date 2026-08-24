@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { TextProcessingService } from '../../shared/text-processing/text-processing.service';
 import { TopicAnalysisService } from './topic-analysis.service';
@@ -14,8 +15,14 @@ jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
 
 describe('TopicAnalysisService', () => {
   const moduleId = 'f74a46b6-2d6d-4542-a9b8-37a8eef82d8c';
+  const sourceId = 'f43ff589-36b0-4f0f-b0cf-9cc1101b1952';
+  const missingSourceId = '150fd2f2-27af-4d6b-973f-d71d54a7c331';
   const existingTopicId = '4d4a1598-d397-4033-bb23-f4b14488582c';
   const prismaService = {
+    source: {
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
     sourcePage: {
       findMany: jest.fn(),
     },
@@ -41,6 +48,9 @@ describe('TopicAnalysisService', () => {
   const topicSummaryGenerationService = {
     generate: jest.fn(),
   };
+  const eventEmitter = {
+    emit: jest.fn(),
+  };
   const service = new TopicAnalysisService(
     prismaService as unknown as PrismaService,
     textProcessingService as unknown as TextProcessingService,
@@ -48,14 +58,17 @@ describe('TopicAnalysisService', () => {
     candidateGroupingService as unknown as TopicCandidateGroupingService,
     topicMergingService as unknown as TopicMergingService,
     topicSummaryGenerationService as unknown as TopicSummaryGenerationService,
+    eventEmitter as unknown as EventEmitter2,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prismaService.source.update.mockResolvedValue({ moduleId });
+    prismaService.source.updateMany.mockResolvedValue({ count: 1 });
     prismaService.sourcePage.findMany.mockResolvedValue([
       {
         id: 'page-id',
-        sourceId: 'source-id',
+        sourceId,
         pageNumber: 1,
         content: 'page content',
         createdAt: new Date(),
@@ -132,7 +145,7 @@ describe('TopicAnalysisService', () => {
       ],
     });
 
-    await service.analyze('source-id');
+    await service.analyze(sourceId);
 
     expect(prismaService.topic.update).toHaveBeenCalledWith({
       where: { id: existingTopicId, moduleId },
@@ -146,7 +159,7 @@ describe('TopicAnalysisService', () => {
                 create: [
                   expect.objectContaining({
                     analysisChunkId: expect.stringMatching(/^analysis-chunk:/),
-                    sourceId: 'source-id',
+                    sourceId,
                     sourcePageId: 'page-id',
                     pageNumber: 1,
                     chunkIndex: 0,
@@ -185,7 +198,7 @@ describe('TopicAnalysisService', () => {
                 create: [
                   expect.objectContaining({
                     analysisChunkId: expect.stringMatching(/^analysis-chunk:/),
-                    sourceId: 'source-id',
+                    sourceId,
                     sourcePageId: 'page-id',
                     pageNumber: 1,
                     chunkIndex: 1,
@@ -201,10 +214,10 @@ describe('TopicAnalysisService', () => {
       },
     });
     expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
-    expect(prismaService.$transaction).toHaveBeenCalledWith([
-      expect.any(Promise),
-      expect.any(Promise),
-    ]);
+    expect(prismaService.$transaction).toHaveBeenCalledWith(
+      [expect.any(Promise), expect.any(Promise), expect.any(Promise)],
+      { timeout: 60_000 },
+    );
     expect(topicSummaryGenerationService.generate).toHaveBeenNthCalledWith(1, {
       title: 'Existing topic',
       description: 'Existing description',
@@ -221,14 +234,75 @@ describe('TopicAnalysisService', () => {
     expect(topicMergingService.merge.mock.invocationCallOrder[0]).toBeLessThan(
       topicSummaryGenerationService.generate.mock.invocationCallOrder[0],
     );
+    expect(prismaService.source.update).toHaveBeenNthCalledWith(1, {
+      where: { id: sourceId },
+      data: { status: 'PROCESSING' },
+      select: { moduleId: true },
+    });
+    expect(prismaService.source.update).toHaveBeenNthCalledWith(2, {
+      where: { id: sourceId },
+      data: { status: 'PROCESSED' },
+    });
+    expect(eventEmitter.emit.mock.calls.map(([, event]) => event)).toEqual([
+      {
+        sourceId,
+        moduleId,
+        processingState: 'PROCESSING',
+        info: 'Preparing topic analysis…',
+      },
+      {
+        sourceId,
+        moduleId,
+        processingState: 'PROCESSING',
+        info: 'Extracting topics…',
+      },
+      {
+        sourceId,
+        moduleId,
+        processingState: 'PROCESSING',
+        info: 'Grouping related topics…',
+      },
+      {
+        sourceId,
+        moduleId,
+        processingState: 'PROCESSING',
+        info: 'Merging topics into your module…',
+      },
+      {
+        sourceId,
+        moduleId,
+        processingState: 'PROCESSING',
+        info: 'Generating topic summaries…',
+      },
+      {
+        sourceId,
+        moduleId,
+        processingState: 'PROCESSING',
+        info: 'Saving topic analysis…',
+      },
+      {
+        sourceId,
+        moduleId,
+        processingState: 'PROCESSED',
+      },
+    ]);
   });
 
   it('rejects a source without pages', async () => {
     prismaService.sourcePage.findMany.mockResolvedValue([]);
 
-    await expect(service.analyze('missing-source')).rejects.toBeInstanceOf(
+    await expect(service.analyze(missingSourceId)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+    expect(prismaService.source.updateMany).toHaveBeenCalledWith({
+      where: { id: missingSourceId },
+      data: { status: 'FAILED' },
+    });
+    expect(eventEmitter.emit).toHaveBeenLastCalledWith('source.stateChanged', {
+      sourceId: missingSourceId,
+      moduleId,
+      processingState: 'FAILED',
+    });
     expect(topicMergingService.merge).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
@@ -239,27 +313,27 @@ describe('TopicAnalysisService', () => {
       newTopics: [],
     });
 
-    await service.analyze('source-id');
+    await service.analyze(sourceId);
     const firstRunChunks = candidateExtractionService.extract.mock
       .calls[0][0] as AnalysisChunk[];
 
     prismaService.sourcePage.findMany.mockResolvedValue([
       {
         id: 'recreated-page-id',
-        sourceId: 'source-id',
+        sourceId,
         pageNumber: 1,
         content: 'page content',
         createdAt: new Date(),
         source: { moduleId },
       },
     ]);
-    await service.analyze('source-id');
+    await service.analyze(sourceId);
     const secondRunChunks = candidateExtractionService.extract.mock
       .calls[1][0] as AnalysisChunk[];
 
     expect(firstRunChunks.map(({ id }) => id)).toEqual([
-      'analysis-chunk:v1:source-id:page:1:chunk:0:offsets:0-11',
-      'analysis-chunk:v1:source-id:page:1:chunk:1:offsets:9-21',
+      `analysis-chunk:v1:${sourceId}:page:1:chunk:0:offsets:0-11`,
+      `analysis-chunk:v1:${sourceId}:page:1:chunk:1:offsets:9-21`,
     ]);
     expect(secondRunChunks.map(({ id }) => id)).toEqual(
       firstRunChunks.map(({ id }) => id),

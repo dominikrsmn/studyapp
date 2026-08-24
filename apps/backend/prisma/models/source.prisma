@@ -46,7 +46,7 @@ model SourceChunk {
 enum SourceStatus {
   PENDING
   PROCESSING
-  READY
+  PROCESSED
   FAILED
 }
 

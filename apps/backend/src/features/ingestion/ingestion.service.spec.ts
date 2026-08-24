@@ -109,6 +109,7 @@ describe('IngestionService', () => {
         sourceId,
         moduleId,
         processingState: 'PROCESSING',
+        info: 'Extracting and indexing document content…',
       },
     );
     expect(eventEmitter.emit).toHaveBeenNthCalledWith(
@@ -166,12 +167,10 @@ describe('IngestionService', () => {
       { length: BATCH_SIZE + 1 },
       (_, index) => `chunk-${index}`,
     );
-    prismaService.source.update
-      .mockResolvedValueOnce({
-        storageKey: sourceId,
-        module: { id: moduleId, semester: { userId: 'user-id' } },
-      })
-      .mockResolvedValueOnce({});
+    prismaService.source.update.mockResolvedValueOnce({
+      storageKey: sourceId,
+      module: { id: moduleId, semester: { userId: 'user-id' } },
+    });
     fileStorageService.read.mockResolvedValue(Buffer.from('pdf'));
     pdfTextExtractor.extract.mockResolvedValue([page('text')]);
     textProcessingService.chunkForRag.mockReturnValue(chunkContents);
