@@ -55,7 +55,7 @@ export class SourceService {
         select: sourceSelect,
       });
       sourceCreated = true;
-      await this.sourceIngestionQueue.enqueue(sourceId);
+      //await this.sourceIngestionQueue.enqueue(sourceId);
     } catch (error) {
       if (sourceCreated) {
         await this.prisma.source
