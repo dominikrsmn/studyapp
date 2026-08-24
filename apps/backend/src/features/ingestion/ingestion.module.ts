@@ -1,8 +1,5 @@
 import { Logger, Module } from '@nestjs/common';
-import { IngestionService } from './ingestion.service';
 import { FileStorageModule } from '../../infrastructure/filestorage/filestorage.module';
-import { PdfTextExtractorService } from './pdf-text-extractor/pdf-text-extractor.service';
-import { EmbeddingService } from '../../infrastructure/embedding/embedding.service';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
 import { ConfigModule } from '@nestjs/config';
@@ -11,7 +8,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { IngestionQueue } from './ingestion.queue';
 import { IngestionProcessor } from './ingestion.processor';
 import { TopicModule } from '../topic/topic.module';
-import { TextProcessingModule } from '../../shared/text-processing/text-processing.module';
+import { EmbeddingService } from '../../infrastructure/embedding/embedding.service';
 
 @Module({
   imports: [
@@ -21,16 +18,9 @@ import { TextProcessingModule } from '../../shared/text-processing/text-processi
     PrismaModule,
     OpenAiModule,
     TopicModule,
-    TextProcessingModule,
-  ],
-  providers: [
-    IngestionService,
-    PdfTextExtractorService,
     EmbeddingService,
-    IngestionQueue,
-    IngestionProcessor,
-    Logger,
   ],
-  exports: [IngestionService, EmbeddingService, IngestionQueue],
+  providers: [IngestionQueue, IngestionProcessor, Logger],
+  exports: [IngestionQueue],
 })
 export class IngestionModule {}
