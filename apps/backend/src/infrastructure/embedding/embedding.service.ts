@@ -1,9 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import type { Chunk, EmbeddedChunk } from '../ingestion.service';
+import { OpenAiService } from '../open-ai/open-ai.service';
+import type {
+  Chunk,
+  EmbeddedChunk,
+} from '../../features/ingestion/ingestion.service';
 import { CreateEmbeddingResponse } from 'openai/resources/embeddings';
 import { ConfigType } from '@nestjs/config';
-import { ingestionConfig } from '../ingestion.config';
+import { embeddingConfig } from '../config/embedding.config';
 
 type SourceIdWithUserId = {
   id: string;
@@ -18,12 +21,13 @@ export class EmbeddingService {
 
   constructor(
     private readonly openAIService: OpenAiService,
-    @Inject(ingestionConfig.KEY)
-    config: ConfigType<typeof ingestionConfig>,
+
+    @Inject(embeddingConfig.KEY)
+    config: ConfigType<typeof embeddingConfig>,
   ) {
-    this.batchSize = config.embedding.batchSize;
-    this.model = config.embedding.model;
-    this.encodingFormat = config.embedding.encodingFormat;
+    this.batchSize = config.batchSize;
+    this.model = config.model;
+    this.encodingFormat = config.encodingFormat;
   }
 
   async embedChunks(
