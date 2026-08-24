@@ -11,6 +11,8 @@ export const envSchema = z.object({
   REDIS_PORT: z.coerce.number().int().positive(),
   REDIS_PASSWORD: z.string(),
   REDIS_USERNAME: z.string(),
+  DOCLING_URL: z.url(),
+  DOCLING_API_KEY: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;

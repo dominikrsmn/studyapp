@@ -1,16 +1,15 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { openAiConfig } from '../config/open-ai.config';
+import { Env } from '../config/env.schema';
+
 @Injectable()
 export class OpenAiService {
   readonly client: OpenAI;
 
-  constructor(
-    @Inject(openAiConfig.KEY) config: ConfigType<typeof openAiConfig>,
-  ) {
+  constructor(config: ConfigService<Env, true>) {
     this.client = new OpenAI({
-      apiKey: config.apiKey,
+      apiKey: config.getOrThrow('OPENAI_API_KEY', { infer: true }),
     });
   }
 }
