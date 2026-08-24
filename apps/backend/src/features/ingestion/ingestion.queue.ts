@@ -9,7 +9,7 @@ export type SourceIngestionJobData = {
 };
 
 @Injectable()
-export class SourceIngestionQueue {
+export class IngestionQueue {
   constructor(
     @InjectQueue(ingestionConfig().queue.name)
     private readonly queue: Queue<SourceIngestionJobData>,

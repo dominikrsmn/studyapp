@@ -8,8 +8,8 @@ import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
 import { ConfigModule } from '@nestjs/config';
 import { ingestionConfig } from './ingestion.config';
 import { BullModule } from '@nestjs/bullmq';
-import { SourceIngestionQueue } from './source-ingestion.queue';
-import { SourceIngestionProcessor } from './source-ingestion.processor';
+import { IngestionQueue } from './ingestion.queue';
+import { IngestionProcessor } from './ingestion.processor';
 import { TopicModule } from '../topic/topic.module';
 import { TextProcessingModule } from '../../shared/text-processing/text-processing.module';
 
@@ -27,10 +27,10 @@ import { TextProcessingModule } from '../../shared/text-processing/text-processi
     IngestionService,
     PdfTextExtractorService,
     EmbeddingService,
-    SourceIngestionQueue,
-    SourceIngestionProcessor,
+    IngestionQueue,
+    IngestionProcessor,
     Logger,
   ],
-  exports: [IngestionService, EmbeddingService, SourceIngestionQueue],
+  exports: [IngestionService, EmbeddingService, IngestionQueue],
 })
 export class IngestionModule {}

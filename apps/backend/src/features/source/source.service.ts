@@ -3,7 +3,7 @@ import { SourceDto } from '@study/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
-import { SourceIngestionQueue } from '../ingestion/source-ingestion.queue';
+import { IngestionQueue } from '../ingestion/ingestion.queue';
 
 const sourceSelect = {
   id: true,
@@ -21,7 +21,7 @@ export class SourceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileStorageService: FileStorageService,
-    private readonly sourceIngestionQueue: SourceIngestionQueue,
+    private readonly sourceIngestionQueue: IngestionQueue,
   ) {}
 
   async uploadSource(
