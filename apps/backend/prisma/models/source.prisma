@@ -1,59 +1,117 @@
 model Source {
-  id         String        @id @default(uuid())
+  id         String  @id @default(uuid())
   name       String
-  type       SourceType
   mimeType   String
-  status     SourceStatus  @default(PENDING)
   storageKey String?
-  moduleId   String
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  exercises  Exercise[]
-  module     Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  chunks     SourceChunk[]
-  pages      SourcePage[]
+
+  doclang        String? @db.Text
+  doclingVersion String?
+
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  processingStages SourceProcessingStage[]
+
+  chunks       SourceChunk[]
+  sourceTopics SourceTopic[]
+
+  exercises Exercise[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([moduleId])
-  @@index([status])
 }
 
-model SourcePage {
-  id         String   @id @default(uuid())
-  pageNumber Int
-  content    String
-  sourceId   String
-  createdAt  DateTime @default(now())
-  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+model SourceProcessingStage {
+  id    String                    @id @default(uuid())
+  stage SourceProcessingStageType
+  state ProcessingState           @default(NOT_STARTED)
 
-  @@unique([sourceId, pageNumber])
+  errorMessage String? @db.Text
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sourceId, stage])
+  @@index([state])
+}
+
+model SourceTopic {
+  id        String @id @default(uuid())
+  spanIndex Int
+
+  title       String
+  description String @db.Text
+
+  detectionConfidence        Float?
+  canonicalizationConfidence Float?
+
+  startRef String?
+  endRef   String?
+
+  pageStart Int?
+  pageEnd   Int?
+
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  topicId String?
+  topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  evidence TopicEvidence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sourceId, spanIndex])
   @@index([sourceId])
+  @@index([topicId])
 }
 
 model SourceChunk {
-  id         String                 @id @default(uuid())
-  content    String
-  sourceId   String
-  createdAt  DateTime               @default(now())
+  id         String @id @default(uuid())
   chunkIndex Int
-  pageEnd    Int?
-  pageStart  Int?
-  embedding  Unsupported("vector")?
-  source     Source                 @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
+  content String @db.Text
+
+  headingPath String[] @default([])
+
+  pageStart Int?
+  pageEnd   Int?
+
+  startRef String?
+  endRef   String?
+
+  tokenCount Int?
+
+  embedding Unsupported("vector")?
+
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sourceId, chunkIndex])
   @@index([sourceId])
 }
 
-enum SourceStatus {
-  PENDING
-  PROCESSING
-  PROCESSED
-  FAILED
+enum SourceProcessingStageType {
+  CONVERSION
+  RAG_INDEXING
+  TOPIC_ANALYSIS
 }
 
-enum SourceType {
-  DOCUMENT
-  IMAGE
-  AUDIO
-  TEXT
-  WEB
+enum ProcessingState {
+  NOT_STARTED
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
 }

@@ -1,61 +1,58 @@
 model Topic {
   id          String     @id @default(uuid())
   title       String
-  description String
+  description String     @db.Text
   state       TopicState @default(SUGGESTED)
-  summary     String?
+
+  summary String? @db.Text
+
+  contentRevision Int  @default(1)
+  summaryRevision Int?
 
   moduleId String
   module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
-  evidence TopicEvidence[]
+  sourceTopics SourceTopic[]
 
-  // parentId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  //parent    Topic?     @relation("TopicHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  //children  Topic[]    @relation("TopicHierarchy")
-  //exercises Exercise[] @relation("ExerciseToTopic")
-  //exerciseId String?
-  //@@index([parentId])
 
   @@index([moduleId])
 }
 
 model TopicEvidence {
   id      String @id @default(uuid())
-  content String
+  content String @db.Text
 
-  topicId String
-  topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  confidence Float?
 
-  provenance TopicEvidenceProvenance[]
+  sourceTopicId String
+  sourceTopic   SourceTopic @relation(fields: [sourceTopicId], references: [id], onDelete: Cascade)
+
+  spans TopicEvidenceSpan[]
 
   createdAt DateTime @default(now())
 
-  @@index([topicId])
+  @@index([sourceTopicId])
 }
 
-model TopicEvidenceProvenance {
-  id              String @id @default(uuid())
-  analysisChunkId String
-  sourceId        String
-  sourcePageId    String
-  pageNumber      Int
-  chunkIndex      Int
-  startOffset     Int
-  endOffset       Int
-  content         String
+model TopicEvidenceSpan {
+  id String @id @default(uuid())
+
+  content String @db.Text
+
+  startRef String?
+  endRef   String?
+
+  pageStart Int?
+  pageEnd   Int?
 
   topicEvidenceId String
   topicEvidence   TopicEvidence @relation(fields: [topicEvidenceId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  @@unique([topicEvidenceId, analysisChunkId])
-  @@index([analysisChunkId])
-  @@index([sourceId])
-  @@index([sourcePageId])
+  @@index([topicEvidenceId])
 }
 
 enum TopicState {
