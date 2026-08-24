@@ -9,6 +9,7 @@ import { IngestionQueue } from './ingestion.queue';
 import { IngestionProcessor } from './ingestion.processor';
 import { TopicModule } from '../topic/topic.module';
 import { EmbeddingService } from '../../infrastructure/embedding/embedding.service';
+import { ParseDocumentJob } from './jobs/parse-document.job';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { EmbeddingService } from '../../infrastructure/embedding/embedding.servi
     TopicModule,
     EmbeddingService,
   ],
-  providers: [IngestionQueue, IngestionProcessor, Logger],
+  providers: [IngestionQueue, IngestionProcessor, Logger, ParseDocumentJob],
   exports: [IngestionQueue],
 })
 export class IngestionModule {}

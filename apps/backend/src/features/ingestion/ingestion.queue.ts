@@ -3,31 +3,68 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { ingestionConfig } from './ingestion.config';
-
-export type SourceIngestionJobData = {
-  sourceId: string;
-};
+import {
+  BuildRagChunksJobData,
+  EmbedRagChunksJobData,
+  FinalizeIngestionJobData,
+  IngestionJobData,
+  ParseDocumentJobData,
+} from './ingestion.types';
 
 @Injectable()
 export class IngestionQueue {
   constructor(
     @InjectQueue(ingestionConfig().queue.name)
-    private readonly queue: Queue<SourceIngestionJobData>,
+    private readonly queue: Queue<IngestionJobData>,
     @Inject(ingestionConfig.KEY)
     private readonly config: ConfigType<typeof ingestionConfig>,
   ) {}
 
-  async enqueue(sourceId: string): Promise<void> {
+  async addParseDocument(sourceId: string): Promise<void> {
     await this.queue.add(
-      this.config.queue.jobName,
-      { sourceId },
+      this.config.queue.jobs.parse_document,
       {
-        jobId: sourceId,
-        attempts: this.config.queue.attempts,
-        backoff: {
-          type: 'exponential',
-          delay: this.config.queue.backoffDelay,
-        },
+        sourceId,
+      } satisfies ParseDocumentJobData,
+      {
+        jobId: `parse-document:${sourceId}`,
+      },
+    );
+  }
+
+  async addBuildRagChunks(sourceId: string): Promise<void> {
+    await this.queue.add(
+      this.config.queue.jobs.build_rag_chunks,
+      {
+        sourceId,
+      } satisfies BuildRagChunksJobData,
+      {
+        jobId: `build-rag-chunks:${sourceId}`,
+      },
+    );
+  }
+
+  async addEmbedRagChunks(sourceId: string, chunkIds: string[]): Promise<void> {
+    await this.queue.add(
+      this.config.queue.jobs.embed_rag_chunks,
+      {
+        sourceId,
+        chunkIds,
+      } satisfies EmbedRagChunksJobData,
+      {
+        jobId: `embed-rag-chunks:${sourceId}`,
+      },
+    );
+  }
+
+  async addFinalizeIngestion(sourceId: string): Promise<void> {
+    await this.queue.add(
+      this.config.queue.jobs.finalize_ingestion,
+      {
+        sourceId,
+      } satisfies FinalizeIngestionJobData,
+      {
+        jobId: `finalize-ingestion:${sourceId}`,
       },
     );
   }

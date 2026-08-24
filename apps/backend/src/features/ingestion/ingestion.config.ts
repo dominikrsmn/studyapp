@@ -3,12 +3,27 @@ import { registerAs } from '@nestjs/config';
 export const ingestionConfig = registerAs('ingestion', () => ({
   upload: { maxBytes: 10_000_000 },
   document: { maxPages: 300, maxTextCharacters: 2_000_000 },
-  chunking: { size: 1_000, overlap: 200 },
   queue: {
     name: 'source-ingestion',
-    jobName: 'ingest-source',
-    concurrency: 3,
-    attempts: 5,
-    backoffDelay: 1_000,
+    jobs: {
+      parse_document: 'parse-document',
+      build_rag_chunks: 'build-rag-chunks',
+      embed_rag_chunks: 'embed-rag-chunks',
+      finalize_ingestion: 'finalize-ingestion',
+    },
+    defaultJobOptions: {
+      backoff: {
+        type: 'exponential' as const,
+        delay: 5_000,
+      },
+      removeOnComplete: {
+        age: 60 * 60,
+        count: 1_000,
+      },
+      removeOnFail: {
+        age: 7 * 24 * 60 * 60,
+        count: 5_000,
+      },
+    },
   },
 }));

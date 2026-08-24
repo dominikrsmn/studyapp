@@ -3,7 +3,6 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { topicAnalysisConfig } from './topic-analysis.config';
 import type { TopicAnalysisJobData } from './topic-analysis.queue';
-import { TopicAnalysisService } from './topic-analysis.service';
 
 // keep concurrency at 1 since each analysis depends on their predecessors results
 @Processor(topicAnalysisConfig().queue.queueName)

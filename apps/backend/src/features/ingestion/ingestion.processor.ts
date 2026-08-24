@@ -1,18 +1,27 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { IngestionService } from './ingestion.service';
-import type { SourceIngestionJobData } from './ingestion.queue';
 import { ingestionConfig } from './ingestion.config';
+import { IngestionJobData, ParseDocumentJobData } from './ingestion.types';
+import { Inject } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
+import { ParseDocumentJob } from './jobs/parse-document.job';
 
-@Processor(ingestionConfig().queue.name, {
-  concurrency: ingestionConfig().queue.concurrency,
-})
+@Processor(ingestionConfig().queue.name, {})
 export class IngestionProcessor extends WorkerHost {
-  constructor(private readonly ingestionService: IngestionService) {
+  constructor(
+    @Inject(ingestionConfig.KEY)
+    private readonly config: ConfigType<typeof ingestionConfig>,
+    private readonly parseDocumentJob: ParseDocumentJob,
+  ) {
     super();
   }
 
-  process(job: Job<SourceIngestionJobData>): Promise<void> {
-    return this.ingestionService.ingest(job.data.sourceId);
+  process(job: Job<IngestionJobData>): Promise<void> {
+    switch (job.name) {
+      case this.config.queue.jobs.parse_document:
+        return this.parseDocumentJob.process(job.data as ParseDocumentJobData);
+      default:
+        throw new Error('Unknown job name: ' + job.name);
+    }
   }
 }
