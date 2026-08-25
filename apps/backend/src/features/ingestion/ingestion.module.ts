@@ -14,7 +14,10 @@ import { ParseDocumentJob } from './jobs/parse-document.job';
 @Module({
   imports: [
     ConfigModule.forFeature(ingestionConfig),
-    BullModule.registerQueue({ name: ingestionConfig().queue.name }),
+    BullModule.registerQueue({
+      name: ingestionConfig().queue.name,
+      defaultJobOptions: ingestionConfig().queue.defaultJobOptions,
+    }),
     FileStorageModule,
     PrismaModule,
     OpenAiModule,

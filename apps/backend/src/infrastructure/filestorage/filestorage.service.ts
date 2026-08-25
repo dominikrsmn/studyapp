@@ -32,6 +32,10 @@ export class FileStorageService {
     );
   }
 
+  getSourcePath(sourceId: string) {
+    return this.filePath(sourceId);
+  }
+
   private fileDir(key: string) {
     return join(this.config.directory, key);
   }

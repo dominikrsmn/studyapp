@@ -12,6 +12,7 @@ export const ingestionConfig = registerAs('ingestion', () => ({
       finalize_ingestion: 'finalize-ingestion',
     },
     defaultJobOptions: {
+      attempts: 5,
       backoff: {
         type: 'exponential' as const,
         delay: 5_000,
