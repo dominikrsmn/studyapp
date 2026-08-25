@@ -21,7 +21,7 @@ export class DoclingService {
         timeout: config.timeout,
         retries: config.retries,
         headers: {
-          Authorization: `Bearer ${env.getOrThrow('DOCLING_API_KEY')}`,
+          'X-Api-Key': env.getOrThrow('DOCLING_API_KEY'),
         },
       },
     );
