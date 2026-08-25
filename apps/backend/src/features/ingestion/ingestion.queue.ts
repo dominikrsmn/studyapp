@@ -45,6 +45,10 @@ export class IngestionQueue {
   }
 
   async addEmbedRagChunks(sourceId: string, chunkIds: string[]): Promise<void> {
+    if (chunkIds.length === 0) {
+      throw new Error('Cannot enqueue an empty RAG embedding batch');
+    }
+
     await this.queue.add(
       this.config.queue.jobs.embed_rag_chunks,
       {
@@ -52,7 +56,7 @@ export class IngestionQueue {
         chunkIds,
       } satisfies EmbedRagChunksJobData,
       {
-        jobId: `embed-rag-chunks/${sourceId}`,
+        jobId: `embed-rag-chunks/${sourceId}/${chunkIds[0]}`,
       },
     );
   }

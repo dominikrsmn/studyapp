@@ -12,6 +12,7 @@ import { EmbeddingModule } from '../../infrastructure/embedding/embedding.module
 import { ParseDocumentJob } from './jobs/parse-document.job';
 import { DoclingModule } from '../../infrastructure/docling/docling.module';
 import { SourceProcessingStageService } from './source-processing-stage.service';
+import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SourceProcessingStageService } from './source-processing-stage.service'
     IngestionProcessor,
     Logger,
     ParseDocumentJob,
+    BuildRagChunksJob,
     SourceProcessingStageService,
   ],
   exports: [IngestionQueue, SourceProcessingStageService],

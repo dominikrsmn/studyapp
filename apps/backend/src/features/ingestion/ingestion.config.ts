@@ -3,6 +3,14 @@ import { registerAs } from '@nestjs/config';
 export const ingestionConfig = registerAs('ingestion', () => ({
   upload: { maxBytes: 10_000_000 },
   document: { maxPages: 300, maxTextCharacters: 2_000_000 },
+  rag: {
+    chunking: {
+      maxTokens: 512,
+      tokenizer: 'sentence-transformers/all-MiniLM-L6-v2',
+      mergePeers: true,
+      useMarkdownTables: true,
+    },
+  },
   queue: {
     name: 'source-ingestion',
     jobs: {
