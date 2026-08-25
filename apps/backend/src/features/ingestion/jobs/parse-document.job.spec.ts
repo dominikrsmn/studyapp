@@ -8,6 +8,7 @@ import {
   ProcessingState,
   SourceProcessingStageType,
 } from '../../../infrastructure/database/generated/enums';
+import { SourceProcessingStageService } from '../source-processing-stage.service';
 
 jest.mock('../../../infrastructure/docling/docling.service', () => ({
   DoclingService: class DoclingService {},
@@ -22,14 +23,9 @@ describe('ParseDocumentJob', () => {
     findUnique: jest.fn(),
     update: jest.fn(),
   };
-  const processingStageDelegate = {
-    upsert: jest.fn(),
-    update: jest.fn(),
-    updateMany: jest.fn(),
-  };
+  const transaction = { source: sourceDelegate };
   const prismaService = {
     source: sourceDelegate,
-    sourceProcessingStage: processingStageDelegate,
     $transaction: jest.fn(),
   };
   const fileStorageService = {
@@ -43,6 +39,9 @@ describe('ParseDocumentJob', () => {
   const ingestionQueue = {
     addBuildRagChunks: jest.fn(),
   };
+  const sourceProcessingStageService = {
+    transition: jest.fn(),
+  };
 
   let job: ParseDocumentJob;
 
@@ -55,11 +54,11 @@ describe('ParseDocumentJob', () => {
       processingStages: [],
     });
     sourceDelegate.update.mockResolvedValue({ id: sourceId });
-    processingStageDelegate.upsert.mockResolvedValue({ id: 'stage-id' });
-    processingStageDelegate.update.mockResolvedValue({ id: 'stage-id' });
-    processingStageDelegate.updateMany.mockResolvedValue({ count: 1 });
-    prismaService.$transaction.mockImplementation((operations) =>
-      Promise.all(operations),
+    sourceProcessingStageService.transition.mockResolvedValue({
+      id: 'stage-id',
+    });
+    prismaService.$transaction.mockImplementation((operation) =>
+      operation(transaction),
     );
     fileStorageService.getSourcePath.mockReturnValue('/uploads/source.pdf');
     doclingService.client.convertFromFile.mockResolvedValue({
@@ -72,6 +71,7 @@ describe('ParseDocumentJob', () => {
       doclingService as unknown as DoclingService,
       prismaService as unknown as PrismaService,
       ingestionQueue as unknown as IngestionQueue,
+      sourceProcessingStageService as unknown as SourceProcessingStageService,
     );
   });
 
@@ -82,18 +82,11 @@ describe('ParseDocumentJob', () => {
   it('persists the converted document and schedules the next job', async () => {
     await job.process({ sourceId });
 
-    expect(processingStageDelegate.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          sourceId,
-          state: ProcessingState.PROCESSING,
-        }),
-        update: expect.objectContaining({
-          state: ProcessingState.PROCESSING,
-          completedAt: null,
-          errorMessage: null,
-        }),
-      }),
+    expect(sourceProcessingStageService.transition).toHaveBeenNthCalledWith(
+      1,
+      sourceId,
+      SourceProcessingStageType.CONVERSION,
+      ProcessingState.PROCESSING,
     );
     expect(doclingService.client.convertFromFile).toHaveBeenCalledWith(
       '/uploads/source.pdf',
@@ -101,15 +94,14 @@ describe('ParseDocumentJob', () => {
     );
     expect(sourceDelegate.update).toHaveBeenCalledWith({
       where: { id: sourceId },
-      data: { document: JSON.stringify({ name: 'converted document' }) },
+      data: { document: { name: 'converted document' } },
     });
-    expect(processingStageDelegate.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          state: ProcessingState.COMPLETED,
-          errorMessage: null,
-        }),
-      }),
+    expect(sourceProcessingStageService.transition).toHaveBeenNthCalledWith(
+      2,
+      sourceId,
+      SourceProcessingStageType.CONVERSION,
+      ProcessingState.COMPLETED,
+      { transaction },
     );
     expect(ingestionQueue.addBuildRagChunks).toHaveBeenCalledWith(sourceId);
   });
@@ -122,7 +114,7 @@ describe('ParseDocumentJob', () => {
 
     await job.process({ sourceId });
 
-    expect(processingStageDelegate.upsert).not.toHaveBeenCalled();
+    expect(sourceProcessingStageService.transition).not.toHaveBeenCalled();
     expect(doclingService.client.convertFromFile).not.toHaveBeenCalled();
     expect(ingestionQueue.addBuildRagChunks).toHaveBeenCalledWith(sourceId);
   });
@@ -133,18 +125,12 @@ describe('ParseDocumentJob', () => {
 
     await expect(job.process({ sourceId })).rejects.toBe(conversionError);
 
-    expect(processingStageDelegate.updateMany).toHaveBeenCalledWith({
-      where: {
-        sourceId,
-        stage: SourceProcessingStageType.CONVERSION,
-        state: ProcessingState.PROCESSING,
-      },
-      data: {
-        state: ProcessingState.FAILED,
-        completedAt: expect.any(Date),
-        errorMessage: conversionError.message,
-      },
-    });
+    expect(sourceProcessingStageService.transition).toHaveBeenLastCalledWith(
+      sourceId,
+      SourceProcessingStageType.CONVERSION,
+      ProcessingState.FAILED,
+      { error: conversionError },
+    );
     expect(ingestionQueue.addBuildRagChunks).not.toHaveBeenCalled();
   });
 
@@ -154,20 +140,26 @@ describe('ParseDocumentJob', () => {
 
     await expect(job.process({ sourceId })).rejects.toBe(queueError);
 
-    expect(processingStageDelegate.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ state: ProcessingState.COMPLETED }),
-      }),
+    expect(sourceProcessingStageService.transition).toHaveBeenCalledWith(
+      sourceId,
+      SourceProcessingStageType.CONVERSION,
+      ProcessingState.COMPLETED,
+      { transaction },
     );
-    expect(processingStageDelegate.updateMany).not.toHaveBeenCalled();
+    expect(sourceProcessingStageService.transition).not.toHaveBeenCalledWith(
+      sourceId,
+      SourceProcessingStageType.CONVERSION,
+      ProcessingState.FAILED,
+      expect.anything(),
+    );
   });
 
   it('preserves the original failure when failure-state persistence also fails', async () => {
     const conversionError = new Error('Conversion failed');
     doclingService.client.convertFromFile.mockRejectedValue(conversionError);
-    processingStageDelegate.updateMany.mockRejectedValue(
-      new Error('Database failed'),
-    );
+    sourceProcessingStageService.transition
+      .mockResolvedValueOnce({ id: 'stage-id' })
+      .mockRejectedValueOnce(new Error('Database failed'));
 
     await expect(job.process({ sourceId })).rejects.toBe(conversionError);
   });

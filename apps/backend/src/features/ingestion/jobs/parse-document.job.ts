@@ -10,6 +10,7 @@ import {
 } from '../../../infrastructure/database/generated/enums';
 import { IngestionQueue } from '../ingestion.queue';
 import { Prisma } from '../../../infrastructure/database/generated/client';
+import { SourceProcessingStageService } from '../source-processing-stage.service';
 
 @Injectable()
 export class ParseDocumentJob {
@@ -20,6 +21,7 @@ export class ParseDocumentJob {
     private readonly doclingService: DoclingService,
     private readonly prismaService: PrismaService,
     private readonly ingestionQueue: IngestionQueue,
+    private readonly sourceProcessingStageService: SourceProcessingStageService,
   ) {}
 
   async process({ sourceId }: ParseDocumentJobData): Promise<void> {
@@ -56,26 +58,11 @@ export class ParseDocumentJob {
         return;
       }
 
-      await this.prismaService.sourceProcessingStage.upsert({
-        where: {
-          sourceId_stage: {
-            sourceId,
-            stage: SourceProcessingStageType.CONVERSION,
-          },
-        },
-        create: {
-          sourceId,
-          stage: SourceProcessingStageType.CONVERSION,
-          state: ProcessingState.PROCESSING,
-          startedAt: new Date(),
-        },
-        update: {
-          state: ProcessingState.PROCESSING,
-          startedAt: new Date(),
-          completedAt: null,
-          errorMessage: null,
-        },
-      });
+      await this.sourceProcessingStageService.transition(
+        sourceId,
+        SourceProcessingStageType.CONVERSION,
+        ProcessingState.PROCESSING,
+      );
 
       const conversion: ConvertDocumentResponse =
         await this.doclingService.client.convertFromFile(
@@ -100,30 +87,23 @@ export class ParseDocumentJob {
         throw new Error('Document conversion returned invalid JSON content');
       }
 
-      await this.prismaService.$transaction([
-        this.prismaService.source.update({
+      await this.prismaService.$transaction(async (transaction) => {
+        await transaction.source.update({
           where: {
             id: sourceId,
           },
           data: {
             document,
           },
-        }),
+        });
 
-        this.prismaService.sourceProcessingStage.update({
-          where: {
-            sourceId_stage: {
-              sourceId,
-              stage: SourceProcessingStageType.CONVERSION,
-            },
-          },
-          data: {
-            state: ProcessingState.COMPLETED,
-            completedAt: new Date(),
-            errorMessage: null,
-          },
-        }),
-      ]);
+        await this.sourceProcessingStageService.transition(
+          sourceId,
+          SourceProcessingStageType.CONVERSION,
+          ProcessingState.COMPLETED,
+          { transaction },
+        );
+      });
 
       conversionCompleted = true;
       await this.ingestionQueue.addBuildRagChunks(sourceId);
@@ -134,19 +114,13 @@ export class ParseDocumentJob {
       );
 
       if (!conversionCompleted) {
-        await this.prismaService.sourceProcessingStage
-          .updateMany({
-            where: {
-              sourceId,
-              stage: SourceProcessingStageType.CONVERSION,
-              state: ProcessingState.PROCESSING,
-            },
-            data: {
-              state: ProcessingState.FAILED,
-              completedAt: new Date(),
-              error,
-            },
-          })
+        await this.sourceProcessingStageService
+          .transition(
+            sourceId,
+            SourceProcessingStageType.CONVERSION,
+            ProcessingState.FAILED,
+            { error },
+          )
           .catch((stageUpdateError: unknown) => {
             this.logger.error(
               `Failed to record conversion failure for source "${sourceId}"`,

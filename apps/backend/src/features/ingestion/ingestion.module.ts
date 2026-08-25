@@ -11,6 +11,7 @@ import { TopicModule } from '../topic/topic.module';
 import { EmbeddingModule } from '../../infrastructure/embedding/embedding.module';
 import { ParseDocumentJob } from './jobs/parse-document.job';
 import { DoclingModule } from '../../infrastructure/docling/docling.module';
+import { SourceProcessingStageService } from './source-processing-stage.service';
 
 @Module({
   imports: [
@@ -26,7 +27,13 @@ import { DoclingModule } from '../../infrastructure/docling/docling.module';
     EmbeddingModule,
     DoclingModule,
   ],
-  providers: [IngestionQueue, IngestionProcessor, Logger, ParseDocumentJob],
-  exports: [IngestionQueue],
+  providers: [
+    IngestionQueue,
+    IngestionProcessor,
+    Logger,
+    ParseDocumentJob,
+    SourceProcessingStageService,
+  ],
+  exports: [IngestionQueue, SourceProcessingStageService],
 })
 export class IngestionModule {}
