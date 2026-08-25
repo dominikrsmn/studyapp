@@ -9,12 +9,14 @@ import { SemanticSearchService } from './semantic-search/semantic-search.service
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
 import { ConfigModule } from '@nestjs/config';
 import { aiConfig } from './ai.config';
+import { EmbeddingModule } from '../../infrastructure/embedding/embedding.module';
 
 @Module({
   imports: [
     ConfigModule.forFeature(aiConfig),
     IngestionModule,
     PrismaModule,
+    EmbeddingModule,
     OpenAiModule,
   ],
   controllers: [AiController, SemanticSearchController],

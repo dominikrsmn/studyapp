@@ -8,8 +8,9 @@ import { BullModule } from '@nestjs/bullmq';
 import { IngestionQueue } from './ingestion.queue';
 import { IngestionProcessor } from './ingestion.processor';
 import { TopicModule } from '../topic/topic.module';
-import { EmbeddingService } from '../../infrastructure/embedding/embedding.service';
+import { EmbeddingModule } from '../../infrastructure/embedding/embedding.module';
 import { ParseDocumentJob } from './jobs/parse-document.job';
+import { DoclingModule } from '../../infrastructure/docling/docling.module';
 
 @Module({
   imports: [
@@ -22,7 +23,8 @@ import { ParseDocumentJob } from './jobs/parse-document.job';
     PrismaModule,
     OpenAiModule,
     TopicModule,
-    EmbeddingService,
+    EmbeddingModule,
+    DoclingModule,
   ],
   providers: [IngestionQueue, IngestionProcessor, Logger, ParseDocumentJob],
   exports: [IngestionQueue],
