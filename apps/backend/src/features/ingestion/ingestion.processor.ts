@@ -3,6 +3,7 @@ import { Job } from 'bullmq';
 import { ingestionConfig } from './ingestion.config';
 import {
   BuildRagChunksJobData,
+  EmbedRagChunksJobData,
   IngestionJobData,
   ParseDocumentJobData,
 } from './ingestion.types';
@@ -10,6 +11,7 @@ import { Inject, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { ParseDocumentJob } from './jobs/parse-document.job';
 import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
+import { EmbedRagChunksJob } from './jobs/embed-rag-chunks.job';
 
 @Processor(ingestionConfig().queue.name, {})
 export class IngestionProcessor extends WorkerHost {
@@ -20,6 +22,7 @@ export class IngestionProcessor extends WorkerHost {
     private readonly config: ConfigType<typeof ingestionConfig>,
     private readonly parseDocumentJob: ParseDocumentJob,
     private readonly buildRagChunksJob: BuildRagChunksJob,
+    private readonly embedRagChunksJob: EmbedRagChunksJob,
   ) {
     super();
   }
@@ -32,6 +35,10 @@ export class IngestionProcessor extends WorkerHost {
       case this.config.queue.jobs.build_rag_chunks:
         return this.buildRagChunksJob.process(
           job.data as BuildRagChunksJobData,
+        );
+      case this.config.queue.jobs.embed_rag_chunks:
+        return this.embedRagChunksJob.process(
+          job.data as EmbedRagChunksJobData,
         );
       default:
         throw new Error('Unknown job name: ' + job.name);

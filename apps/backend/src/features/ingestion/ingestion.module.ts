@@ -13,6 +13,7 @@ import { ParseDocumentJob } from './jobs/parse-document.job';
 import { DoclingModule } from '../../infrastructure/docling/docling.module';
 import { SourceProcessingStageService } from './source-processing-stage.service';
 import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
+import { EmbedRagChunksJob } from './jobs/embed-rag-chunks.job';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
     Logger,
     ParseDocumentJob,
     BuildRagChunksJob,
+    EmbedRagChunksJob,
     SourceProcessingStageService,
   ],
   exports: [IngestionQueue, SourceProcessingStageService],
