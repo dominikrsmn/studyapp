@@ -38,7 +38,11 @@ export class ParseDocumentJob {
       });
 
       if (!source) {
-        throw new Error(`Source "${sourceId}" does not exist`);
+        this.logger.warn(
+          `Skipping parse-document job because source "${sourceId}" no longer exists`,
+        );
+
+        return;
       }
 
       const conversionStage = source.processingStages[0];
@@ -152,5 +156,4 @@ export class ParseDocumentJob {
       throw error;
     }
   }
-
 }
