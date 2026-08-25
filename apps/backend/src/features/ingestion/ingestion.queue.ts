@@ -27,7 +27,7 @@ export class IngestionQueue {
         sourceId,
       } satisfies ParseDocumentJobData,
       {
-        jobId: `parse-document:${sourceId}`,
+        jobId: `parse-document/${sourceId}`,
       },
     );
   }
@@ -39,7 +39,7 @@ export class IngestionQueue {
         sourceId,
       } satisfies BuildRagChunksJobData,
       {
-        jobId: `build-rag-chunks:${sourceId}`,
+        jobId: `build-rag-chunks/${sourceId}`,
       },
     );
   }
@@ -52,7 +52,7 @@ export class IngestionQueue {
         chunkIds,
       } satisfies EmbedRagChunksJobData,
       {
-        jobId: `embed-rag-chunks:${sourceId}`,
+        jobId: `embed-rag-chunks/${sourceId}`,
       },
     );
   }
@@ -64,7 +64,7 @@ export class IngestionQueue {
         sourceId,
       } satisfies FinalizeIngestionJobData,
       {
-        jobId: `finalize-ingestion:${sourceId}`,
+        jobId: `finalize-ingestion/${sourceId}`,
       },
     );
   }
