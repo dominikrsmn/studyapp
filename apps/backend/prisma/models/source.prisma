@@ -4,8 +4,7 @@ model Source {
   mimeType   String
   storageKey String?
 
-  doclang        String? @db.Text
-  doclingVersion String?
+  document Json?
 
   moduleId String
   module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
