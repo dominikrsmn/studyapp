@@ -9,6 +9,7 @@ import {
   SourceProcessingStageType,
 } from '../../../infrastructure/database/generated/enums';
 import { IngestionQueue } from '../ingestion.queue';
+import { Prisma } from '../../../infrastructure/database/generated/client';
 
 @Injectable()
 export class ParseDocumentJob {
@@ -91,7 +92,10 @@ export class ParseDocumentJob {
         throw new Error('Document conversion returned no JSON content');
       }
 
-      const document = JSON.stringify(jsonContent);
+      const document = JSON.parse(
+        JSON.stringify(jsonContent),
+      ) as Prisma.InputJsonValue;
+
       if (!document) {
         throw new Error('Document conversion returned invalid JSON content');
       }
