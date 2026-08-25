@@ -14,10 +14,16 @@ describe('SourceService', () => {
     id: 'f43ff589-36b0-4f0f-b0cf-9cc1101b1952',
     moduleId,
     name: 'Lecture notes.pdf',
-    type: 'DOCUMENT',
     mimeType: 'application/pdf',
-    status: 'PROCESSED',
+    processingStages: [
+      {
+        stage: 'TOPIC_ANALYSIS',
+        state: 'COMPLETED',
+        errorMessage: null,
+      },
+    ],
   };
+  const pendingSource: SourceDto = { ...source, processingStages: [] };
   const sourceApi = {
     findAll: vi.fn(),
   };
@@ -77,14 +83,25 @@ describe('SourceService', () => {
     const reconnect = options?.onOpen?.();
 
     reconnectLoad.next([source]);
-    initialLoad.next([{ ...source, status: 'PROCESSING' }]);
+    initialLoad.next([
+      {
+        ...source,
+        processingStages: [
+          {
+            stage: 'CONVERSION',
+            state: 'PROCESSING',
+            errorMessage: null,
+          },
+        ],
+      },
+    ]);
     await reconnect;
 
     expect(service.sources()).toEqual([source]);
   });
 
   it('applies transient processing info from state events', () => {
-    sourceApi.findAll.mockReturnValue(of([source]));
+    sourceApi.findAll.mockReturnValue(of([pendingSource]));
     const service = TestBed.inject(SourceService);
 
     service.loadAll(moduleId).subscribe();
@@ -92,14 +109,21 @@ describe('SourceService', () => {
     stateChanges.next({
       sourceId: source.id,
       moduleId,
+      processingStage: 'CONVERSION',
       processingState: 'PROCESSING',
       info: 'Extracting topics…',
     });
 
     expect(service.sources()).toEqual([
       {
-        ...source,
-        status: 'PROCESSING',
+        ...pendingSource,
+        processingStages: [
+          {
+            stage: 'CONVERSION',
+            state: 'PROCESSING',
+            errorMessage: null,
+          },
+        ],
         processingInfo: 'Extracting topics…',
       },
     ]);
@@ -107,12 +131,24 @@ describe('SourceService', () => {
     stateChanges.next({
       sourceId: source.id,
       moduleId,
-      processingState: 'PROCESSED',
+      processingStage: 'TOPIC_ANALYSIS',
+      processingState: 'COMPLETED',
     });
 
     expect(service.sources()[0]).toMatchObject({
-      ...source,
-      status: 'PROCESSED',
+      ...pendingSource,
+      processingStages: [
+        {
+          stage: 'CONVERSION',
+          state: 'PROCESSING',
+          errorMessage: null,
+        },
+        {
+          stage: 'TOPIC_ANALYSIS',
+          state: 'COMPLETED',
+          errorMessage: null,
+        },
+      ],
       processingInfo: undefined,
     });
   });

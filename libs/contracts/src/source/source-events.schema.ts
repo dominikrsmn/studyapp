@@ -1,16 +1,14 @@
 import { z } from 'zod';
-
-export const sourceStateSchema = z.enum([
-  'PENDING',
-  'PROCESSING',
-  'PROCESSED',
-  'FAILED',
-]);
+import {
+  processingStateSchema,
+  sourceProcessingStageTypeSchema,
+} from './source.schema';
 
 export const sourceStateChangedEventSchema = z.object({
   sourceId: z.uuid(),
   moduleId: z.string(),
-  processingState: sourceStateSchema,
+  processingStage: sourceProcessingStageTypeSchema,
+  processingState: processingStateSchema,
   info: z.string().optional(),
 });
 

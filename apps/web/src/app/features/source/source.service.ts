@@ -8,7 +8,7 @@ import { defer, firstValueFrom, Observable, tap } from 'rxjs';
 import { SourceApiService } from './source-api-service';
 import { SourceEventsService } from './source-events.service';
 
-type SourceListItem = SourceDto & {
+export type SourceListItem = SourceDto & {
   processingInfo?: string;
 };
 
@@ -94,10 +94,31 @@ export class SourceService {
       source.id === event.sourceId
         ? {
             ...source,
-            status: event.processingState,
+            processingStages: this.upsertProcessingStage(source, event),
             processingInfo: event.info,
           }
         : source,
     );
+  }
+
+  private upsertProcessingStage(
+    source: SourceDto,
+    event: SourceStateChangedEvent,
+  ): SourceDto['processingStages'] {
+    const processingStage = {
+      stage: event.processingStage,
+      state: event.processingState,
+      errorMessage:
+        event.processingState === 'FAILED' ? (event.info ?? null) : null,
+    };
+    const stageExists = source.processingStages.some(
+      ({ stage }) => stage === event.processingStage,
+    );
+
+    return stageExists
+      ? source.processingStages.map((stage) =>
+          stage.stage === event.processingStage ? processingStage : stage,
+        )
+      : [...source.processingStages, processingStage];
   }
 }

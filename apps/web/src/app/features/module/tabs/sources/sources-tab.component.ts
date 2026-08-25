@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   effect,
   inject,
   input,
@@ -18,29 +17,13 @@ import {
   ZardPopoverDirective,
 } from '../../../../shared/components/popover';
 import { ZardTableImports } from '../../../../shared/components/table';
-import {
-  ZardTabComponent,
-  ZardTabGroupComponent,
-} from '../../../../shared/components/tabs';
 import { IconDirective } from '../../../../shared/icons/icon.directive';
-import { SourceService } from '../../../source/source.service';
+import { SourceListItem, SourceService } from '../../../source/source.service';
 import { ZardSpinnerComponent } from '../../../../shared/components/spinner';
 import { ZardInputComponent } from '../../../../shared/components/input';
 import { SemanticSearchApiService } from '../../../search/semantic-search-api.service';
 
-type SourceFilter = 'ALL' | SourceDto['type'];
-
-const SOURCE_FILTERS: ReadonlyArray<{
-  label: string;
-  value: SourceFilter;
-}> = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Documents', value: 'DOCUMENT' },
-  { label: 'Images', value: 'IMAGE' },
-  { label: 'Audio', value: 'AUDIO' },
-  { label: 'Text', value: 'TEXT' },
-  { label: 'Web', value: 'WEB' },
-];
+type SourceStatus = 'PENDING' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
 
 @Component({
   selector: 'app-source-tab',
@@ -50,8 +33,6 @@ const SOURCE_FILTERS: ReadonlyArray<{
     ZardPopoverComponent,
     ZardPopoverDirective,
     ZardTableImports,
-    ZardTabComponent,
-    ZardTabGroupComponent,
     ZardSpinnerComponent,
     ZardInputComponent,
     ReactiveFormsModule,
@@ -66,9 +47,7 @@ export default class SourcesTabComponent {
   private readonly alertDialogService = inject(ZardAlertDialogService);
   private readonly semanticSearchApi = inject(SemanticSearchApiService);
 
-  protected readonly filters = SOURCE_FILTERS;
   protected readonly sources = this.sourcesService.sources;
-  protected readonly activeFilter = signal<SourceFilter>('ALL');
   protected readonly isLoading = signal(true);
   protected readonly isUploading = signal(false);
   protected readonly deletingSourceId = signal<string | null>(null);
@@ -82,14 +61,6 @@ export default class SourcesTabComponent {
     null,
   );
   protected readonly searchError = signal<string | null>(null);
-
-  protected readonly filteredSources = computed(() => {
-    const filter = this.activeFilter();
-    const sources = this.sources();
-    return filter === 'ALL'
-      ? sources
-      : sources.filter((source) => source.type === filter);
-  });
 
   private readonly loadSources = effect((onCleanup) => {
     const moduleId = this.moduleId();
@@ -118,13 +89,6 @@ export default class SourcesTabComponent {
       events.unsubscribe();
     });
   });
-
-  protected setFilter(index: number): void {
-    const filter = this.filters[index];
-    if (filter) {
-      this.activeFilter.set(filter.value);
-    }
-  }
 
   protected search(): void {
     const query = this.searchControl.value.trim();
@@ -186,30 +150,38 @@ export default class SourcesTabComponent {
     });
   }
 
-  protected sourceIcon(type: SourceDto['type']): string {
-    const icons: Record<SourceDto['type'], string> = {
-      DOCUMENT: 'file-text',
-      IMAGE: 'image',
-      AUDIO: 'headphones',
-      TEXT: 'type',
-      WEB: 'globe',
-    };
-    return icons[type];
+  protected sourceStatus(source: SourceDto): SourceStatus {
+    if (source.processingStages.some(({ state }) => state === 'FAILED')) {
+      return 'FAILED';
+    }
+
+    if (
+      source.processingStages.some(
+        ({ stage, state }) =>
+          stage === 'TOPIC_ANALYSIS' && state === 'COMPLETED',
+      )
+    ) {
+      return 'PROCESSED';
+    }
+
+    if (source.processingStages.some(({ state }) => state !== 'NOT_STARTED')) {
+      return 'PROCESSING';
+    }
+
+    return 'PENDING';
   }
 
-  protected sourceTypeLabel(type: SourceDto['type']): string {
-    const labels: Record<SourceDto['type'], string> = {
-      DOCUMENT: 'Document',
-      IMAGE: 'Image',
-      AUDIO: 'Audio',
-      TEXT: 'Text',
-      WEB: 'Web',
-    };
-    return labels[type];
+  protected processingInfo(source: SourceListItem): string | undefined {
+    return (
+      source.processingInfo ??
+      source.processingStages.find(({ state }) => state === 'FAILED')
+        ?.errorMessage ??
+      undefined
+    );
   }
 
-  protected statusIcon(status: SourceDto['status']): string {
-    const icons: Record<SourceDto['status'], string> = {
+  protected statusIcon(status: SourceStatus): string {
+    const icons: Record<SourceStatus, string> = {
       PENDING: 'clock',
       PROCESSING: 'loader',
       PROCESSED: 'check-circle',
@@ -218,8 +190,8 @@ export default class SourcesTabComponent {
     return icons[status];
   }
 
-  protected statusLabel(status: SourceDto['status']): string {
-    const labels: Record<SourceDto['status'], string> = {
+  protected statusLabel(status: SourceStatus): string {
+    const labels: Record<SourceStatus, string> = {
       PENDING: 'Pending',
       PROCESSING: 'Processing',
       PROCESSED: 'Processed',
@@ -228,7 +200,7 @@ export default class SourcesTabComponent {
     return labels[status];
   }
 
-  protected statusClass(status: SourceDto['status']): string {
+  protected statusClass(status: SourceStatus): string {
     if (status === 'FAILED') {
       return 'text-destructive';
     }

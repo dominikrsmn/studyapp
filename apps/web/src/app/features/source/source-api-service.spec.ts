@@ -18,9 +18,14 @@ describe('SourceApiService', () => {
     id: 'f43ff589-36b0-4f0f-b0cf-9cc1101b1952',
     moduleId,
     name: 'Lecture notes.pdf',
-    type: 'DOCUMENT',
     mimeType: 'application/pdf',
-    status: 'PROCESSED',
+    processingStages: [
+      {
+        stage: 'TOPIC_ANALYSIS',
+        state: 'COMPLETED',
+        errorMessage: null,
+      },
+    ],
   };
 
   beforeEach(() => {

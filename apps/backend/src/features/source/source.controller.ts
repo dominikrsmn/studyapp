@@ -56,7 +56,7 @@ export class SourcesController {
     @Param('moduleId', ParseUUIDPipe) moduleId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<SourceDto> {
-    return this.sourceService.remove(request.userId, id);
+    return this.sourceService.remove(request.userId, moduleId, id);
   }
 
   @Get()

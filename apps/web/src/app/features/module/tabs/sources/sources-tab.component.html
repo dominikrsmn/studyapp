@@ -75,19 +75,7 @@
     }
   </div>
 
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <z-tab-group
-      class="w-auto gap-0"
-      zNavClass="h-auto flex-wrap gap-1 rounded-full bg-transparent p-0"
-      zTabClass="h-9 flex-none rounded-full border-0 px-4 py-2 font-bold text-sage-600 after:hidden hover:bg-sage-100 hover:text-sage-950 data-active:bg-sage-500 data-active:text-white data-active:shadow-none"
-      zContentClass="hidden"
-      (zTabChange)="setFilter($event.index)"
-    >
-      @for (filter of filters; track filter.value) {
-        <z-tab [label]="filter.label" />
-      }
-    </z-tab-group>
-
+  <div class="flex justify-end">
     <input
       #fileInput
       type="file"
@@ -169,12 +157,13 @@
               </tr>
             }
           } @else {
-            @for (source of filteredSources(); track source.id) {
+            @for (source of sources(); track source.id) {
+              @let status = sourceStatus(source);
               <tr z-table-row class="group h-20 hover:bg-sage-50/60">
                 <td z-table-cell class="px-8!">
                   <div class="flex min-w-0 items-center gap-4">
                     <span
-                      [appIcon]="sourceIcon(source.type)"
+                      appIcon="file-text"
                       class="inline-flex text-lg"
                     ></span>
 
@@ -194,33 +183,28 @@
                   <span
                     class="inline-flex rounded-md bg-sage-100 px-2.5 py-1 text-xs font-bold text-sage-800"
                   >
-                    {{ sourceTypeLabel(source.type) }}
+                    Document
                   </span>
                 </td>
                 <td z-table-cell class="px-8!">
                   <div>
                     <span
                       class="inline-flex items-center gap-2 text-sm font-bold"
-                      [class]="statusClass(source.status)"
+                      [class]="statusClass(status)"
                     >
-                      @if (
-                        source.status === 'PROCESSING' ||
-                        source.status === 'PENDING'
-                      ) {
+                      @if (status === 'PROCESSING' || status === 'PENDING') {
                         <z-spinner></z-spinner>
                       } @else {
                         <span
-                          [appIcon]="statusIcon(source.status)"
+                          [appIcon]="statusIcon(status)"
                           class="inline-flex size-4"
                         ></span>
                       }
-                      {{ statusLabel(source.status) }}
+                      {{ statusLabel(status) }}
                     </span>
-                    @if (
-                      source.status === 'PROCESSING' && source.processingInfo
-                    ) {
+                    @if (processingInfo(source); as info) {
                       <p class="mt-1 text-xs font-medium text-sage-500">
-                        {{ source.processingInfo }}
+                        {{ info }}
                       </p>
                     }
                   </div>
