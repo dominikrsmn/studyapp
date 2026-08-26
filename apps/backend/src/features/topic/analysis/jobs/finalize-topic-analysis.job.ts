@@ -1,21 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { NodeItem } from '@docling/docling-core';
+import type { Prisma } from '../../../../infrastructure/database/generated/client';
 import {
   ProcessingState,
   SourceProcessingStageType,
-  TopicState,
 } from '../../../../infrastructure/database/generated/enums';
-import type { Prisma } from '../../../../infrastructure/database/generated/client';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { parseAnalysisDocument } from '../analysis-document.schema';
-import { AnalysisQueue } from '../analysis.queue';
 import { FinalizeTopicAnalysis } from '../analysis.types';
 import { documentUnitContent } from './detect-boundaries.job';
 import {
   pageRange,
-  resolveTopicSpans,
   type ResolvedTopicSpan,
+  resolveTopicSpans,
 } from './extract-source-topics.job';
 
 const finalSourceTopicSelect = {
@@ -32,19 +30,14 @@ const finalSourceTopicSelect = {
   topic: {
     select: {
       id: true,
-      state: true,
       moduleId: true,
-      contentRevision: true,
-      summaryRevision: true,
     },
   },
   evidence: {
-    orderBy: { createdAt: 'asc' as const },
     select: {
       id: true,
       content: true,
       spans: {
-        orderBy: { createdAt: 'asc' as const },
         select: {
           id: true,
           content: true,
@@ -62,11 +55,6 @@ type FinalSourceTopic = Prisma.SourceTopicGetPayload<{
   select: typeof finalSourceTopicSelect;
 }>;
 
-type TopicSummaryRevision = {
-  id: string;
-  contentRevision: number;
-};
-
 @Injectable()
 export class FinalizeTopicAnalysisJob {
   private readonly logger = new Logger(FinalizeTopicAnalysisJob.name);
@@ -74,147 +62,64 @@ export class FinalizeTopicAnalysisJob {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
-    private readonly analysisQueue: AnalysisQueue,
   ) {}
 
   async process({ sourceId }: FinalizeTopicAnalysis): Promise<void> {
-    let sourceFound = false;
-    let analysisAlreadyCompleted = false;
-
-    try {
-      const summaryRevisions = await this.prismaService.$transaction(
-        async (transaction) => {
-          const source = await this.loadSource(transaction, sourceId);
-          if (!source) {
-            return null;
-          }
-
-          sourceFound = true;
-          if (source.processingStages[0]?.state === ProcessingState.COMPLETED) {
-            analysisAlreadyCompleted = true;
-            return [];
-          }
-
-          return validateFinalTopicAnalysis(
-            source.document,
-            source.moduleId,
-            source.sourceTopics,
-          );
-        },
-      );
-
-      if (summaryRevisions === null) {
-        this.logger.warn(
-          `Skipping finalize-topic-analysis job because source "${sourceId}" no longer exists`,
-        );
-        return;
-      }
-      if (analysisAlreadyCompleted) {
-        this.logger.log(
-          `Skipping finalize-topic-analysis job because source "${sourceId}" is already complete`,
-        );
-        return;
-      }
-
-      await Promise.all(
-        summaryRevisions.map(({ id, contentRevision }) =>
-          this.analysisQueue.addSummarizeTopic(id, contentRevision),
-        ),
-      );
-
-      await this.prismaService.$transaction(async (transaction) => {
-        const source = await this.loadSource(transaction, sourceId);
-        if (!source) {
-          this.logger.warn(
-            `Skipping completion because source "${sourceId}" was deleted while topic analysis was finalizing`,
-          );
-          return;
-        }
-
-        const currentSummaryRevisions = validateFinalTopicAnalysis(
-          source.document,
-          source.moduleId,
-          source.sourceTopics,
-        );
-        assertSummaryJobsScheduled(summaryRevisions, currentSummaryRevisions);
-
-        await this.sourceProcessingStageService.transition(
-          sourceId,
-          SourceProcessingStageType.TOPIC_ANALYSIS,
-          ProcessingState.COMPLETED,
-          { transaction },
-        );
-      });
-    } catch (error) {
-      this.logger.error(
-        `Error finalizing topic analysis for source "${sourceId}": ${error}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-
-      if (sourceFound) {
-        await this.recordFailureUnlessCompleted(sourceId, error).catch(
-          (stageUpdateError: unknown) => {
-            this.logger.error(
-              `Failed to record topic analysis failure for source "${sourceId}"`,
-              stageUpdateError instanceof Error
-                ? stageUpdateError.stack
-                : undefined,
-            );
-          },
-        );
-      }
-
-      throw error;
-    }
-  }
-
-  private loadSource(transaction: Prisma.TransactionClient, sourceId: string) {
-    return transaction.source.findUnique({
+    const source = await this.prismaService.source.findUnique({
       where: { id: sourceId },
       select: {
         document: true,
         moduleId: true,
-        processingStages: {
-          where: { stage: SourceProcessingStageType.TOPIC_ANALYSIS },
-          select: { state: true },
-          take: 1,
-        },
         sourceTopics: {
           orderBy: { spanIndex: 'asc' },
           select: finalSourceTopicSelect,
         },
       },
     });
-  }
 
-  private async recordFailureUnlessCompleted(
-    sourceId: string,
-    error: unknown,
-  ): Promise<void> {
-    const processingStage =
-      await this.prismaService.sourceProcessingStage.findUnique({
-        where: {
-          sourceId_stage: {
-            sourceId,
-            stage: SourceProcessingStageType.TOPIC_ANALYSIS,
-          },
-        },
-        select: { state: true },
-      });
-
-    if (processingStage?.state === ProcessingState.COMPLETED) {
+    if (!source) {
       this.logger.warn(
-        `Preserving completed topic analysis for source "${sourceId}" after a later finalization failure`,
+        `Skipping finalize-topic-analysis because source "${sourceId}" no longer exists`,
       );
       return;
     }
 
-    await this.sourceProcessingStageService.transition(
-      sourceId,
-      SourceProcessingStageType.TOPIC_ANALYSIS,
-      ProcessingState.FAILED,
-      { error },
-    );
+    try {
+      validateFinalTopicAnalysis(
+        source.document,
+        source.moduleId,
+        source.sourceTopics,
+      );
+
+      await this.sourceProcessingStageService.transition(
+        sourceId,
+        SourceProcessingStageType.TOPIC_ANALYSIS,
+        ProcessingState.COMPLETED,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error finalizing topic analysis for source "${sourceId}"`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      await this.sourceProcessingStageService
+        .transition(
+          sourceId,
+          SourceProcessingStageType.TOPIC_ANALYSIS,
+          ProcessingState.FAILED,
+          { error },
+        )
+        .catch((stageUpdateError: unknown) => {
+          this.logger.error(
+            `Failed to record topic analysis failure for source "${sourceId}"`,
+            stageUpdateError instanceof Error
+              ? stageUpdateError.stack
+              : undefined,
+          );
+        });
+
+      throw error;
+    }
   }
 }
 
@@ -222,12 +127,9 @@ export function validateFinalTopicAnalysis(
   storedDocument: unknown,
   sourceModuleId: string,
   sourceTopics: FinalSourceTopic[],
-): TopicSummaryRevision[] {
-  if (sourceTopics.length === 0) {
-    throw new Error('Final topic analysis contains no SourceTopics');
-  }
-
+): void {
   const document = parseAnalysisDocument(storedDocument);
+
   const resolvedTopicSpans = resolveTopicSpans(
     document,
     sourceTopics.map(({ spanIndex, startRef, endRef }) => {
@@ -236,46 +138,30 @@ export function validateFinalTopicAnalysis(
           `SourceTopic span ${spanIndex} has unresolved boundary references`,
         );
       }
-      return { spanIndex, startRef, endRef };
+
+      return {
+        spanIndex,
+        startRef,
+        endRef,
+      };
     }),
   );
 
-  const summaryRevisions = new Map<string, TopicSummaryRevision>();
   sourceTopics.forEach((sourceTopic, index) => {
     validateSourceTopic(sourceTopic, resolvedTopicSpans[index]);
 
-    const topic = sourceTopic.topic;
-    if (!topic) {
+    if (!sourceTopic.topic) {
       throw new Error(
         `SourceTopic "${sourceTopic.id}" has not been canonicalized`,
       );
     }
-    if (topic.moduleId !== sourceModuleId) {
+
+    if (sourceTopic.topic.moduleId !== sourceModuleId) {
       throw new Error(
         `SourceTopic "${sourceTopic.id}" is canonicalized outside its module`,
       );
     }
-    if (
-      !isRevision(topic.contentRevision) ||
-      (topic.summaryRevision !== null &&
-        (!isRevision(topic.summaryRevision) ||
-          topic.summaryRevision > topic.contentRevision))
-    ) {
-      throw new Error(`Topic "${topic.id}" has invalid revision metadata`);
-    }
-
-    if (
-      topic.state !== TopicState.REJECTED &&
-      topic.summaryRevision !== topic.contentRevision
-    ) {
-      summaryRevisions.set(topic.id, {
-        id: topic.id,
-        contentRevision: topic.contentRevision,
-      });
-    }
   });
-
-  return [...summaryRevisions.values()];
 }
 
 function validateSourceTopic(
@@ -285,65 +171,98 @@ function validateSourceTopic(
   if (!resolvedSpan || resolvedSpan.spanIndex !== sourceTopic.spanIndex) {
     throw new Error('SourceTopic span indexes are not contiguous and ordered');
   }
+
   if (
     sourceTopic.title.trim().length === 0 ||
-    sourceTopic.description.trim().length === 0 ||
-    !isConfidence(sourceTopic.detectionConfidence)
+    sourceTopic.description.trim().length === 0
   ) {
     throw new Error(`SourceTopic "${sourceTopic.id}" is not final`);
   }
+
+  if (!isConfidence(sourceTopic.detectionConfidence)) {
+    throw new Error(
+      `SourceTopic "${sourceTopic.id}" has invalid detection confidence`,
+    );
+  }
+
   if (!isConfidence(sourceTopic.canonicalizationConfidence)) {
     throw new Error(
       `SourceTopic "${sourceTopic.id}" has invalid canonicalization confidence`,
     );
   }
+
   assertPageRange(`SourceTopic "${sourceTopic.id}"`, sourceTopic, resolvedSpan);
+
   if (sourceTopic.evidence.length === 0) {
     throw new Error(`SourceTopic "${sourceTopic.id}" has no evidence`);
   }
 
+  validateEvidence(sourceTopic, resolvedSpan);
+}
+
+function validateEvidence(
+  sourceTopic: FinalSourceTopic,
+  resolvedSpan: ResolvedTopicSpan,
+): void {
   const indexesByRef = new Map(
-    resolvedSpan.refs.map((ref, refIndex) => [ref, refIndex]),
+    resolvedSpan.refs.map((ref, index) => [ref, index]),
   );
+
   for (const evidence of sourceTopic.evidence) {
     if (evidence.content.trim().length === 0 || evidence.spans.length === 0) {
       throw new Error(`TopicEvidence "${evidence.id}" is not grounded`);
     }
 
-    let previousEndIndex = -1;
-    for (const evidenceSpan of evidence.spans) {
-      const { startRef, endRef } = evidenceSpan;
-      if (startRef === null || endRef === null) {
+    const resolvedEvidenceSpans = evidence.spans.map((span) => {
+      if (span.startRef === null || span.endRef === null) {
         throw new Error(
-          `TopicEvidenceSpan "${evidenceSpan.id}" has unresolved references`,
+          `TopicEvidenceSpan "${span.id}" has unresolved references`,
         );
       }
-      const startIndex = indexesByRef.get(startRef);
-      const endIndex = indexesByRef.get(endRef);
+
+      const startIndex = indexesByRef.get(span.startRef);
+      const endIndex = indexesByRef.get(span.endRef);
+
       if (
         startIndex === undefined ||
         endIndex === undefined ||
-        endIndex < startIndex ||
-        startIndex <= previousEndIndex
+        endIndex < startIndex
       ) {
         throw new Error(
-          `TopicEvidenceSpan "${evidenceSpan.id}" is outside its SourceTopic or out of order`,
+          `TopicEvidenceSpan "${span.id}" is outside its SourceTopic`,
         );
       }
+
+      return {
+        span,
+        startIndex,
+        endIndex,
+      };
+    });
+
+    resolvedEvidenceSpans.sort((a, b) => a.startIndex - b.startIndex);
+
+    let previousEndIndex = -1;
+
+    for (const { span, startIndex, endIndex } of resolvedEvidenceSpans) {
+      if (startIndex <= previousEndIndex) {
+        throw new Error(
+          `TopicEvidenceSpan "${span.id}" overlaps another evidence span`,
+        );
+      }
+
       previousEndIndex = endIndex;
 
       const units = resolvedSpan.units.slice(startIndex, endIndex + 1);
       const canonicalContent = groundedContent(units);
-      if (!canonicalContent || evidenceSpan.content !== canonicalContent) {
+
+      if (!canonicalContent || span.content !== canonicalContent) {
         throw new Error(
-          `TopicEvidenceSpan "${evidenceSpan.id}" does not match canonical source content`,
+          `TopicEvidenceSpan "${span.id}" does not match canonical source content`,
         );
       }
-      assertPageRange(
-        `TopicEvidenceSpan "${evidenceSpan.id}"`,
-        evidenceSpan,
-        pageRange(units),
-      );
+
+      assertPageRange(`TopicEvidenceSpan "${span.id}"`, span, pageRange(units));
     }
   }
 }
@@ -357,8 +276,14 @@ function groundedContent(units: NodeItem[]): string {
 
 function assertPageRange(
   label: string,
-  stored: { pageStart: number | null; pageEnd: number | null },
-  resolved: { pageStart: number | null; pageEnd: number | null },
+  stored: {
+    pageStart: number | null;
+    pageEnd: number | null;
+  },
+  resolved: {
+    pageStart: number | null;
+    pageEnd: number | null;
+  },
 ): void {
   if (
     stored.pageStart !== resolved.pageStart ||
@@ -370,25 +295,4 @@ function assertPageRange(
 
 function isConfidence(value: number | null): value is number {
   return value !== null && Number.isFinite(value) && value >= 0 && value <= 1;
-}
-
-function isRevision(value: number): boolean {
-  return Number.isInteger(value) && value >= 1;
-}
-
-function assertSummaryJobsScheduled(
-  scheduled: TopicSummaryRevision[],
-  required: TopicSummaryRevision[],
-): void {
-  const scheduledKeys = new Set(
-    scheduled.map(({ id, contentRevision }) => `${id}:${contentRevision}`),
-  );
-  if (
-    required.some(
-      ({ id, contentRevision }) =>
-        !scheduledKeys.has(`${id}:${contentRevision}`),
-    )
-  ) {
-    throw new Error('Affected Topic revisions changed before completion');
-  }
 }
