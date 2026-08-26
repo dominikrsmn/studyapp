@@ -1,4 +1,4 @@
-import { Logger, Module } from '@nestjs/common';
+import { forwardRef, Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { analysisConfig } from './analysis.config';
@@ -25,7 +25,7 @@ import { MatchSourceTopicsJob } from './jobs/match-source-topics.job';
     }),
     PrismaModule,
     OpenAiModule,
-    IngestionModule,
+    forwardRef(() => IngestionModule),
   ],
   providers: [
     AnalysisProcessor,

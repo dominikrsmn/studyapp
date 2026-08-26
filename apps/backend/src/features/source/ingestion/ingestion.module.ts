@@ -15,6 +15,7 @@ import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
 import { EmbedRagChunksJob } from './jobs/embed-rag-chunks.job';
 import { FinalizeIngestionJob } from './jobs/finalize-ingestion.job';
 import { SourceModule } from '../source.module';
+import { AnalysisModule } from '../../topic/analysis/analysis.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { SourceModule } from '../source.module';
     OpenAiModule,
     EmbeddingModule,
     DoclingModule,
+    forwardRef(() => AnalysisModule),
     forwardRef(() => SourceModule), // TODO: probably move source events into own module to avoid circular dependency (also in source module)
   ],
   providers: [

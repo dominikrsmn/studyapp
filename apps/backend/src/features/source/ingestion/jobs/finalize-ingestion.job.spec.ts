@@ -4,11 +4,15 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { AnalysisQueue } from '../../../topic/analysis/analysis.queue';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 import { FinalizeIngestionJob } from './finalize-ingestion.job';
 
 jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
+}));
+jest.mock('../../../topic/analysis/analysis.queue', () => ({
+  AnalysisQueue: class AnalysisQueue {},
 }));
 
 describe('FinalizeIngestionJob', () => {
@@ -18,6 +22,7 @@ describe('FinalizeIngestionJob', () => {
   const transaction = { source: sourceDelegate, $queryRaw: queryRaw };
   const prismaService = { $transaction: jest.fn() };
   const sourceProcessingStageService = { transition: jest.fn() };
+  const analysisQueue = { addPrepareTopicAnalysis: jest.fn() };
 
   let job: FinalizeIngestionJob;
 
@@ -35,10 +40,12 @@ describe('FinalizeIngestionJob', () => {
     sourceProcessingStageService.transition.mockResolvedValue({
       id: 'stage-id',
     });
+    analysisQueue.addPrepareTopicAnalysis.mockResolvedValue(undefined);
 
     job = new FinalizeIngestionJob(
       prismaService as unknown as PrismaService,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
+      analysisQueue as unknown as AnalysisQueue,
     );
   });
 
@@ -70,6 +77,9 @@ describe('FinalizeIngestionJob', () => {
       ProcessingState.COMPLETED,
       { transaction },
     );
+    expect(analysisQueue.addPrepareTopicAnalysis).toHaveBeenCalledWith(
+      sourceId,
+    );
   });
 
   it('rejects finalization when a persisted chunk is missing its embedding', async () => {
@@ -95,6 +105,7 @@ describe('FinalizeIngestionJob', () => {
         }),
       },
     );
+    expect(analysisQueue.addPrepareTopicAnalysis).not.toHaveBeenCalled();
   });
 
   it('rejects finalization when document conversion has no result', async () => {
@@ -115,6 +126,7 @@ describe('FinalizeIngestionJob', () => {
         }),
       },
     );
+    expect(analysisQueue.addPrepareTopicAnalysis).not.toHaveBeenCalled();
   });
 
   it('skips a source that was deleted before finalization', async () => {
@@ -124,5 +136,6 @@ describe('FinalizeIngestionJob', () => {
 
     expect(queryRaw).not.toHaveBeenCalled();
     expect(sourceProcessingStageService.transition).not.toHaveBeenCalled();
+    expect(analysisQueue.addPrepareTopicAnalysis).not.toHaveBeenCalled();
   });
 });

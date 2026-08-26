@@ -4,6 +4,7 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { AnalysisQueue } from '../../../topic/analysis/analysis.queue';
 import { FinalizeIngestionJobData } from '../ingestion.types';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 
@@ -18,6 +19,7 @@ export class FinalizeIngestionJob {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
+    private readonly analysisQueue: AnalysisQueue,
   ) {}
 
   async process({ sourceId }: FinalizeIngestionJobData): Promise<void> {
@@ -91,6 +93,10 @@ export class FinalizeIngestionJob {
       }
 
       throw error;
+    }
+
+    if (sourceFound) {
+      await this.analysisQueue.addPrepareTopicAnalysis(sourceId);
     }
   }
 }
