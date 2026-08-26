@@ -7,6 +7,7 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
+import { parseAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
 import { ExtractSourceTopics } from '../analysis.types';
 import {
@@ -288,7 +289,7 @@ describe('source topic extraction helpers', () => {
   it('derives nullable page bounds from canonical units', () => {
     expect(
       resolveTopicSpans(
-        {
+        parseAnalysisDocument({
           name: 'Nested source',
           main_text: [
             {
@@ -310,7 +311,7 @@ describe('source topic extraction helpers', () => {
               ],
             },
           ],
-        },
+        }),
         [{ spanIndex: 0, startRef: 'heading', endRef: 'body' }],
       ),
     ).toMatchObject([{ pageStart: 4, pageEnd: 4 }]);

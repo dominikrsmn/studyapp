@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import type { DoclingDocument } from 'docling-sdk';
+import type { DoclingDocument, NodeItem } from 'docling-sdk';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import {
@@ -11,15 +11,11 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
-import {
-  AnalysisDocument,
-  parseAnalysisDocument,
-} from '../analysis-document.schema';
+import { parseAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
 import { ExtractSourceTopics, TopicSpan } from '../analysis.types';
 import {
   documentUnitContent,
-  DocumentUnit,
   indexDocumentUnits,
   serializeDocumentUnits,
 } from './detect-boundaries.job';
@@ -27,7 +23,7 @@ import { deriveOrderedDocumentUnitRefs } from './prepare-topic-analysis.job';
 
 interface ResolvedTopicSpan extends TopicSpan {
   refs: string[];
-  units: DocumentUnit[];
+  units: NodeItem[];
   pageStart: number | null;
   pageEnd: number | null;
 }
@@ -254,7 +250,7 @@ function sourceTopicExtractionSchema(
 }
 
 export function resolveTopicSpans(
-  document: AnalysisDocument,
+  document: DoclingDocument,
   spans: TopicSpan[],
 ): ResolvedTopicSpan[] {
   const orderedRefs = deriveOrderedDocumentUnitRefs(document);
@@ -269,7 +265,7 @@ export function resolveTopicSpans(
   }
 
   const indexesByRef = new Map(orderedRefs.map((ref, index) => [ref, index]));
-  const unitsByRef = indexDocumentUnits(document as unknown as DoclingDocument);
+  const unitsByRef = indexDocumentUnits(document);
   let expectedStartIndex = 0;
 
   const resolved = spans.map((span, index) => {
@@ -405,7 +401,7 @@ function groundExtractedTopics(
   });
 }
 
-function pageRange(units: DocumentUnit[]): {
+function pageRange(units: NodeItem[]): {
   pageStart: number | null;
   pageEnd: number | null;
 } {

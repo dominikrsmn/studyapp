@@ -12,6 +12,7 @@ import { parseAnalysisDocument } from '../analysis-document.schema';
 import {
   boundaryDetectionPrompt,
   DetectBoundariesJob,
+  documentUnitContent,
   indexDocumentUnits,
   serializeDocumentUnits,
 } from './detect-boundaries.job';
@@ -239,10 +240,56 @@ describe('boundary detection input', () => {
     });
 
     const documentUnits = indexDocumentUnits(document);
-    const serialized = serializeDocumentUnits([documentUnits.get('r&1')!]);
+    const escapedUnit = documentUnits.get('r&1');
+    expect(escapedUnit).toBeDefined();
+    if (!escapedUnit) {
+      throw new Error('Expected escaped document unit');
+    }
+    const serialized = serializeDocumentUnits([escapedUnit]);
 
     expect(serialized).toContain('ref="r&amp;1"');
     expect(serialized).toContain('&lt;unit&gt; &amp; &quot;quoted&quot;');
+  });
+
+  it('serializes SDK table cells and picture descriptions without local unit types', () => {
+    const document = parseAnalysisDocument({
+      name: 'Rich content',
+      main_text: [
+        {
+          label: 'table',
+          self_ref: 'table-ref',
+          data: [
+            [{ text: 'Algorithm' }, { text: 'Runtime' }],
+            [{ text: 'Dijkstra' }, { text: 'O(E log V)' }],
+          ],
+        },
+        {
+          label: 'picture',
+          self_ref: 'picture-ref',
+          annotations: [
+            {
+              kind: 'description',
+              description: 'A graph with weighted directed edges.',
+            },
+          ],
+        },
+      ],
+    });
+    const units = indexDocumentUnits(document);
+    const tableUnit = units.get('table-ref');
+    const pictureUnit = units.get('picture-ref');
+    expect(tableUnit).toBeDefined();
+    expect(pictureUnit).toBeDefined();
+    if (!tableUnit || !pictureUnit) {
+      throw new Error('Expected rich document units');
+    }
+
+    expect(documentUnitContent(tableUnit)).toBe(
+      'Algorithm | Runtime\nDijkstra | O(E log V)',
+    );
+    expect(documentUnitContent(pictureUnit)).toBe(
+      'A graph with weighted directed edges.',
+    );
   });
 
   it('defines pedagogical topics and names presentation changes that are not boundaries', () => {

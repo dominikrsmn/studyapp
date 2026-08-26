@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
+import type { DoclingDocument, NodeItem } from 'docling-sdk';
 import {
   ProcessingState,
   SourceProcessingStageType,
@@ -7,11 +8,7 @@ import {
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
-import {
-  AnalysisDocument,
-  AnalysisDocumentUnit,
-  parseAnalysisDocument,
-} from '../analysis-document.schema';
+import { parseAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
 import { AnalysisUnit, PrepareTopicAnalysis } from '../analysis.types';
 
@@ -99,7 +96,7 @@ export class PrepareTopicAnalysisJob {
 }
 
 export function createBoundaryAnalysisUnits(
-  document: AnalysisDocument,
+  document: DoclingDocument,
   windowSize: number,
   windowOverlap: number,
 ): AnalysisUnit[] {
@@ -122,15 +119,16 @@ export function createBoundaryAnalysisUnits(
 }
 
 export function deriveOrderedDocumentUnitRefs(
-  document: AnalysisDocument,
+  document: DoclingDocument,
 ): string[] {
-  const pending: AnalysisDocumentUnit[] = [
-    ...(document.main_text ?? []),
-  ].reverse();
+  const pending: NodeItem[] = [...(document.main_text ?? [])].reverse();
   const unitRefs: string[] = [];
 
   while (pending.length > 0) {
-    const item = pending.pop()!;
+    const item = pending.pop();
+    if (!item) {
+      continue;
+    }
 
     if (item.self_ref) {
       unitRefs.push(item.self_ref);

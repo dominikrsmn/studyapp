@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ParseDocumentJobData } from '../ingestion.types';
 import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { DoclingService } from '../../../../infrastructure/docling/docling.service';
-import type { ConvertDocumentResponse, DoclingDocument } from 'docling-sdk';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import {
   ProcessingState,
@@ -11,6 +10,7 @@ import {
 import { IngestionQueue } from '../ingestion.queue';
 import { Prisma } from '../../../../infrastructure/database/generated/client';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
+import { ConvertDocumentResponse, DoclingDocument } from 'docling-sdk';
 
 @Injectable()
 export class ParseDocumentJob {

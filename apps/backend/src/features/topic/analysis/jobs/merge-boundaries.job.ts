@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { Job } from 'bullmq';
-import type { DoclingDocument } from 'docling-sdk';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import {
@@ -299,7 +298,7 @@ export function buildBoundaryCandidates(
     documentUnitRefs.length,
     candidateIndexes,
   );
-  const unitsByRef = indexDocumentUnits(document as unknown as DoclingDocument);
+  const unitsByRef = indexDocumentUnits(document);
 
   return candidateIndexes.map((documentIndex, candidateIndex) => {
     const afterRef = documentUnitRefs[documentIndex];

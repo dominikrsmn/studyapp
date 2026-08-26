@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import type { DocItem, DoclingDocument, NodeItem } from 'docling-sdk';
+import type { DoclingDocument, NodeItem } from 'docling-sdk';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import {
@@ -13,14 +13,6 @@ import { SourceProcessingStageService } from '../../../source/ingestion/source-p
 import { analysisConfig } from '../analysis.config';
 import { parseAnalysisDocument } from '../analysis-document.schema';
 import { BoundaryDetectionResult, DetectBoundaries } from '../analysis.types';
-
-export type DocumentUnit = DocItem & {
-  children?: NodeItem[];
-  data?: Array<Array<{ text?: string }>>;
-  level?: number;
-  text?: string;
-  annotations?: Array<{ description?: string }>;
-};
 
 @Injectable()
 export class DetectBoundariesJob {
@@ -58,9 +50,7 @@ export class DetectBoundariesJob {
       }
 
       const document = parseAnalysisDocument(source.document);
-      const documentUnitsByRef = indexDocumentUnits(
-        document as unknown as DoclingDocument,
-      );
+      const documentUnitsByRef = indexDocumentUnits(document);
       const documentUnits = analysisUnit.documentUnitRefs.map((ref) => {
         const documentUnit = documentUnitsByRef.get(ref);
         if (!documentUnit) {
@@ -177,12 +167,15 @@ function boundaryDetectionSchema(eligibleAfterRefs: [string, ...string[]]) {
 
 export function indexDocumentUnits(
   document: DoclingDocument,
-): Map<string, DocumentUnit> {
+): Map<string, NodeItem> {
   const pending: NodeItem[] = [...(document.main_text ?? [])].reverse();
-  const documentUnits = new Map<string, DocumentUnit>();
+  const documentUnits = new Map<string, NodeItem>();
 
   while (pending.length > 0) {
-    const documentUnit = pending.pop() as DocumentUnit;
+    const documentUnit = pending.pop();
+    if (!documentUnit) {
+      continue;
+    }
     if (documentUnit.self_ref) {
       documentUnits.set(documentUnit.self_ref, documentUnit);
     }
@@ -194,15 +187,18 @@ export function indexDocumentUnits(
   return documentUnits;
 }
 
-export function serializeDocumentUnits(documentUnits: DocumentUnit[]): string {
+export function serializeDocumentUnits(documentUnits: NodeItem[]): string {
   const serialized = documentUnits.map((documentUnit) => {
     const ref = escapeXml(documentUnit.self_ref ?? '');
     const type =
       documentUnit.label === 'section_header' ? 'heading' : documentUnit.label;
+    const headingLevel =
+      'level' in documentUnit ? documentUnit.level : undefined;
     const level =
       documentUnit.label === 'section_header' &&
-      Number.isInteger(documentUnit.level)
-        ? ` level="${documentUnit.level}"`
+      typeof headingLevel === 'number' &&
+      Number.isInteger(headingLevel)
+        ? ` level="${headingLevel}"`
         : '';
     const content = escapeXml(documentUnitContent(documentUnit));
 
@@ -212,23 +208,48 @@ export function serializeDocumentUnits(documentUnits: DocumentUnit[]): string {
   return `<document-units>\n${serialized.join('\n')}\n</document-units>`;
 }
 
-export function documentUnitContent(documentUnit: DocumentUnit): string {
-  if (typeof documentUnit.text === 'string') {
-    return documentUnit.text.trim();
+export function documentUnitContent(documentUnit: NodeItem): string {
+  const text = 'text' in documentUnit ? documentUnit.text : undefined;
+  if (typeof text === 'string') {
+    return text.trim();
   }
 
-  if (Array.isArray(documentUnit.data)) {
-    return documentUnit.data
-      .map((row) => row.map((cell) => cell.text ?? '').join(' | '))
+  const data = 'data' in documentUnit ? documentUnit.data : undefined;
+  if (Array.isArray(data)) {
+    return data
+      .map((row) =>
+        Array.isArray(row)
+          ? row
+              .map((cell) =>
+                typeof cell === 'object' &&
+                cell !== null &&
+                'text' in cell &&
+                typeof cell.text === 'string'
+                  ? cell.text
+                  : '',
+              )
+              .join(' | ')
+          : '',
+      )
       .join('\n')
       .trim();
   }
 
-  const descriptions = documentUnit.annotations
-    ?.map((annotation) => annotation.description)
-    .filter((description): description is string => Boolean(description));
-  if (descriptions && descriptions.length > 0) {
-    return descriptions.join('\n').trim();
+  const annotations =
+    'annotations' in documentUnit ? documentUnit.annotations : undefined;
+  if (Array.isArray(annotations)) {
+    return annotations
+      .map((annotation) =>
+        typeof annotation === 'object' &&
+        annotation !== null &&
+        'description' in annotation &&
+        typeof annotation.description === 'string'
+          ? annotation.description
+          : '',
+      )
+      .filter(Boolean)
+      .join('\n')
+      .trim();
   }
 
   return '';
