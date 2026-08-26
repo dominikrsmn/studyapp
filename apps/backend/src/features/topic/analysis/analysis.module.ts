@@ -9,6 +9,7 @@ import { AnalysisQueue } from './analysis.queue';
 import { PrepareTopicAnalysisJob } from './jobs/prepare-topic-analysis.job';
 import { DetectBoundariesJob } from './jobs/detect-boundaries.job';
 import { OpenAiModule } from '../../../infrastructure/open-ai/open-ai.module';
+import { MergeBoundariesJob } from './jobs/merge-boundaries.job';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { OpenAiModule } from '../../../infrastructure/open-ai/open-ai.module';
     Logger,
     PrepareTopicAnalysisJob,
     DetectBoundariesJob,
+    MergeBoundariesJob,
   ],
   exports: [AnalysisQueue],
 })

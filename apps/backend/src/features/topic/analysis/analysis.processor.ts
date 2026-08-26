@@ -6,11 +6,14 @@ import { Job } from 'bullmq';
 import {
   AnalysisJobData,
   BoundaryDetectionResult,
+  BoundaryMergeResult,
   DetectBoundaries,
+  MergeBoundaries,
   PrepareTopicAnalysis,
 } from './analysis.types';
 import { PrepareTopicAnalysisJob } from './jobs/prepare-topic-analysis.job';
 import { DetectBoundariesJob } from './jobs/detect-boundaries.job';
+import { MergeBoundariesJob } from './jobs/merge-boundaries.job';
 
 @Processor(analysisConfig().queue.name, {})
 export class AnalysisProcessor extends WorkerHost {
@@ -21,11 +24,14 @@ export class AnalysisProcessor extends WorkerHost {
     private readonly config: ConfigType<typeof analysisConfig>,
     private readonly prepareTopicAnalysisJob: PrepareTopicAnalysisJob,
     private readonly detectBoundariesJob: DetectBoundariesJob,
+    private readonly mergeBoundariesJob: MergeBoundariesJob,
   ) {
     super();
   }
 
-  process(job: Job<AnalysisJobData>): Promise<void | BoundaryDetectionResult> {
+  process(
+    job: Job<AnalysisJobData>,
+  ): Promise<void | BoundaryDetectionResult | BoundaryMergeResult> {
     this.logger.log(`Processing ${job.name} job: ${job.id}`);
     switch (job.name) {
       case this.config.queue.jobs.prepare_topic_analysis:
@@ -34,6 +40,8 @@ export class AnalysisProcessor extends WorkerHost {
         );
       case this.config.queue.jobs.detect_boundaries:
         return this.detectBoundariesJob.process(job.data as DetectBoundaries);
+      case this.config.queue.jobs.merge_boundaries:
+        return this.mergeBoundariesJob.process(job as Job<MergeBoundaries>);
       default:
         throw new Error('Unknown job name: ' + job.name);
     }

@@ -11,6 +11,7 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
+import { parseAnalysisDocument } from '../analysis-document.schema';
 import { BoundaryDetectionResult, DetectBoundaries } from '../analysis.types';
 
 type DocumentUnit = DocItem & {
@@ -56,8 +57,9 @@ export class DetectBoundariesJob {
         throw new Error('Source has no converted Docling document');
       }
 
+      const document = parseAnalysisDocument(source.document);
       const documentUnitsByRef = indexDocumentUnits(
-        source.document as unknown as DoclingDocument,
+        document as unknown as DoclingDocument,
       );
       const documentUnits = analysisUnit.documentUnitRefs.map((ref) => {
         const documentUnit = documentUnitsByRef.get(ref);

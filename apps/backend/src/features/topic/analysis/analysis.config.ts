@@ -8,6 +8,12 @@ export const analysisConfig = registerAs('topicAnalysis', () => ({
     windowSize: 70,
     windowOverlap: 20,
   },
+  boundaryMerging: {
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'medium' as const,
+    contextRadius: 4,
+    shortSpanReviewThreshold: 8,
+  },
   queue: {
     name: 'topic-analysis',
     jobs: {

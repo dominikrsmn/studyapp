@@ -103,16 +103,6 @@ export function createBoundaryAnalysisUnits(
   windowSize: number,
   windowOverlap: number,
 ): AnalysisUnit[] {
-  if (
-    !Number.isInteger(windowSize) ||
-    !Number.isInteger(windowOverlap) ||
-    windowSize <= 0 ||
-    windowOverlap < 0 ||
-    windowOverlap >= windowSize
-  ) {
-    throw new Error('Invalid boundary analysis unit window configuration');
-  }
-
   const documentUnitRefs = deriveOrderedDocumentUnitRefs(document);
   const analysisUnits: AnalysisUnit[] = [];
   const stride = windowSize - windowOverlap;

@@ -27,6 +27,28 @@ export interface BoundaryDetectionResult {
 export interface MergeBoundaries {
   sourceId: string;
 }
+export interface BoundaryConfidenceEvidence {
+  unitAgreement: number;
+  structuralEvidence: number;
+  semanticDiscontinuity: number;
+  modelDecision: number;
+  windowEdgeDistance: number;
+  childConfidence: number;
+}
+export interface MergedBoundary {
+  afterRef: string;
+  confidence: number;
+  evidence: BoundaryConfidenceEvidence;
+}
+export interface TopicSpan {
+  index: number;
+  startRef: string;
+  endRef: string;
+}
+export interface BoundaryMergeResult {
+  boundaries: MergedBoundary[];
+  spans: TopicSpan[];
+}
 export interface ExtractSourceTopics {
   sourceId: string;
   span_descriptors: string[];
