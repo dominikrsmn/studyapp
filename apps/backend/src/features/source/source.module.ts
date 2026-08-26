@@ -4,11 +4,11 @@ import { SourcesController } from './source.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { FileStorageModule } from '../../infrastructure/filestorage/filestorage.module';
 import { IngestionModule } from '../ingestion/ingestion.module';
-import { SourceEventService } from './source-event.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { ConfigModule, ConfigType } from '@nestjs/config';
 import { ingestionConfig } from '../ingestion/ingestion.config';
 import { sourceConfig } from './source.config';
+import { SourceEventService } from './source-event.service';
 
 @Module({
   imports: [
@@ -28,6 +28,7 @@ import { sourceConfig } from './source.config';
     }),
   ],
   providers: [SourceService, SourceEventService],
+  exports: [SourceEventService],
   controllers: [SourcesController],
 })
 export class SourceModule {}

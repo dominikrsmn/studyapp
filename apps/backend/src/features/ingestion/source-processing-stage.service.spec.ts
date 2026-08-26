@@ -4,24 +4,32 @@ import {
   SourceProcessingStageType,
 } from '../../infrastructure/database/generated/enums';
 import { SourceProcessingStageService } from './source-processing-stage.service';
+import { SourceEventService } from '../source/source-event.service';
 
 jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
 
 describe('SourceProcessingStageService', () => {
-  const sourceId = 'source-id';
+  const sourceId = 'f43ff589-36b0-4f0f-b0cf-9cc1101b1952';
+  const moduleId = 'f74a46b6-2d6d-4542-a9b8-37a8eef82d8c';
   const stage = SourceProcessingStageType.RAG_INDEXING;
   const sourceProcessingStage = { upsert: jest.fn() };
   const prismaService = { sourceProcessingStage };
+  const sourceEventService = { publishStateChange: jest.fn() };
 
   let service: SourceProcessingStageService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    sourceProcessingStage.upsert.mockResolvedValue({ id: 'stage-id' });
+    sourceProcessingStage.upsert.mockResolvedValue({
+      id: 'stage-id',
+      errorMessage: null,
+      source: { moduleId },
+    });
     service = new SourceProcessingStageService(
       prismaService as unknown as PrismaService,
+      sourceEventService as unknown as SourceEventService,
     );
   });
 
@@ -52,12 +60,29 @@ describe('SourceProcessingStageService', () => {
           completedAt: null,
           errorMessage: null,
         },
+        include: {
+          source: {
+            select: { moduleId: true },
+          },
+        },
+      });
+      expect(sourceEventService.publishStateChange).toHaveBeenCalledWith({
+        sourceId,
+        moduleId,
+        processingStage,
+        processingState: ProcessingState.PROCESSING,
       });
     },
   );
 
   it('marks a stage completed through a provided transaction', async () => {
-    const transactionStage = { upsert: jest.fn() };
+    const transactionStage = {
+      upsert: jest.fn().mockResolvedValue({
+        id: 'stage-id',
+        errorMessage: null,
+        source: { moduleId },
+      }),
+    };
     const transaction = {
       sourceProcessingStage: transactionStage,
     };
@@ -80,12 +105,28 @@ describe('SourceProcessingStageService', () => {
         completedAt: expect.any(Date),
         errorMessage: null,
       },
+      include: {
+        source: {
+          select: { moduleId: true },
+        },
+      },
     });
     expect(sourceProcessingStage.upsert).not.toHaveBeenCalled();
+    expect(sourceEventService.publishStateChange).toHaveBeenCalledWith({
+      sourceId,
+      moduleId,
+      processingStage: stage,
+      processingState: ProcessingState.COMPLETED,
+    });
   });
 
   it('stores a useful message when a stage fails', async () => {
     const error = new Error('Embedding failed');
+    sourceProcessingStage.upsert.mockResolvedValue({
+      id: 'stage-id',
+      errorMessage: error.message,
+      source: { moduleId },
+    });
 
     await service.transition(sourceId, stage, ProcessingState.FAILED, {
       error,
@@ -105,6 +146,23 @@ describe('SourceProcessingStageService', () => {
         }),
       }),
     );
+    expect(sourceEventService.publishStateChange).toHaveBeenCalledWith({
+      sourceId,
+      moduleId,
+      processingStage: stage,
+      processingState: ProcessingState.FAILED,
+      info: error.message,
+    });
+  });
+
+  it('does not publish when persisting the transition fails', async () => {
+    sourceProcessingStage.upsert.mockRejectedValue(new Error('Database down'));
+
+    await expect(
+      service.transition(sourceId, stage, ProcessingState.PROCESSING),
+    ).rejects.toThrow('Database down');
+
+    expect(sourceEventService.publishStateChange).not.toHaveBeenCalled();
   });
 
   it.each([ProcessingState.NOT_STARTED, ProcessingState.QUEUED])(

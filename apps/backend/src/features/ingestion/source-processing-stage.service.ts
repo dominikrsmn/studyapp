@@ -1,4 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import {
+  type SourceStateChangedEvent,
+  sourceStateChangedEventSchema,
+} from '@study/contracts';
 import type {
   Prisma,
   SourceProcessingStage,
@@ -8,6 +12,7 @@ import {
   SourceProcessingStageType,
 } from '../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { SourceEventService } from '../source/source-event.service';
 
 type TransitionOptions = {
   error?: unknown;
@@ -23,9 +28,12 @@ type TransitionData = {
 
 @Injectable()
 export class SourceProcessingStageService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly sourceEventService: SourceEventService,
+  ) {}
 
-  transition(
+  async transition(
     sourceId: string,
     stage: SourceProcessingStageType,
     state: ProcessingState,
@@ -34,11 +42,29 @@ export class SourceProcessingStageService {
     const client = options.transaction ?? this.prismaService;
     const data = this.transitionData(state, options.error);
 
-    return client.sourceProcessingStage.upsert({
+    const processingStage = await client.sourceProcessingStage.upsert({
       where: { sourceId_stage: { sourceId, stage } },
       create: { sourceId, stage, ...data },
       update: data,
+      include: {
+        source: {
+          select: { moduleId: true },
+        },
+      },
     });
+
+    const event: SourceStateChangedEvent = sourceStateChangedEventSchema.parse({
+      sourceId,
+      moduleId: processingStage.source.moduleId,
+      processingStage: stage,
+      processingState: state,
+      ...(processingStage.errorMessage
+        ? { info: processingStage.errorMessage }
+        : {}),
+    });
+    this.sourceEventService.stateChanges(event);
+
+    return processingStage;
   }
 
   private transitionData(

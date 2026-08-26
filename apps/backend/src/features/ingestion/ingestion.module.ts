@@ -15,6 +15,7 @@ import { SourceProcessingStageService } from './source-processing-stage.service'
 import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
 import { EmbedRagChunksJob } from './jobs/embed-rag-chunks.job';
 import { FinalizeIngestionJob } from './jobs/finalize-ingestion.job';
+import { SourceModule } from '../source/source.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { FinalizeIngestionJob } from './jobs/finalize-ingestion.job';
     TopicModule,
     EmbeddingModule,
     DoclingModule,
+    SourceModule,
   ],
   providers: [
     IngestionQueue,
