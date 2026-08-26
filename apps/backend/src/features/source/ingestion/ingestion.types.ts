@@ -1,10 +1,3 @@
-export const INGESTION_JOB = {
-  PARSE_DOCUMENT: 'parse-document',
-  BUILD_RAG_CHUNKS: 'build-rag-chunks',
-  EMBED_RAG_CHUNKS: 'embed-rag-chunks',
-  FINALIZE_INGESTION: 'finalize-ingestion',
-} as const;
-
 export type IngestionJobData =
   | ParseDocumentJobData
   | BuildRagChunksJobData

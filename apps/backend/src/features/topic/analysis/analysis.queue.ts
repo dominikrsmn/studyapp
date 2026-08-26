@@ -8,12 +8,13 @@ import {
 } from '../../../infrastructure/database/generated/enums';
 import { analysisConfig } from './analysis.config';
 import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
+import { AnalysisJobData } from './analysis.types';
 
 @Injectable()
 export class IngestionQueue {
   constructor(
     @InjectQueue(analysisConfig().queue.name)
-    private readonly queue: Queue /*<AnalysisJobData>*/,
+    private readonly queue: Queue<AnalysisJobData>,
     @Inject(analysisConfig.KEY)
     private readonly config: ConfigType<typeof analysisConfig>,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
