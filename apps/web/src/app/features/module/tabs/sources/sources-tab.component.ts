@@ -6,8 +6,12 @@ import {
   input,
   signal,
 } from '@angular/core';
-import type { SemanticSearchResult } from '@study/contracts';
-import { SourceDto } from '@study/contracts';
+import type {
+  ProcessingState,
+  SemanticSearchResult,
+  SourceDto,
+  SourceProcessingStageType,
+} from '@study/contracts';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ZardAlertDialogService } from '../../../../shared/components/alert-dialog';
@@ -23,7 +27,69 @@ import { ZardSpinnerComponent } from '../../../../shared/components/spinner';
 import { ZardInputComponent } from '../../../../shared/components/input';
 import { SemanticSearchApiService } from '../../../search/semantic-search-api.service';
 
-type SourceStatus = 'PENDING' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
+type SourceStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED';
+
+type ProcessingStageDisplay = {
+  stage: SourceProcessingStageType;
+  label: string;
+};
+
+const PROCESSING_STAGES: readonly ProcessingStageDisplay[] = [
+  { stage: 'CONVERSION', label: 'Conversion' },
+  { stage: 'RAG_INDEXING', label: 'Indexing' },
+  { stage: 'TOPIC_ANALYSIS', label: 'Topic analysis' },
+];
+
+const PROCESSING_MESSAGES: Record<
+  SourceProcessingStageType,
+  Partial<Record<ProcessingState, string>>
+> = {
+  CONVERSION: {
+    QUEUED: 'Queued for conversion',
+    PROCESSING: 'Converting document…',
+    FAILED: 'Conversion failed',
+  },
+  RAG_INDEXING: {
+    QUEUED: 'Queued for indexing',
+    PROCESSING: 'Indexing content…',
+    FAILED: 'Indexing failed',
+  },
+  TOPIC_ANALYSIS: {
+    QUEUED: 'Queued for topic analysis',
+    PROCESSING: 'Extracting topics & exercises…',
+    FAILED: 'Topic analysis failed',
+  },
+};
+
+const PROCESSING_STAGE_CLASSES: Record<ProcessingState, string> = {
+  NOT_STARTED: 'bg-sage-200',
+  QUEUED: 'bg-sage-300',
+  PROCESSING: 'bg-sage-400',
+  COMPLETED: 'bg-sage-700',
+  FAILED: 'bg-destructive',
+};
+
+const PROCESSING_STATE_LABELS: Record<ProcessingState, string> = {
+  NOT_STARTED: 'Not started',
+  QUEUED: 'Queued',
+  PROCESSING: 'Processing',
+  COMPLETED: 'Completed',
+  FAILED: 'Failed',
+};
+
+const STATUS_ICONS: Record<SourceStatus, string> = {
+  PENDING: 'clock',
+  PROCESSING: '',
+  READY: 'check-circle',
+  FAILED: 'alert-circle',
+};
+
+const STATUS_LABELS: Record<SourceStatus, string> = {
+  PENDING: 'Pending',
+  PROCESSING: 'Processing',
+  READY: 'Ready',
+  FAILED: 'Failed',
+};
 
 @Component({
   selector: 'app-source-tab',
@@ -39,6 +105,7 @@ type SourceStatus = 'PENDING' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
   ],
   templateUrl: './sources-tab.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
 })
 export default class SourcesTabComponent {
   readonly moduleId = input.required<string>();
@@ -61,6 +128,7 @@ export default class SourcesTabComponent {
     null,
   );
   protected readonly searchError = signal<string | null>(null);
+  protected readonly processingStages = PROCESSING_STAGES;
 
   private readonly loadSources = effect((onCleanup) => {
     const moduleId = this.moduleId();
@@ -156,12 +224,11 @@ export default class SourcesTabComponent {
     }
 
     if (
-      source.processingStages.some(
-        ({ stage, state }) =>
-          stage === 'TOPIC_ANALYSIS' && state === 'COMPLETED',
+      this.processingStages.every(
+        ({ stage }) => this.processingStageState(source, stage) === 'COMPLETED',
       )
     ) {
-      return 'PROCESSED';
+      return 'READY';
     }
 
     if (source.processingStages.some(({ state }) => state !== 'NOT_STARTED')) {
@@ -172,42 +239,56 @@ export default class SourcesTabComponent {
   }
 
   protected processingInfo(source: SourceListItem): string | undefined {
+    const currentStage =
+      source.processingStages.find(({ state }) => state === 'FAILED') ??
+      source.processingStages.find(({ state }) => state === 'PROCESSING') ??
+      source.processingStages.find(({ state }) => state === 'QUEUED');
+
+    if (!currentStage) {
+      return undefined;
+    }
+
+    if (source.processingInfo && currentStage.state !== 'FAILED') {
+      return source.processingInfo;
+    }
+
+    return PROCESSING_MESSAGES[currentStage.stage][currentStage.state];
+  }
+
+  protected processingStageState(
+    source: SourceDto,
+    stage: SourceProcessingStageType,
+  ): ProcessingState {
     return (
-      source.processingInfo ??
-      source.processingStages.find(({ state }) => state === 'FAILED')
-        ?.errorMessage ??
-      undefined
+      source.processingStages.find((item) => item.stage === stage)?.state ??
+      'NOT_STARTED'
     );
   }
 
+  protected processingStageClass(state: ProcessingState): string {
+    return PROCESSING_STAGE_CLASSES[state];
+  }
+
+  protected processingStageStateLabel(state: ProcessingState): string {
+    return PROCESSING_STATE_LABELS[state];
+  }
+
   protected statusIcon(status: SourceStatus): string {
-    const icons: Record<SourceStatus, string> = {
-      PENDING: 'clock',
-      PROCESSING: 'loader',
-      PROCESSED: 'check-circle',
-      FAILED: 'x-circle',
-    };
-    return icons[status];
+    return STATUS_ICONS[status];
   }
 
   protected statusLabel(status: SourceStatus): string {
-    const labels: Record<SourceStatus, string> = {
-      PENDING: 'Pending',
-      PROCESSING: 'Processing',
-      PROCESSED: 'Processed',
-      FAILED: 'Failed',
-    };
-    return labels[status];
+    return STATUS_LABELS[status];
   }
 
   protected statusClass(status: SourceStatus): string {
     if (status === 'FAILED') {
       return 'text-destructive';
     }
-    if (status === 'PROCESSED') {
+    if (status === 'READY') {
       return 'text-sage-800';
     }
-    return 'text-sage-600';
+    return status === 'PROCESSING' ? 'text-sage-800' : 'text-sage-600';
   }
 
   private deleteSource(source: SourceDto): void {
