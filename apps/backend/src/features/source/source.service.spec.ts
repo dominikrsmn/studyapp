@@ -3,6 +3,7 @@ import { FileStorageService } from '../../infrastructure/filestorage/filestorage
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { IngestionQueue } from '../ingestion/ingestion.queue';
 import { SourceService } from './source.service';
+import type { SourceProcessingStageService } from '../ingestion/source-processing-stage.service';
 import {
   ProcessingState,
   SourceProcessingStageType,
@@ -18,6 +19,7 @@ describe('SourceService', () => {
   };
   const sourceDelegate = {
     create: jest.fn(),
+    findUnique: jest.fn(),
     findMany: jest.fn(),
     findFirst: jest.fn(),
     delete: jest.fn(),
@@ -29,6 +31,9 @@ describe('SourceService', () => {
   };
   const ingestionQueue = {
     addParseDocument: jest.fn(),
+  };
+  const sourceProcessingStageService = {
+    initialize: jest.fn(),
   };
 
   let service: SourceService;
@@ -42,6 +47,7 @@ describe('SourceService', () => {
       } as unknown as PrismaService,
       fileStorageService as unknown as FileStorageService,
       ingestionQueue as unknown as IngestionQueue,
+      sourceProcessingStageService as unknown as SourceProcessingStageService,
     );
 
     moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
@@ -54,8 +60,14 @@ describe('SourceService', () => {
       moduleId: 'module-id',
       processingStages: [],
     });
+    sourceDelegate.findUnique.mockResolvedValue(
+      sourceRecord(queuedProcessingStages()),
+    );
     sourceDelegate.delete.mockResolvedValue({ id: 'source-id' });
     ingestionQueue.addParseDocument.mockResolvedValue(undefined);
+    sourceProcessingStageService.initialize.mockResolvedValue(
+      initialProcessingStages(),
+    );
   });
 
   it('enqueues the uploaded source for document parsing', async () => {
@@ -71,6 +83,9 @@ describe('SourceService', () => {
       sourceId,
     );
     expect(ingestionQueue.addParseDocument).toHaveBeenCalledWith(sourceId);
+    expect(sourceProcessingStageService.initialize).toHaveBeenCalledWith(
+      sourceId,
+    );
     expect(sourceDelegate.create.mock.invocationCallOrder[0]).toBeLessThan(
       ingestionQueue.addParseDocument.mock.invocationCallOrder[0],
     );
@@ -89,7 +104,7 @@ describe('SourceService', () => {
       name: 'lecture.pdf',
       mimeType: 'application/pdf',
       moduleId: 'module-id',
-      processingStages: [],
+      processingStages: queuedProcessingStages(),
     });
   });
 
@@ -153,8 +168,31 @@ describe('SourceService', () => {
     expect(fileStorageService.save).not.toHaveBeenCalled();
     expect(sourceDelegate.create).not.toHaveBeenCalled();
     expect(ingestionQueue.addParseDocument).not.toHaveBeenCalled();
+    expect(sourceProcessingStageService.initialize).not.toHaveBeenCalled();
   });
 });
+
+function initialProcessingStages() {
+  return Object.values(SourceProcessingStageType).map((stage) => ({
+    id: `${stage}-stage-id`,
+    sourceId: 'source-id',
+    stage,
+    state: ProcessingState.NOT_STARTED,
+    errorMessage: null,
+    startedAt: null,
+    completedAt: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  }));
+}
+
+function queuedProcessingStages() {
+  return initialProcessingStages().map((processingStage) =>
+    processingStage.stage === SourceProcessingStageType.CONVERSION
+      ? { ...processingStage, state: ProcessingState.QUEUED }
+      : processingStage,
+  );
+}
 
 function sourceFile(): Express.Multer.File {
   return {

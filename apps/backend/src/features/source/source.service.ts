@@ -5,6 +5,7 @@ import { PrismaService } from '../../infrastructure/database/prisma/prisma.servi
 import { randomUUID } from 'node:crypto';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { IngestionQueue } from '../ingestion/ingestion.queue';
+import { SourceProcessingStageService } from '../ingestion/source-processing-stage.service';
 
 const sourceSelect = {
   id: true,
@@ -30,6 +31,7 @@ export class SourceService {
     private readonly prisma: PrismaService,
     private readonly fileStorageService: FileStorageService,
     private readonly sourceIngestionQueue: IngestionQueue,
+    private readonly sourceProcessingStageService: SourceProcessingStageService,
   ) {}
 
   async uploadSource(
@@ -51,7 +53,7 @@ export class SourceService {
     let sourceCreated = false;
     try {
       await this.fileStorageService.save(source.buffer, sourceId);
-      const createdSource = await this.prisma.source.create({
+      await this.prisma.source.create({
         data: {
           id: sourceId,
           name: source.originalname,
@@ -61,9 +63,19 @@ export class SourceService {
         },
         select: sourceSelect,
       });
-      uploadedMetadata = this.toDto(createdSource);
       sourceCreated = true;
+      await this.sourceProcessingStageService.initialize(sourceId);
       await this.sourceIngestionQueue.addParseDocument(sourceId);
+      const queuedSource = await this.prisma.source.findUnique({
+        where: { id: sourceId },
+        select: sourceSelect,
+      });
+      if (!queuedSource) {
+        throw new Error(
+          `Source "${sourceId}" disappeared while it was being queued`,
+        );
+      }
+      uploadedMetadata = this.toDto(queuedSource);
     } catch (error) {
       if (sourceCreated) {
         await this.prisma.source

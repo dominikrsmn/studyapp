@@ -33,6 +33,14 @@ export class SourceProcessingStageService {
     private readonly sourceEventService: SourceEventService,
   ) {}
 
+  async initialize(sourceId: string): Promise<SourceProcessingStage[]> {
+    return Promise.all(
+      Object.values(SourceProcessingStageType).map((stage) =>
+        this.transition(sourceId, stage, ProcessingState.NOT_STARTED),
+      ),
+    );
+  }
+
   async transition(
     sourceId: string,
     stage: SourceProcessingStageType,

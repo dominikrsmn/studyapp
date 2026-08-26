@@ -2,6 +2,10 @@ import { InjectFlowProducer, InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { FlowProducer, Queue } from 'bullmq';
+import {
+  ProcessingState,
+  SourceProcessingStageType,
+} from '../../infrastructure/database/generated/enums';
 import { ingestionConfig } from './ingestion.config';
 import {
   BuildRagChunksJobData,
@@ -10,6 +14,7 @@ import {
   IngestionJobData,
   ParseDocumentJobData,
 } from './ingestion.types';
+import { SourceProcessingStageService } from './source-processing-stage.service';
 
 @Injectable()
 export class IngestionQueue {
@@ -20,29 +25,40 @@ export class IngestionQueue {
     private readonly flowProducer: FlowProducer,
     @Inject(ingestionConfig.KEY)
     private readonly config: ConfigType<typeof ingestionConfig>,
+    private readonly sourceProcessingStageService: SourceProcessingStageService,
   ) {}
 
   async addParseDocument(sourceId: string): Promise<void> {
-    await this.queue.add(
-      this.config.queue.jobs.parse_document,
-      {
-        sourceId,
-      } satisfies ParseDocumentJobData,
-      {
-        jobId: `${this.config.queue.jobs.parse_document}/${sourceId}`,
-      },
+    await this.enqueueStage(
+      sourceId,
+      SourceProcessingStageType.CONVERSION,
+      () =>
+        this.queue.add(
+          this.config.queue.jobs.parse_document,
+          {
+            sourceId,
+          } satisfies ParseDocumentJobData,
+          {
+            jobId: `${this.config.queue.jobs.parse_document}/${sourceId}`,
+          },
+        ),
     );
   }
 
   async addBuildRagChunks(sourceId: string): Promise<void> {
-    await this.queue.add(
-      this.config.queue.jobs.build_rag_chunks,
-      {
-        sourceId,
-      } satisfies BuildRagChunksJobData,
-      {
-        jobId: `${this.config.queue.jobs.build_rag_chunks}/${sourceId}`,
-      },
+    await this.enqueueStage(
+      sourceId,
+      SourceProcessingStageType.RAG_INDEXING,
+      () =>
+        this.queue.add(
+          this.config.queue.jobs.build_rag_chunks,
+          {
+            sourceId,
+          } satisfies BuildRagChunksJobData,
+          {
+            jobId: `${this.config.queue.jobs.build_rag_chunks}/${sourceId}`,
+          },
+        ),
     );
   }
 
@@ -83,5 +99,26 @@ export class IngestionQueue {
         },
       },
     );
+  }
+
+  private async enqueueStage(
+    sourceId: string,
+    stage: SourceProcessingStageType,
+    enqueue: () => Promise<unknown>,
+  ): Promise<void> {
+    await this.sourceProcessingStageService.transition(
+      sourceId,
+      stage,
+      ProcessingState.QUEUED,
+    );
+
+    try {
+      await enqueue();
+    } catch (error) {
+      await this.sourceProcessingStageService
+        .transition(sourceId, stage, ProcessingState.FAILED, { error })
+        .catch(() => undefined);
+      throw error;
+    }
   }
 }

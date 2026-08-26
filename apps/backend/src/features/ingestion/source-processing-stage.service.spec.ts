@@ -16,7 +16,7 @@ describe('SourceProcessingStageService', () => {
   const stage = SourceProcessingStageType.RAG_INDEXING;
   const sourceProcessingStage = { upsert: jest.fn() };
   const prismaService = { sourceProcessingStage };
-  const sourceEventService = { publishStateChange: jest.fn() };
+  const sourceEventService = { stateChanges: jest.fn() };
 
   let service: SourceProcessingStageService;
 
@@ -31,6 +31,25 @@ describe('SourceProcessingStageService', () => {
       prismaService as unknown as PrismaService,
       sourceEventService as unknown as SourceEventService,
     );
+  });
+
+  it('initializes every processing stage as not started', async () => {
+    await service.initialize(sourceId);
+
+    for (const processingStage of Object.values(SourceProcessingStageType)) {
+      expect(sourceProcessingStage.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            sourceId_stage: { sourceId, stage: processingStage },
+          },
+          create: expect.objectContaining({
+            sourceId,
+            stage: processingStage,
+            state: ProcessingState.NOT_STARTED,
+          }),
+        }),
+      );
+    }
   });
 
   it.each(Object.values(SourceProcessingStageType))(
@@ -66,7 +85,7 @@ describe('SourceProcessingStageService', () => {
           },
         },
       });
-      expect(sourceEventService.publishStateChange).toHaveBeenCalledWith({
+      expect(sourceEventService.stateChanges).toHaveBeenCalledWith({
         sourceId,
         moduleId,
         processingStage,
@@ -112,7 +131,7 @@ describe('SourceProcessingStageService', () => {
       },
     });
     expect(sourceProcessingStage.upsert).not.toHaveBeenCalled();
-    expect(sourceEventService.publishStateChange).toHaveBeenCalledWith({
+    expect(sourceEventService.stateChanges).toHaveBeenCalledWith({
       sourceId,
       moduleId,
       processingStage: stage,
@@ -146,7 +165,7 @@ describe('SourceProcessingStageService', () => {
         }),
       }),
     );
-    expect(sourceEventService.publishStateChange).toHaveBeenCalledWith({
+    expect(sourceEventService.stateChanges).toHaveBeenCalledWith({
       sourceId,
       moduleId,
       processingStage: stage,
@@ -162,7 +181,7 @@ describe('SourceProcessingStageService', () => {
       service.transition(sourceId, stage, ProcessingState.PROCESSING),
     ).rejects.toThrow('Database down');
 
-    expect(sourceEventService.publishStateChange).not.toHaveBeenCalled();
+    expect(sourceEventService.stateChanges).not.toHaveBeenCalled();
   });
 
   it.each([ProcessingState.NOT_STARTED, ProcessingState.QUEUED])(
