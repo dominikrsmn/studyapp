@@ -8,6 +8,7 @@ import {
   BoundaryDetectionResult,
   DetectBoundaries,
   ExtractSourceTopics,
+  MatchSourceTopics,
   MergeBoundaries,
   PrepareTopicAnalysis,
 } from './analysis.types';
@@ -15,8 +16,9 @@ import { PrepareTopicAnalysisJob } from './jobs/prepare-topic-analysis.job';
 import { DetectBoundariesJob } from './jobs/detect-boundaries.job';
 import { MergeBoundariesJob } from './jobs/merge-boundaries.job';
 import { ExtractSourceTopicsJob } from './jobs/extract-source-topics.job';
+import { MatchSourceTopicsJob } from './jobs/match-source-topics.job';
 
-@Processor(analysisConfig().queue.name, {})
+@Processor(analysisConfig().queue.name, { concurrency: 1 })
 export class AnalysisProcessor extends WorkerHost {
   private readonly logger = new Logger(AnalysisProcessor.name);
 
@@ -27,6 +29,7 @@ export class AnalysisProcessor extends WorkerHost {
     private readonly detectBoundariesJob: DetectBoundariesJob,
     private readonly mergeBoundariesJob: MergeBoundariesJob,
     private readonly extractSourceTopicsJob: ExtractSourceTopicsJob,
+    private readonly matchSourceTopicsJob: MatchSourceTopicsJob,
   ) {
     super();
   }
@@ -46,6 +49,8 @@ export class AnalysisProcessor extends WorkerHost {
         return this.extractSourceTopicsJob.process(
           job.data as ExtractSourceTopics,
         );
+      case this.config.queue.jobs.match_source_topics:
+        return this.matchSourceTopicsJob.process(job.data as MatchSourceTopics);
       default:
         throw new Error('Unknown job name: ' + job.name);
     }

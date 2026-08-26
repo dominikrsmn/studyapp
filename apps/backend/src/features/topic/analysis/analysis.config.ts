@@ -18,6 +18,10 @@ export const analysisConfig = registerAs('topicAnalysis', () => ({
     model: 'gpt-5.6-sol',
     reasoningEffort: 'medium' as const,
   },
+  sourceTopicMatching: {
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'medium' as const,
+  },
   queue: {
     name: 'topic-analysis',
     jobs: {
