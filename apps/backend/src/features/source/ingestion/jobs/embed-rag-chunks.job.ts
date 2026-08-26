@@ -77,7 +77,7 @@ export class EmbedRagChunksJob {
         const embeddingRows = chunks.map((chunk, index) => {
           const vector = `[${vectors[index].join(',')}]`;
 
-          return Prisma.sql`(${chunk.id}::uuid, ${vector}::vector)`;
+          return Prisma.sql`(${chunk.id}::text, ${vector}::vector)`;
         });
 
         await this.prismaService.$executeRaw(

@@ -176,7 +176,7 @@ describe('EmbedRagChunksJob', () => {
     };
     expect(query.sql).toContain('UPDATE "SourceChunk" AS chunk');
     expect(query.sql).toContain(
-      'VALUES (?::uuid, ?::vector),(?::uuid, ?::vector)',
+      'VALUES (?::text, ?::vector),(?::text, ?::vector)',
     );
     expect(query.sql).toContain('AND chunk."embedding" IS NULL');
     expect(query.values).toEqual([
