@@ -1,4 +1,4 @@
-import { Logger, Module } from '@nestjs/common';
+import { forwardRef, Logger, Module } from '@nestjs/common';
 import { FileStorageModule } from '../../infrastructure/filestorage/filestorage.module';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
@@ -33,7 +33,7 @@ import { SourceModule } from '../source/source.module';
     TopicModule,
     EmbeddingModule,
     DoclingModule,
-    SourceModule,
+    forwardRef(() => SourceModule), // TODO: probably move source events into own module to avoid circular dependency (also in source module)
   ],
   providers: [
     IngestionQueue,

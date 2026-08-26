@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { SourceService } from './source.service';
 import { SourcesController } from './source.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
@@ -14,7 +14,7 @@ import { SourceEventService } from './source-event.service';
   imports: [
     PrismaModule,
     FileStorageModule,
-    IngestionModule,
+    forwardRef(() => IngestionModule),
     ConfigModule.forFeature(sourceConfig),
     ConfigModule.forFeature(ingestionConfig),
     MulterModule.registerAsync({
