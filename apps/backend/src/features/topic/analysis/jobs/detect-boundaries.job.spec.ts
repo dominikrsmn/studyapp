@@ -9,6 +9,7 @@ import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.servic
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { parseAnalysisDocument } from '../analysis-document.schema';
+import { createTestDoclingDocument } from '../analysis-document.fixture';
 import {
   boundaryDetectionPrompt,
   DetectBoundariesJob,
@@ -29,9 +30,8 @@ jest.mock('../../../source/ingestion/source-processing-stage.service', () => ({
 
 describe('DetectBoundariesJob', () => {
   const sourceId = 'source-id';
-  const document = parseAnalysisDocument({
-    name: 'Algorithms',
-    main_text: [
+  const document = parseAnalysisDocument(
+    createTestDoclingDocument('Algorithms', [
       {
         label: 'section_header',
         self_ref: 'r142',
@@ -56,8 +56,8 @@ describe('DetectBoundariesJob', () => {
         text: 'Bellman-Ford',
         level: 2,
       },
-    ],
-  });
+    ]),
+  );
   const findUnique = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
@@ -192,7 +192,11 @@ describe('DetectBoundariesJob', () => {
 
   it('rejects a malformed stored document before resolving its references', async () => {
     findUnique.mockResolvedValue({
-      document: { name: 'Malformed document', main_text: 'not-an-array' },
+      document: {
+        schema_name: 'DoclingDocument',
+        name: 'Malformed document',
+        body: { self_ref: '#/body', children: 'not-an-array' },
+      },
     });
 
     await expect(
@@ -228,16 +232,15 @@ describe('DetectBoundariesJob', () => {
 
 describe('boundary detection input', () => {
   it('preserves reading-order units and safely escapes XML content', () => {
-    const document = parseAnalysisDocument({
-      name: 'Escaping',
-      main_text: [
+    const document = parseAnalysisDocument(
+      createTestDoclingDocument('Escaping', [
         {
           label: 'paragraph',
           self_ref: 'r&1',
           text: '<unit> & "quoted"',
         },
-      ],
-    });
+      ]),
+    );
 
     const documentUnits = indexDocumentUnits(document);
     const escapedUnit = documentUnits.get('r&1');
@@ -252,9 +255,8 @@ describe('boundary detection input', () => {
   });
 
   it('serializes SDK table cells and picture descriptions without local unit types', () => {
-    const document = parseAnalysisDocument({
-      name: 'Rich content',
-      main_text: [
+    const document = parseAnalysisDocument(
+      createTestDoclingDocument('Rich content', [
         {
           label: 'table',
           self_ref: 'table-ref',
@@ -273,8 +275,8 @@ describe('boundary detection input', () => {
             },
           ],
         },
-      ],
-    });
+      ]),
+    );
     const units = indexDocumentUnits(document);
     const tableUnit = units.get('table-ref');
     const pictureUnit = units.get('picture-ref');

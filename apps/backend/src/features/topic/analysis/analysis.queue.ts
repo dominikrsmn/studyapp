@@ -13,6 +13,7 @@ import {
   AnalysisUnit,
   DetectBoundaries,
   ExtractSourceTopics,
+  FinalizeTopicAnalysis,
   MatchSourceTopics,
   MergeBoundaries,
   PrepareTopicAnalysis,
@@ -113,6 +114,16 @@ export class AnalysisQueue {
       { sourceId } satisfies MatchSourceTopics,
       {
         jobId: `${this.config.queue.jobs.match_source_topics}/${sourceId}`,
+      },
+    );
+  }
+
+  async addFinalizeTopicAnalysis(sourceId: string): Promise<void> {
+    await this.queue.add(
+      this.config.queue.jobs.finalize_topic_analysis,
+      { sourceId } satisfies FinalizeTopicAnalysis,
+      {
+        jobId: `${this.config.queue.jobs.finalize_topic_analysis}/${sourceId}`,
       },
     );
   }

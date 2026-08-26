@@ -10,7 +10,6 @@ import {
 import { IngestionQueue } from '../ingestion.queue';
 import { Prisma } from '../../../../infrastructure/database/generated/client';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
-import { ConvertDocumentResponse, DoclingDocument } from 'docling-sdk';
 
 @Injectable()
 export class ParseDocumentJob {
@@ -64,17 +63,17 @@ export class ParseDocumentJob {
         ProcessingState.PROCESSING,
       );
 
-      const conversion: ConvertDocumentResponse =
-        await this.doclingService.client.convertFromFile(
-          this.fileStorageService.getSourcePath(sourceId),
-          {
+      const conversion = await this.doclingService.client.convert(
+        this.fileStorageService.getSourcePath(sourceId),
+        {
+          options: {
             to_formats: ['json'],
             abort_on_error: true,
           },
-        );
+        },
+      );
 
-      const jsonContent = conversion?.document?.json_content as
-        DoclingDocument | null | undefined;
+      const jsonContent = conversion.document;
       if (!jsonContent) {
         throw new Error('Document conversion returned no JSON content');
       }

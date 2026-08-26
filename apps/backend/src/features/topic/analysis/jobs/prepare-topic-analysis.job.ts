@@ -1,6 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import type { DoclingDocument, NodeItem } from 'docling-sdk';
+import {
+  type DoclingDocument,
+  iterateDocumentItems,
+} from '@docling/docling-core';
 import {
   ProcessingState,
   SourceProcessingStageType,
@@ -121,23 +124,7 @@ export function createBoundaryAnalysisUnits(
 export function deriveOrderedDocumentUnitRefs(
   document: DoclingDocument,
 ): string[] {
-  const pending: NodeItem[] = [...(document.main_text ?? [])].reverse();
-  const unitRefs: string[] = [];
-
-  while (pending.length > 0) {
-    const item = pending.pop();
-    if (!item) {
-      continue;
-    }
-
-    if (item.self_ref) {
-      unitRefs.push(item.self_ref);
-    }
-
-    if (item.children) {
-      pending.push(...[...item.children].reverse());
-    }
-  }
-
-  return unitRefs;
+  return [...iterateDocumentItems(document)].map(
+    ([documentUnit]) => documentUnit.self_ref,
+  );
 }

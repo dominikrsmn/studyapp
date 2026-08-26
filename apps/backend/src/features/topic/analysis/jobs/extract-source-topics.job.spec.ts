@@ -7,6 +7,7 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
+import { createTestDoclingDocument } from '../analysis-document.fixture';
 import { parseAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
 import { ExtractSourceTopics } from '../analysis.types';
@@ -28,43 +29,40 @@ jest.mock('../../../source/ingestion/source-processing-stage.service', () => ({
 
 describe('ExtractSourceTopicsJob', () => {
   const sourceId = 'source-id';
-  const document = {
-    name: 'Graph Algorithms',
-    main_text: [
-      {
-        label: 'section_header',
-        self_ref: 'r0',
-        text: 'Shortest Paths',
-        level: 1,
-        prov: [{ page_no: 1, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
-      },
-      {
-        label: 'paragraph',
-        self_ref: 'r1',
-        text: 'Dijkstra selects the unsettled vertex with minimum distance.',
-        prov: [{ page_no: 1, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
-      },
-      {
-        label: 'paragraph',
-        self_ref: 'r2',
-        text: 'Relaxation improves a tentative distance through an edge.',
-        prov: [{ page_no: 2, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
-      },
-      {
-        label: 'section_header',
-        self_ref: 'r3',
-        text: 'Negative Weights',
-        level: 1,
-        prov: [{ page_no: 3, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
-      },
-      {
-        label: 'paragraph',
-        self_ref: 'r4',
-        text: 'Bellman-Ford repeatedly relaxes every edge.',
-        prov: [{ page_no: 3, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
-      },
-    ],
-  };
+  const document = createTestDoclingDocument('Graph Algorithms', [
+    {
+      label: 'section_header',
+      self_ref: 'r0',
+      text: 'Shortest Paths',
+      level: 1,
+      prov: [{ page_no: 1, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
+    },
+    {
+      label: 'paragraph',
+      self_ref: 'r1',
+      text: 'Dijkstra selects the unsettled vertex with minimum distance.',
+      prov: [{ page_no: 1, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
+    },
+    {
+      label: 'paragraph',
+      self_ref: 'r2',
+      text: 'Relaxation improves a tentative distance through an edge.',
+      prov: [{ page_no: 2, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
+    },
+    {
+      label: 'section_header',
+      self_ref: 'r3',
+      text: 'Negative Weights',
+      level: 1,
+      prov: [{ page_no: 3, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
+    },
+    {
+      label: 'paragraph',
+      self_ref: 'r4',
+      text: 'Bellman-Ford repeatedly relaxes every edge.',
+      prov: [{ page_no: 3, bbox: { l: 0, t: 0, r: 1, b: 1 } }],
+    },
+  ]);
   const data: ExtractSourceTopics = {
     sourceId,
     spans: [
@@ -290,8 +288,7 @@ describe('source topic extraction helpers', () => {
     expect(
       resolveTopicSpans(
         parseAnalysisDocument({
-          name: 'Nested source',
-          main_text: [
+          ...createTestDoclingDocument('Nested source', [
             {
               label: 'section_header',
               self_ref: 'heading',
@@ -310,7 +307,7 @@ describe('source topic extraction helpers', () => {
                 },
               ],
             },
-          ],
+          ]),
         }),
         [{ spanIndex: 0, startRef: 'heading', endRef: 'body' }],
       ),

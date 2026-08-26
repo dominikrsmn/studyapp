@@ -31,9 +31,9 @@ describe('BuildRagChunksJob', () => {
     source: sourceDelegate,
     $transaction: jest.fn(),
   };
-  const chunkHybridSync = jest.fn();
+  const chunk = jest.fn();
   const doclingService = {
-    client: { chunks: { chunkHybridSync } },
+    client: { chunk },
   };
   const ingestionQueue = { addRagEmbeddingFlow: jest.fn() };
   const sourceProcessingStageService = { transition: jest.fn() };
@@ -61,7 +61,7 @@ describe('BuildRagChunksJob', () => {
       id: 'stage-id',
     });
     ingestionQueue.addRagEmbeddingFlow.mockResolvedValue(undefined);
-    chunkHybridSync.mockResolvedValue({
+    chunk.mockResolvedValue({
       chunks: [
         {
           filename: 'source.json',
@@ -124,17 +124,25 @@ describe('BuildRagChunksJob', () => {
       SourceProcessingStageType.RAG_INDEXING,
       ProcessingState.PROCESSING,
     );
-    expect(chunkHybridSync).toHaveBeenCalledWith(
-      Buffer.from(JSON.stringify(source.document)),
-      `${sourceId}.json`,
+    expect(chunk).toHaveBeenCalledWith(
       {
-        from_formats: ['json_docling'],
-        abort_on_error: true,
-        chunking_include_raw_text: true,
-        chunking_max_tokens: config.rag.chunking.maxTokens,
-        chunking_tokenizer: config.rag.chunking.tokenizer,
-        chunking_merge_peers: config.rag.chunking.mergePeers,
-        chunking_use_markdown_tables: config.rag.chunking.useMarkdownTables,
+        data: Buffer.from(JSON.stringify(source.document)),
+        filename: `${sourceId}.json`,
+        contentType: 'application/json',
+      },
+      {
+        chunker: 'hybrid',
+        convert_options: {
+          from_formats: ['json_docling'],
+          abort_on_error: true,
+        },
+        chunking_options: {
+          include_raw_text: true,
+          max_tokens: config.rag.chunking.maxTokens,
+          tokenizer: config.rag.chunking.tokenizer,
+          merge_peers: config.rag.chunking.mergePeers,
+          use_markdown_tables: config.rag.chunking.useMarkdownTables,
+        },
       },
     );
     expect(sourceChunkDelegate.upsert).toHaveBeenNthCalledWith(1, {
@@ -206,13 +214,13 @@ describe('BuildRagChunksJob', () => {
     await job.process({ sourceId });
 
     expect(sourceProcessingStageService.transition).not.toHaveBeenCalled();
-    expect(chunkHybridSync).not.toHaveBeenCalled();
+    expect(chunk).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
   });
 
   it('records RAG indexing failures and rethrows for retry handling', async () => {
     const chunkingError = new Error('Docling chunking failed');
-    chunkHybridSync.mockRejectedValue(chunkingError);
+    chunk.mockRejectedValue(chunkingError);
 
     await expect(job.process({ sourceId })).rejects.toBe(chunkingError);
 

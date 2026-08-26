@@ -1,5 +1,4 @@
 import { Logger } from '@nestjs/common';
-import type { DoclingDocument } from 'docling-sdk';
 import { ZodError } from 'zod';
 import {
   ProcessingState,
@@ -8,6 +7,7 @@ import {
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
+import { createTestDoclingDocument } from '../analysis-document.fixture';
 import { AnalysisQueue } from '../analysis.queue';
 import type { AnalysisUnit } from '../analysis.types';
 import {
@@ -28,25 +28,21 @@ jest.mock('../analysis.queue', () => ({
 
 describe('PrepareTopicAnalysisJob', () => {
   const sourceId = 'source-id';
-  const document = {
-    schema_name: 'DoclingDocument',
-    name: 'Test document',
-    main_text: [
-      {
-        label: 'section_header',
-        self_ref: '#/texts/2',
-        children: [
-          { label: 'paragraph', self_ref: '#/texts/0' },
-          { label: 'table', self_ref: '#/tables/0' },
-        ],
-      },
-      {
-        label: 'picture',
-        self_ref: '#/pictures/0',
-        children: [{ label: 'paragraph', self_ref: '#/texts/1' }],
-      },
-    ],
-  } satisfies DoclingDocument;
+  const document = createTestDoclingDocument('Test document', [
+    {
+      label: 'section_header',
+      self_ref: '#/texts/2',
+      children: [
+        { label: 'paragraph', self_ref: '#/texts/0' },
+        { label: 'table', self_ref: '#/tables/0' },
+      ],
+    },
+    {
+      label: 'picture',
+      self_ref: '#/pictures/0',
+      children: [{ label: 'paragraph', self_ref: '#/texts/1' }],
+    },
+  ]);
   const sourceDelegate = { findUnique: jest.fn() };
   const prismaService = { source: sourceDelegate };
   const analysisQueue = { addBoundaryDetectionFlow: jest.fn() };
@@ -134,8 +130,13 @@ describe('PrepareTopicAnalysisJob', () => {
   it('rejects a malformed stored document before creating analysis units', async () => {
     sourceDelegate.findUnique.mockResolvedValue({
       document: {
+        schema_name: 'DoclingDocument',
         name: 'Malformed document',
-        main_text: [{ label: 42, self_ref: 'ref-1' }],
+        body: {
+          self_ref: '#/body',
+          children: [{ $ref: '#/texts/0' }],
+        },
+        texts: [{ label: 42, self_ref: 'ref-1', text: '', orig: '' }],
       },
     });
 
@@ -152,13 +153,13 @@ describe('PrepareTopicAnalysisJob', () => {
 
   it('constructs indexed overlapping analysis units across the document', async () => {
     sourceDelegate.findUnique.mockResolvedValue({
-      document: {
-        name: 'Long document',
-        main_text: Array.from({ length: 170 }, (_, index) => ({
+      document: createTestDoclingDocument(
+        'Long document',
+        Array.from({ length: 170 }, (_, index) => ({
           label: 'paragraph',
           self_ref: `ref-${index + 1}`,
         })),
-      } satisfies DoclingDocument,
+      ),
     });
 
     await job.process({ sourceId });
@@ -184,38 +185,35 @@ describe('PrepareTopicAnalysisJob', () => {
 
 describe('boundary analysis unit creation', () => {
   it('follows nested main text in reading order without page boundaries', () => {
-    const document = {
-      name: 'Paged document',
-      main_text: [
-        {
-          label: 'section_header',
-          self_ref: '#/texts/0',
-          children: [
-            {
-              label: 'paragraph',
-              self_ref: '#/texts/1',
-              prov: [
-                {
-                  page_no: 1,
-                  bbox: { l: 0, t: 0, r: 1, b: 1 },
-                },
-              ],
-            },
-            {
-              label: 'paragraph',
-              self_ref: '#/texts/2',
-              prov: [
-                {
-                  page_no: 2,
-                  bbox: { l: 0, t: 0, r: 1, b: 1 },
-                },
-              ],
-            },
-          ],
-        },
-        { label: 'paragraph', self_ref: '#/texts/3' },
-      ],
-    } satisfies DoclingDocument;
+    const document = createTestDoclingDocument('Paged document', [
+      {
+        label: 'section_header',
+        self_ref: '#/texts/0',
+        children: [
+          {
+            label: 'paragraph',
+            self_ref: '#/texts/1',
+            prov: [
+              {
+                page_no: 1,
+                bbox: { l: 0, t: 0, r: 1, b: 1 },
+              },
+            ],
+          },
+          {
+            label: 'paragraph',
+            self_ref: '#/texts/2',
+            prov: [
+              {
+                page_no: 2,
+                bbox: { l: 0, t: 0, r: 1, b: 1 },
+              },
+            ],
+          },
+        ],
+      },
+      { label: 'paragraph', self_ref: '#/texts/3' },
+    ]);
 
     expect(deriveOrderedDocumentUnitRefs(document)).toEqual([
       '#/texts/0',
@@ -226,13 +224,13 @@ describe('boundary analysis unit creation', () => {
   });
 
   it('creates one descriptor per detection job without document content', () => {
-    const document = {
-      name: 'Document',
-      main_text: Array.from({ length: 6 }, (_, index) => ({
+    const document = createTestDoclingDocument(
+      'Document',
+      Array.from({ length: 6 }, (_, index) => ({
         label: 'paragraph',
         self_ref: `ref-${index + 1}`,
       })),
-    } satisfies DoclingDocument;
+    );
 
     expect(createBoundaryAnalysisUnits(document, 4, 1)).toEqual([
       {

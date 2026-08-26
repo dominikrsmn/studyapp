@@ -1,6 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import type { DoclingDocument, NodeItem } from 'docling-sdk';
+import {
+  type DoclingDocument,
+  isDocling,
+  iterateDocumentItems,
+  type NodeItem,
+} from '@docling/docling-core';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import {
@@ -168,34 +173,27 @@ function boundaryDetectionSchema(eligibleAfterRefs: [string, ...string[]]) {
 export function indexDocumentUnits(
   document: DoclingDocument,
 ): Map<string, NodeItem> {
-  const pending: NodeItem[] = [...(document.main_text ?? [])].reverse();
-  const documentUnits = new Map<string, NodeItem>();
-
-  while (pending.length > 0) {
-    const documentUnit = pending.pop();
-    if (!documentUnit) {
-      continue;
-    }
-    if (documentUnit.self_ref) {
-      documentUnits.set(documentUnit.self_ref, documentUnit);
-    }
-    if (documentUnit.children) {
-      pending.push(...[...documentUnit.children].reverse());
-    }
-  }
-
-  return documentUnits;
+  return new Map(
+    [...iterateDocumentItems(document)].map(([documentUnit]) => [
+      documentUnit.self_ref,
+      documentUnit,
+    ]),
+  );
 }
 
 export function serializeDocumentUnits(documentUnits: NodeItem[]): string {
   const serialized = documentUnits.map((documentUnit) => {
     const ref = escapeXml(documentUnit.self_ref ?? '');
-    const type =
-      documentUnit.label === 'section_header' ? 'heading' : documentUnit.label;
-    const headingLevel =
-      'level' in documentUnit ? documentUnit.level : undefined;
+    const type = isDocling.SectionHeaderItem(documentUnit)
+      ? 'heading'
+      : isDocling.DocItem(documentUnit)
+        ? documentUnit.label
+        : 'group';
+    const headingLevel = isDocling.SectionHeaderItem(documentUnit)
+      ? documentUnit.level
+      : undefined;
     const level =
-      documentUnit.label === 'section_header' &&
+      isDocling.SectionHeaderItem(documentUnit) &&
       typeof headingLevel === 'number' &&
       Number.isInteger(headingLevel)
         ? ` level="${headingLevel}"`
@@ -214,38 +212,17 @@ export function documentUnitContent(documentUnit: NodeItem): string {
     return text.trim();
   }
 
-  const data = 'data' in documentUnit ? documentUnit.data : undefined;
-  if (Array.isArray(data)) {
-    return data
-      .map((row) =>
-        Array.isArray(row)
-          ? row
-              .map((cell) =>
-                typeof cell === 'object' &&
-                cell !== null &&
-                'text' in cell &&
-                typeof cell.text === 'string'
-                  ? cell.text
-                  : '',
-              )
-              .join(' | ')
-          : '',
-      )
+  if (isDocling.TableItem(documentUnit)) {
+    return documentUnit.data.grid
+      .map((row) => row.map((cell) => cell.text).join(' | '))
       .join('\n')
       .trim();
   }
 
-  const annotations =
-    'annotations' in documentUnit ? documentUnit.annotations : undefined;
-  if (Array.isArray(annotations)) {
-    return annotations
+  if (isDocling.PictureItem(documentUnit)) {
+    return (documentUnit.annotations ?? [])
       .map((annotation) =>
-        typeof annotation === 'object' &&
-        annotation !== null &&
-        'description' in annotation &&
-        typeof annotation.description === 'string'
-          ? annotation.description
-          : '',
+        isDocling.PictureDescription(annotation) ? annotation.text : '',
       )
       .filter(Boolean)
       .join('\n')

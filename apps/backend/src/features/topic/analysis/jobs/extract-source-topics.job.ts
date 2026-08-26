@@ -1,6 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import type { DoclingDocument, NodeItem } from 'docling-sdk';
+import {
+  type DoclingDocument,
+  isDocling,
+  type NodeItem,
+} from '@docling/docling-core';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import {
@@ -406,7 +410,7 @@ function pageRange(units: NodeItem[]): {
   pageEnd: number | null;
 } {
   const pageNumbers = units
-    .flatMap((unit) => unit.prov ?? [])
+    .flatMap((unit) => (isDocling.DocItem(unit) ? (unit.prov ?? []) : []))
     .map(({ page_no: pageNumber }) => pageNumber)
     .filter(Number.isFinite);
 

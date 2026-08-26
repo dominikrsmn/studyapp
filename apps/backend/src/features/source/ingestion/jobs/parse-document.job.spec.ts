@@ -33,7 +33,7 @@ describe('ParseDocumentJob', () => {
   };
   const doclingService = {
     client: {
-      convertFromFile: jest.fn(),
+      convert: jest.fn(),
     },
   };
   const ingestionQueue = {
@@ -61,8 +61,8 @@ describe('ParseDocumentJob', () => {
       operation(transaction),
     );
     fileStorageService.getSourcePath.mockReturnValue('/uploads/source.pdf');
-    doclingService.client.convertFromFile.mockResolvedValue({
-      document: { json_content: { name: 'converted document' } },
+    doclingService.client.convert.mockResolvedValue({
+      document: { name: 'converted document' },
     });
     ingestionQueue.addBuildRagChunks.mockResolvedValue(undefined);
 
@@ -88,9 +88,9 @@ describe('ParseDocumentJob', () => {
       SourceProcessingStageType.CONVERSION,
       ProcessingState.PROCESSING,
     );
-    expect(doclingService.client.convertFromFile).toHaveBeenCalledWith(
+    expect(doclingService.client.convert).toHaveBeenCalledWith(
       '/uploads/source.pdf',
-      { to_formats: ['json'], abort_on_error: true },
+      { options: { to_formats: ['json'], abort_on_error: true } },
     );
     expect(sourceDelegate.update).toHaveBeenCalledWith({
       where: { id: sourceId },
@@ -115,13 +115,13 @@ describe('ParseDocumentJob', () => {
     await job.process({ sourceId });
 
     expect(sourceProcessingStageService.transition).not.toHaveBeenCalled();
-    expect(doclingService.client.convertFromFile).not.toHaveBeenCalled();
+    expect(doclingService.client.convert).not.toHaveBeenCalled();
     expect(ingestionQueue.addBuildRagChunks).toHaveBeenCalledWith(sourceId);
   });
 
   it('records conversion failures and rethrows them for retry handling', async () => {
     const conversionError = new Error('Docling is unavailable');
-    doclingService.client.convertFromFile.mockRejectedValue(conversionError);
+    doclingService.client.convert.mockRejectedValue(conversionError);
 
     await expect(job.process({ sourceId })).rejects.toBe(conversionError);
 
@@ -156,7 +156,7 @@ describe('ParseDocumentJob', () => {
 
   it('preserves the original failure when failure-state persistence also fails', async () => {
     const conversionError = new Error('Conversion failed');
-    doclingService.client.convertFromFile.mockRejectedValue(conversionError);
+    doclingService.client.convert.mockRejectedValue(conversionError);
     sourceProcessingStageService.transition
       .mockResolvedValueOnce({ id: 'stage-id' })
       .mockRejectedValueOnce(new Error('Database failed'));

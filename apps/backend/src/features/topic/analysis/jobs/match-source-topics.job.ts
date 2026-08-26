@@ -12,6 +12,7 @@ import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.servic
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { MatchSourceTopics } from '../analysis.types';
+import { AnalysisQueue } from '../analysis.queue';
 
 const canonicalizationDecisionSchema = z.enum([
   'SAME_TOPIC',
@@ -76,6 +77,7 @@ export class MatchSourceTopicsJob {
     private readonly prismaService: PrismaService,
     private readonly openAiService: OpenAiService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
+    private readonly analysisQueue: AnalysisQueue,
     @Inject(analysisConfig.KEY)
     private readonly config: ConfigType<typeof analysisConfig>,
   ) {}
@@ -206,6 +208,8 @@ export class MatchSourceTopicsJob {
         candidateTopics,
         result,
       );
+
+      await this.analysisQueue.addFinalizeTopicAnalysis(sourceId);
     } catch (error) {
       this.logger.error(
         `Error matching source topics for source "${sourceId}": ${error}`,

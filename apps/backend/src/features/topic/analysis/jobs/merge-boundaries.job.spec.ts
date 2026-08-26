@@ -8,6 +8,7 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
+import { createTestDoclingDocument } from '../analysis-document.fixture';
 import { parseAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
 import { MergeBoundaries } from '../analysis.types';
@@ -30,15 +31,17 @@ jest.mock('../../../source/ingestion/source-processing-stage.service', () => ({
 
 describe('MergeBoundariesJob', () => {
   const sourceId = 'source-id';
-  const document = parseAnalysisDocument({
-    name: 'Algorithms',
-    main_text: Array.from({ length: 10 }, (_, index) => ({
-      label: index === 5 ? 'section_header' : 'paragraph',
-      self_ref: `r${index}`,
-      text: index < 5 ? `Dijkstra ${index}` : `Bellman-Ford ${index}`,
-      ...(index === 5 ? { level: 2 } : {}),
-    })),
-  });
+  const document = parseAnalysisDocument(
+    createTestDoclingDocument(
+      'Algorithms',
+      Array.from({ length: 10 }, (_, index) => ({
+        label: index === 5 ? 'section_header' : 'paragraph',
+        self_ref: `r${index}`,
+        text: index < 5 ? `Dijkstra ${index}` : `Bellman-Ford ${index}`,
+        ...(index === 5 ? { level: 2 } : {}),
+      })),
+    ),
+  );
   const findUnique = jest.fn();
   const getChildrenValues = jest.fn();
   const parse = jest.fn();
@@ -183,14 +186,16 @@ describe('MergeBoundariesJob', () => {
 });
 
 describe('boundary merging evidence', () => {
-  const document = parseAnalysisDocument({
-    name: 'Agreement',
-    main_text: Array.from({ length: 6 }, (_, index) => ({
-      label: 'paragraph',
-      self_ref: `r${index}`,
-      text: `Unit ${index}`,
-    })),
-  });
+  const document = parseAnalysisDocument(
+    createTestDoclingDocument(
+      'Agreement',
+      Array.from({ length: 6 }, (_, index) => ({
+        label: 'paragraph',
+        self_ref: `r${index}`,
+        text: `Unit ${index}`,
+      })),
+    ),
+  );
   const refs = Array.from({ length: 6 }, (_, index) => `r${index}`);
   const first = {
     analysisUnit: { documentUnitRefs: ['r0', 'r1', 'r2', 'r3'] },

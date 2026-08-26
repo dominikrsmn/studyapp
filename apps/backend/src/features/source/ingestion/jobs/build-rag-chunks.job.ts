@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import type { ChunkedDocumentResultItem } from 'docling-sdk';
+import type { ChunkedDocumentResultItem } from '@docling/docling-client';
 import { embeddingConfig } from '../../../../infrastructure/config/embedding.config';
 import {
   ProcessingState,
@@ -66,18 +66,25 @@ export class BuildRagChunksJob {
         throw new Error('Source has no converted Docling document');
       }
 
-      const chunking = await this.doclingService.client.chunks.chunkHybridSync(
-        Buffer.from(JSON.stringify(source.document)),
-        `${sourceId}.json`,
+      const chunking = await this.doclingService.client.chunk(
         {
-          from_formats: ['json_docling'],
-          abort_on_error: true,
-          chunking_include_raw_text: true,
-          chunking_max_tokens: this.config.rag.chunking.maxTokens,
-          chunking_tokenizer: this.config.rag.chunking.tokenizer,
-          chunking_merge_peers: this.config.rag.chunking.mergePeers,
-          chunking_use_markdown_tables:
-            this.config.rag.chunking.useMarkdownTables,
+          data: Buffer.from(JSON.stringify(source.document)),
+          filename: `${sourceId}.json`,
+          contentType: 'application/json',
+        },
+        {
+          chunker: 'hybrid',
+          convert_options: {
+            from_formats: ['json_docling'],
+            abort_on_error: true,
+          },
+          chunking_options: {
+            include_raw_text: true,
+            max_tokens: this.config.rag.chunking.maxTokens,
+            tokenizer: this.config.rag.chunking.tokenizer,
+            merge_peers: this.config.rag.chunking.mergePeers,
+            use_markdown_tables: this.config.rag.chunking.useMarkdownTables,
+          },
         },
       );
 
