@@ -15,7 +15,6 @@ import { analysisConfig } from '../analysis.config';
 import { parseAnalysisDocument } from '../analysis-document.schema';
 import {
   BoundaryDetectionResult,
-  BoundaryMergeResult,
   MergeBoundaries,
   MergedBoundary,
   TopicSpan,
@@ -71,7 +70,7 @@ export class MergeBoundariesJob {
     private readonly config: ConfigType<typeof analysisConfig>,
   ) {}
 
-  async process(job: Job<MergeBoundaries>): Promise<BoundaryMergeResult> {
+  async process(job: Job<MergeBoundaries>): Promise<void> {
     const { sourceId } = job.data;
 
     try {
@@ -84,7 +83,7 @@ export class MergeBoundariesJob {
         this.logger.warn(
           `Skipping merge-boundaries job because source "${sourceId}" no longer exists`,
         );
-        return { boundaries: [], spans: [] };
+        return;
       }
       if (source.document === null) {
         throw new Error('Source has no converted Docling document');
@@ -119,10 +118,7 @@ export class MergeBoundariesJob {
       );
 
       if (candidates.length === 0) {
-        return {
-          boundaries: [],
-          spans: createTopicSpans(documentUnitRefs, []),
-        };
+        return;
       }
 
       const eligibleAfterRefs = candidates.map(({ afterRef }) => afterRef) as [
@@ -179,13 +175,10 @@ export class MergeBoundariesJob {
         .sort((left, right) => left.documentIndex - right.documentIndex)
         .map(({ boundary }) => boundary);
 
-      return {
-        boundaries,
-        spans: createTopicSpans(
-          documentUnitRefs,
-          boundaries.map(({ afterRef }) => afterRef),
-        ),
-      };
+      createTopicSpans(
+        documentUnitRefs,
+        boundaries.map(({ afterRef }) => afterRef),
+      );
     } catch (error) {
       this.logger.error(
         `Error merging topic boundaries for source "${sourceId}": ${error}`,

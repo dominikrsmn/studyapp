@@ -6,7 +6,6 @@ import { Job } from 'bullmq';
 import {
   AnalysisJobData,
   BoundaryDetectionResult,
-  BoundaryMergeResult,
   DetectBoundaries,
   MergeBoundaries,
   PrepareTopicAnalysis,
@@ -31,7 +30,7 @@ export class AnalysisProcessor extends WorkerHost {
 
   process(
     job: Job<AnalysisJobData>,
-  ): Promise<void | BoundaryDetectionResult | BoundaryMergeResult> {
+  ): Promise<void | BoundaryDetectionResult> {
     this.logger.log(`Processing ${job.name} job: ${job.id}`);
     switch (job.name) {
       case this.config.queue.jobs.prepare_topic_analysis:

@@ -45,10 +45,6 @@ export interface TopicSpan {
   startRef: string;
   endRef: string;
 }
-export interface BoundaryMergeResult {
-  boundaries: MergedBoundary[];
-  spans: TopicSpan[];
-}
 export interface ExtractSourceTopics {
   sourceId: string;
   span_descriptors: string[];

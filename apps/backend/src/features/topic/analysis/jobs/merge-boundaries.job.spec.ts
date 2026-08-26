@@ -98,26 +98,7 @@ describe('MergeBoundariesJob', () => {
   });
 
   it('adjudicates agreeing child proposals and creates contiguous spans', async () => {
-    await expect(mergeJob.process(bullJob)).resolves.toEqual({
-      boundaries: [
-        {
-          afterRef: 'r4',
-          confidence: 0.8225,
-          evidence: {
-            unitAgreement: 1,
-            structuralEvidence: 0.8,
-            semanticDiscontinuity: 0.9,
-            modelDecision: 0.95,
-            windowEdgeDistance: 0,
-            childConfidence: 0.85,
-          },
-        },
-      ],
-      spans: [
-        { index: 0, startRef: 'r0', endRef: 'r4' },
-        { index: 1, startRef: 'r5', endRef: 'r9' },
-      ],
-    });
+    await expect(mergeJob.process(bullJob)).resolves.toBeUndefined();
 
     expect(getChildrenValues).toHaveBeenCalledTimes(1);
     const request = parse.mock.calls[0][0];
@@ -139,15 +120,7 @@ describe('MergeBoundariesJob', () => {
   });
 
   it('accepts a short topic when the model independently keeps it', async () => {
-    const result = await mergeJob.process(bullJob);
-
-    expect(result.boundaries).toHaveLength(1);
-    expect(
-      result.spans.map(({ startRef, endRef }) => [startRef, endRef]),
-    ).toEqual([
-      ['r0', 'r4'],
-      ['r5', 'r9'],
-    ]);
+    await expect(mergeJob.process(bullJob)).resolves.toBeUndefined();
   });
 
   it('does not call the model when no child proposed a boundary', async () => {
@@ -156,10 +129,7 @@ describe('MergeBoundariesJob', () => {
       'bull:topic-analysis:detect-boundaries/source-id/1': { boundaries: [] },
     });
 
-    await expect(mergeJob.process(bullJob)).resolves.toEqual({
-      boundaries: [],
-      spans: [{ index: 0, startRef: 'r0', endRef: 'r9' }],
-    });
+    await expect(mergeJob.process(bullJob)).resolves.toBeUndefined();
     expect(parse).not.toHaveBeenCalled();
   });
 
@@ -178,10 +148,7 @@ describe('MergeBoundariesJob', () => {
       },
     });
 
-    await expect(mergeJob.process(bullJob)).resolves.toEqual({
-      boundaries: [],
-      spans: [{ index: 0, startRef: 'r0', endRef: 'r9' }],
-    });
+    await expect(mergeJob.process(bullJob)).resolves.toBeUndefined();
   });
 
   it('records a stage failure for a child result outside its window', async () => {
