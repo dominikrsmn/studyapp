@@ -74,20 +74,24 @@ export class EmbedRagChunksJob {
           input: chunks.map((chunk) => this.embeddingInput(source.name, chunk)),
         });
         const vectors = this.vectorsInInputOrder(response.data, chunks.length);
+        const embeddingRows = chunks.map((chunk, index) => {
+          const vector = `[${vectors[index].join(',')}]`;
 
-        await this.prismaService.$transaction(async (transaction) => {
-          for (const [index, chunk] of chunks.entries()) {
-            const vector = `[${vectors[index].join(',')}]`;
-
-            await transaction.$executeRaw`
-              UPDATE "SourceChunk"
-              SET "embedding" = ${vector}::vector
-              WHERE "id" = ${chunk.id}
-                AND "sourceId" = ${sourceId}
-                AND "embedding" IS NULL
-            `;
-          }
+          return Prisma.sql`(${chunk.id}::uuid, ${vector}::vector)`;
         });
+
+        await this.prismaService.$executeRaw(
+          Prisma.sql`
+            UPDATE "SourceChunk" AS chunk
+            SET "embedding" = incoming."embedding"
+            FROM (
+              VALUES ${Prisma.join(embeddingRows)}
+            ) AS incoming("id", "embedding")
+            WHERE chunk."id" = incoming."id"
+              AND chunk."sourceId" = ${sourceId}
+              AND chunk."embedding" IS NULL
+          `,
+        );
       }
     } catch (error) {
       this.logger.error(

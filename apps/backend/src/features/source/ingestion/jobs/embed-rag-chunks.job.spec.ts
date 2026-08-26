@@ -14,10 +14,28 @@ jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
 }));
 jest.mock('../../../../infrastructure/database/generated/client', () => ({
   Prisma: {
-    join: (values: unknown[]) => ({
-      sql: values.map(() => '?').join(','),
-      values,
-    }),
+    join: (values: unknown[]) => {
+      const sql: string[] = [];
+      const flattenedValues: unknown[] = [];
+
+      for (const value of values) {
+        if (
+          typeof value === 'object' &&
+          value !== null &&
+          'sql' in value &&
+          'values' in value
+        ) {
+          const fragment = value as { sql: string; values: unknown[] };
+          sql.push(fragment.sql);
+          flattenedValues.push(...fragment.values);
+        } else {
+          sql.push('?');
+          flattenedValues.push(value);
+        }
+      }
+
+      return { sql: sql.join(','), values: flattenedValues };
+    },
     sql: (strings: TemplateStringsArray, ...interpolations: unknown[]) => {
       let sql = strings[0];
       const values: unknown[] = [];
@@ -72,11 +90,10 @@ describe('EmbedRagChunksJob', () => {
   const sourceDelegate = { findUnique: jest.fn() };
   const queryRaw = jest.fn();
   const executeRaw = jest.fn();
-  const transaction = { $executeRaw: executeRaw };
   const prismaService = {
     source: sourceDelegate,
     $queryRaw: queryRaw,
-    $transaction: jest.fn(),
+    $executeRaw: executeRaw,
   };
   const createEmbeddings = jest.fn();
   const openAiService = {
@@ -93,9 +110,6 @@ describe('EmbedRagChunksJob', () => {
     sourceDelegate.findUnique.mockResolvedValue(source);
     queryRaw.mockResolvedValue(chunks);
     executeRaw.mockResolvedValue(1);
-    prismaService.$transaction.mockImplementation((operation) =>
-      operation(transaction),
-    );
     createEmbeddings.mockResolvedValue({
       data: [
         { index: 1, embedding: [0.3, 0.4] },
@@ -152,24 +166,26 @@ describe('EmbedRagChunksJob', () => {
     });
   });
 
-  it('persists response vectors by API index in a transaction', async () => {
+  it('persists response vectors by API index in one atomic statement', async () => {
     await job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] });
 
-    expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
-    expect(executeRaw).toHaveBeenCalledTimes(2);
-    expect(executeRaw.mock.calls[0].slice(1)).toEqual([
-      '[0.1,0.2]',
-      'chunk-1',
-      sourceId,
-    ]);
-    expect(executeRaw.mock.calls[1].slice(1)).toEqual([
-      '[0.3,0.4]',
-      'chunk-2',
-      sourceId,
-    ]);
-    expect(executeRaw.mock.calls[0][0].join('')).toContain(
-      'AND "embedding" IS NULL',
+    expect(executeRaw).toHaveBeenCalledTimes(1);
+    const query = executeRaw.mock.calls[0][0] as {
+      sql: string;
+      values: unknown[];
+    };
+    expect(query.sql).toContain('UPDATE "SourceChunk" AS chunk');
+    expect(query.sql).toContain(
+      'VALUES (?::uuid, ?::vector),(?::uuid, ?::vector)',
     );
+    expect(query.sql).toContain('AND chunk."embedding" IS NULL');
+    expect(query.values).toEqual([
+      'chunk-1',
+      '[0.1,0.2]',
+      'chunk-2',
+      '[0.3,0.4]',
+      sourceId,
+    ]);
   });
 
   it('does not request or write embeddings for an already completed retry batch', async () => {
@@ -178,7 +194,6 @@ describe('EmbedRagChunksJob', () => {
     await job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] });
 
     expect(createEmbeddings).not.toHaveBeenCalled();
-    expect(prismaService.$transaction).not.toHaveBeenCalled();
     expect(executeRaw).not.toHaveBeenCalled();
   });
 
@@ -188,7 +203,7 @@ describe('EmbedRagChunksJob', () => {
     await job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] });
 
     expect(createEmbeddings).toHaveBeenCalledTimes(1);
-    expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
+    expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
   it('does not persist partial API results and records the failure', async () => {
@@ -203,7 +218,7 @@ describe('EmbedRagChunksJob', () => {
       job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] }),
     ).rejects.toThrow(responseError.message);
 
-    expect(prismaService.$transaction).not.toHaveBeenCalled();
+    expect(executeRaw).not.toHaveBeenCalled();
     expect(sourceProcessingStageService.transition).toHaveBeenCalledWith(
       sourceId,
       SourceProcessingStageType.RAG_INDEXING,
@@ -219,6 +234,6 @@ describe('EmbedRagChunksJob', () => {
 
     expect(queryRaw).not.toHaveBeenCalled();
     expect(createEmbeddings).not.toHaveBeenCalled();
-    expect(prismaService.$transaction).not.toHaveBeenCalled();
+    expect(executeRaw).not.toHaveBeenCalled();
   });
 });
