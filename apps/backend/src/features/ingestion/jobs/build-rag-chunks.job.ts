@@ -125,16 +125,18 @@ export class BuildRagChunksJob {
         .sort((left, right) => left.chunkIndex - right.chunkIndex)
         .map(({ id }) => id);
 
+      const chunkIdBatches: string[][] = [];
       for (
         let offset = 0;
         offset < chunkIds.length;
         offset += this.embedding.batchSize
       ) {
-        await this.ingestionQueue.addEmbedRagChunks(
-          sourceId,
+        chunkIdBatches.push(
           chunkIds.slice(offset, offset + this.embedding.batchSize),
         );
       }
+
+      await this.ingestionQueue.addRagEmbeddingFlow(sourceId, chunkIdBatches);
     } catch (error) {
       this.logger.error(
         `Error building RAG chunks for source "${sourceId}": ${error}`,

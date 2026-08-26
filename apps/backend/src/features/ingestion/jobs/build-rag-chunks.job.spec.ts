@@ -35,7 +35,7 @@ describe('BuildRagChunksJob', () => {
   const doclingService = {
     client: { chunks: { chunkHybridSync } },
   };
-  const ingestionQueue = { addEmbedRagChunks: jest.fn() };
+  const ingestionQueue = { addRagEmbeddingFlow: jest.fn() };
   const sourceProcessingStageService = { transition: jest.fn() };
   const config = ingestionConfig();
   const embedding = { ...embeddingConfig(), batchSize: 2 };
@@ -60,7 +60,7 @@ describe('BuildRagChunksJob', () => {
     sourceProcessingStageService.transition.mockResolvedValue({
       id: 'stage-id',
     });
-    ingestionQueue.addEmbedRagChunks.mockResolvedValue(undefined);
+    ingestionQueue.addRagEmbeddingFlow.mockResolvedValue(undefined);
     chunkHybridSync.mockResolvedValue({
       chunks: [
         {
@@ -185,23 +185,18 @@ describe('BuildRagChunksJob', () => {
     });
   });
 
-  it('commits all chunks before enqueueing provider-sized embedding batches', async () => {
+  it('commits all chunks before enqueueing one flow with provider-sized embedding batches', async () => {
     await job.process({ sourceId });
 
-    expect(ingestionQueue.addEmbedRagChunks).toHaveBeenNthCalledWith(
-      1,
-      sourceId,
+    expect(ingestionQueue.addRagEmbeddingFlow).toHaveBeenCalledTimes(1);
+    expect(ingestionQueue.addRagEmbeddingFlow).toHaveBeenCalledWith(sourceId, [
       ['chunk-0', 'chunk-1'],
-    );
-    expect(ingestionQueue.addEmbedRagChunks).toHaveBeenNthCalledWith(
-      2,
-      sourceId,
       ['chunk-2'],
-    );
+    ]);
     expect(
       sourceChunkDelegate.deleteMany.mock.invocationCallOrder[0],
     ).toBeLessThan(
-      ingestionQueue.addEmbedRagChunks.mock.invocationCallOrder[0],
+      ingestionQueue.addRagEmbeddingFlow.mock.invocationCallOrder[0],
     );
   });
 
@@ -227,7 +222,7 @@ describe('BuildRagChunksJob', () => {
       ProcessingState.FAILED,
       { error: chunkingError },
     );
-    expect(ingestionQueue.addEmbedRagChunks).not.toHaveBeenCalled();
+    expect(ingestionQueue.addRagEmbeddingFlow).not.toHaveBeenCalled();
   });
 
   it('does not enqueue embedding jobs when chunk persistence fails', async () => {
@@ -236,6 +231,6 @@ describe('BuildRagChunksJob', () => {
 
     await expect(job.process({ sourceId })).rejects.toBe(persistenceError);
 
-    expect(ingestionQueue.addEmbedRagChunks).not.toHaveBeenCalled();
+    expect(ingestionQueue.addRagEmbeddingFlow).not.toHaveBeenCalled();
   });
 });

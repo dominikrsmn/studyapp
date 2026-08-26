@@ -8,7 +8,6 @@ import {
 } from '../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import { IngestionQueue } from '../ingestion.queue';
 import { EmbedRagChunksJobData } from '../ingestion.types';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 
@@ -28,7 +27,6 @@ export class EmbedRagChunksJob {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly openAiService: OpenAiService,
-    private readonly ingestionQueue: IngestionQueue,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
     @Inject(embeddingConfig.KEY)
     private readonly embedding: ConfigType<typeof embeddingConfig>,
@@ -91,8 +89,6 @@ export class EmbedRagChunksJob {
           }
         });
       }
-
-      await this.ingestionQueue.addFinalizeIngestion(sourceId);
     } catch (error) {
       this.logger.error(
         `Error embedding RAG chunks for source "${sourceId}": ${error}`,

@@ -22,6 +22,9 @@ import { EmbedRagChunksJob } from './jobs/embed-rag-chunks.job';
       name: ingestionConfig().queue.name,
       defaultJobOptions: ingestionConfig().queue.defaultJobOptions,
     }),
+    BullModule.registerFlowProducer({
+      name: ingestionConfig().flowProducer.name,
+    }),
     FileStorageModule,
     PrismaModule,
     OpenAiModule,

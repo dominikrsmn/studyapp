@@ -6,7 +6,6 @@ import {
 } from '../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import { IngestionQueue } from '../ingestion.queue';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 import { EmbedRagChunksJob } from './embed-rag-chunks.job';
 
@@ -83,7 +82,6 @@ describe('EmbedRagChunksJob', () => {
   const openAiService = {
     client: { embeddings: { create: createEmbeddings } },
   };
-  const ingestionQueue = { addFinalizeIngestion: jest.fn() };
   const sourceProcessingStageService = { transition: jest.fn() };
 
   let job: EmbedRagChunksJob;
@@ -104,7 +102,6 @@ describe('EmbedRagChunksJob', () => {
         { index: 0, embedding: [0.1, 0.2] },
       ],
     });
-    ingestionQueue.addFinalizeIngestion.mockResolvedValue(undefined);
     sourceProcessingStageService.transition.mockResolvedValue({
       id: 'stage-id',
     });
@@ -112,7 +109,6 @@ describe('EmbedRagChunksJob', () => {
     job = new EmbedRagChunksJob(
       prismaService as unknown as PrismaService,
       openAiService as unknown as OpenAiService,
-      ingestionQueue as unknown as IngestionQueue,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
       embeddingConfig(),
     );
@@ -174,10 +170,6 @@ describe('EmbedRagChunksJob', () => {
     expect(executeRaw.mock.calls[0][0].join('')).toContain(
       'AND "embedding" IS NULL',
     );
-    expect(ingestionQueue.addFinalizeIngestion).toHaveBeenCalledWith(sourceId);
-    expect(executeRaw.mock.invocationCallOrder[1]).toBeLessThan(
-      ingestionQueue.addFinalizeIngestion.mock.invocationCallOrder[0],
-    );
   });
 
   it('does not request or write embeddings for an already completed retry batch', async () => {
@@ -188,24 +180,15 @@ describe('EmbedRagChunksJob', () => {
     expect(createEmbeddings).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
     expect(executeRaw).not.toHaveBeenCalled();
-    expect(ingestionQueue.addFinalizeIngestion).toHaveBeenCalledWith(sourceId);
   });
 
-  it('does not re-embed persisted chunks when finalization scheduling is retried', async () => {
-    ingestionQueue.addFinalizeIngestion
-      .mockRejectedValueOnce(new Error('Queue unavailable'))
-      .mockResolvedValueOnce(undefined);
-
-    await expect(
-      job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] }),
-    ).rejects.toThrow('Queue unavailable');
-
+  it('does not re-embed persisted chunks when the batch is retried', async () => {
+    await job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] });
     queryRaw.mockResolvedValueOnce([]);
     await job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] });
 
     expect(createEmbeddings).toHaveBeenCalledTimes(1);
     expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
-    expect(ingestionQueue.addFinalizeIngestion).toHaveBeenCalledTimes(2);
   });
 
   it('does not persist partial API results and records the failure', async () => {
@@ -221,7 +204,6 @@ describe('EmbedRagChunksJob', () => {
     ).rejects.toThrow(responseError.message);
 
     expect(prismaService.$transaction).not.toHaveBeenCalled();
-    expect(ingestionQueue.addFinalizeIngestion).not.toHaveBeenCalled();
     expect(sourceProcessingStageService.transition).toHaveBeenCalledWith(
       sourceId,
       SourceProcessingStageType.RAG_INDEXING,
@@ -238,6 +220,5 @@ describe('EmbedRagChunksJob', () => {
     expect(queryRaw).not.toHaveBeenCalled();
     expect(createEmbeddings).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
-    expect(ingestionQueue.addFinalizeIngestion).not.toHaveBeenCalled();
   });
 });

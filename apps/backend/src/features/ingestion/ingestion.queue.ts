@@ -1,7 +1,7 @@
-import { InjectQueue } from '@nestjs/bullmq';
+import { InjectFlowProducer, InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import { Queue } from 'bullmq';
+import { FlowProducer, Queue } from 'bullmq';
 import { ingestionConfig } from './ingestion.config';
 import {
   BuildRagChunksJobData,
@@ -16,6 +16,8 @@ export class IngestionQueue {
   constructor(
     @InjectQueue(ingestionConfig().queue.name)
     private readonly queue: Queue<IngestionJobData>,
+    @InjectFlowProducer(ingestionConfig().flowProducer.name)
+    private readonly flowProducer: FlowProducer,
     @Inject(ingestionConfig.KEY)
     private readonly config: ConfigType<typeof ingestionConfig>,
   ) {}
@@ -27,7 +29,7 @@ export class IngestionQueue {
         sourceId,
       } satisfies ParseDocumentJobData,
       {
-        jobId: `parse-document/${sourceId}`,
+        jobId: `${this.config.queue.jobs.parse_document}/${sourceId}`,
       },
     );
   }
@@ -39,36 +41,46 @@ export class IngestionQueue {
         sourceId,
       } satisfies BuildRagChunksJobData,
       {
-        jobId: `build-rag-chunks/${sourceId}`,
+        jobId: `${this.config.queue.jobs.build_rag_chunks}/${sourceId}`,
       },
     );
   }
 
-  async addEmbedRagChunks(sourceId: string, chunkIds: string[]): Promise<void> {
-    if (chunkIds.length === 0) {
-      throw new Error('Cannot enqueue an empty RAG embedding batch');
+  async addRagEmbeddingFlow(
+    sourceId: string,
+    chunkIdBatches: string[][],
+  ): Promise<void> {
+    if (
+      chunkIdBatches.length === 0 ||
+      chunkIdBatches.some((chunkIds) => chunkIds.length === 0)
+    ) {
+      throw new Error('Cannot enqueue empty RAG embedding batches');
     }
 
-    await this.queue.add(
-      this.config.queue.jobs.embed_rag_chunks,
+    await this.flowProducer.add(
       {
-        sourceId,
-        chunkIds,
-      } satisfies EmbedRagChunksJobData,
-      {
-        jobId: `embed-rag-chunks/${sourceId}/${chunkIds[0]}`,
+        name: this.config.queue.jobs.finalize_ingestion,
+        queueName: this.config.queue.name,
+        data: { sourceId } satisfies FinalizeIngestionJobData,
+        opts: {
+          jobId: `${this.config.queue.jobs.finalize_ingestion}/${sourceId}`,
+        },
+        children: chunkIdBatches.map((chunkIds, batchIndex) => ({
+          name: this.config.queue.jobs.embed_rag_chunks,
+          queueName: this.config.queue.name,
+          data: { sourceId, chunkIds } satisfies EmbedRagChunksJobData,
+          opts: {
+            jobId: `${this.config.queue.jobs.embed_rag_chunks}/${sourceId}/${batchIndex}`,
+            failParentOnFailure: true,
+          },
+        })),
       },
-    );
-  }
-
-  async addFinalizeIngestion(sourceId: string): Promise<void> {
-    await this.queue.add(
-      this.config.queue.jobs.finalize_ingestion,
       {
-        sourceId,
-      } satisfies FinalizeIngestionJobData,
-      {
-        jobId: `finalize-ingestion/${sourceId}`,
+        queuesOptions: {
+          [this.config.queue.name]: {
+            defaultJobOptions: this.config.queue.defaultJobOptions,
+          },
+        },
       },
     );
   }
