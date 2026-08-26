@@ -17,6 +17,7 @@ import {
   MatchSourceTopics,
   MergeBoundaries,
   PrepareTopicAnalysis,
+  SummarizeTopic,
   TopicSpan,
 } from './analysis.types';
 
@@ -124,6 +125,27 @@ export class AnalysisQueue {
       { sourceId } satisfies FinalizeTopicAnalysis,
       {
         jobId: `${this.config.queue.jobs.finalize_topic_analysis}/${sourceId}`,
+      },
+    );
+  }
+
+  async addSummarizeTopic(
+    topicId: string,
+    contentRevision: number,
+  ): Promise<void> {
+    if (
+      topicId.trim().length === 0 ||
+      !Number.isInteger(contentRevision) ||
+      contentRevision < 1
+    ) {
+      throw new Error('Cannot enqueue an invalid topic summary revision');
+    }
+
+    await this.queue.add(
+      this.config.queue.jobs.summarize_topic,
+      { topicId, contentRevision } satisfies SummarizeTopic,
+      {
+        jobId: `${this.config.queue.jobs.summarize_topic}/${topicId}/${contentRevision}`,
       },
     );
   }

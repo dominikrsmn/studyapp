@@ -8,6 +8,7 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
+import { AnalysisQueue } from '../analysis.queue';
 import {
   MatchSourceTopicsJob,
   sourceTopicMatchingPrompt,
@@ -136,6 +137,7 @@ describe('MatchSourceTopicsJob', () => {
   const findMany = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
+  const addFinalizeTopicAnalysis = jest.fn();
   const topicCreate = jest.fn();
   const topicUpdate = jest.fn();
   const sourceTopicUpdate = jest.fn();
@@ -172,11 +174,13 @@ describe('MatchSourceTopicsJob', () => {
       operation(transaction),
     );
     transition.mockResolvedValue({});
+    addFinalizeTopicAnalysis.mockResolvedValue(undefined);
 
     job = new MatchSourceTopicsJob(
       prismaService as unknown as PrismaService,
       { client: { responses: { parse } } } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
+      { addFinalizeTopicAnalysis } as unknown as AnalysisQueue,
       config,
     );
   });
@@ -187,6 +191,8 @@ describe('MatchSourceTopicsJob', () => {
 
   it('matches all occurrences together and persists shared, existing, rejected, and refined identities', async () => {
     await expect(job.process({ sourceId })).resolves.toBeUndefined();
+
+    expect(addFinalizeTopicAnalysis).toHaveBeenCalledWith(sourceId);
 
     const request = parse.mock.calls[0][0];
     expect(request).toMatchObject({
@@ -283,6 +289,7 @@ describe('MatchSourceTopicsJob', () => {
     expect(findMany).not.toHaveBeenCalled();
     expect(parse).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
+    expect(addFinalizeTopicAnalysis).toHaveBeenCalledWith(sourceId);
   });
 
   it('fails the analysis stage when the model omits an occurrence', async () => {

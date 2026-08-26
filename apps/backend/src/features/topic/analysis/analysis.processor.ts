@@ -8,15 +8,19 @@ import {
   BoundaryDetectionResult,
   DetectBoundaries,
   ExtractSourceTopics,
+  FinalizeTopicAnalysis,
   MatchSourceTopics,
   MergeBoundaries,
   PrepareTopicAnalysis,
+  SummarizeTopic,
 } from './analysis.types';
 import { PrepareTopicAnalysisJob } from './jobs/prepare-topic-analysis.job';
 import { DetectBoundariesJob } from './jobs/detect-boundaries.job';
 import { MergeBoundariesJob } from './jobs/merge-boundaries.job';
 import { ExtractSourceTopicsJob } from './jobs/extract-source-topics.job';
 import { MatchSourceTopicsJob } from './jobs/match-source-topics.job';
+import { FinalizeTopicAnalysisJob } from './jobs/finalize-topic-analysis.job';
+import { SummarizeTopicJob } from './jobs/summarize-topic.job';
 
 @Processor(analysisConfig().queue.name, { concurrency: 1 })
 export class AnalysisProcessor extends WorkerHost {
@@ -30,6 +34,8 @@ export class AnalysisProcessor extends WorkerHost {
     private readonly mergeBoundariesJob: MergeBoundariesJob,
     private readonly extractSourceTopicsJob: ExtractSourceTopicsJob,
     private readonly matchSourceTopicsJob: MatchSourceTopicsJob,
+    private readonly finalizeTopicAnalysisJob: FinalizeTopicAnalysisJob,
+    private readonly summarizeTopicJob: SummarizeTopicJob,
   ) {
     super();
   }
@@ -51,6 +57,12 @@ export class AnalysisProcessor extends WorkerHost {
         );
       case this.config.queue.jobs.match_source_topics:
         return this.matchSourceTopicsJob.process(job.data as MatchSourceTopics);
+      case this.config.queue.jobs.finalize_topic_analysis:
+        return this.finalizeTopicAnalysisJob.process(
+          job.data as FinalizeTopicAnalysis,
+        );
+      case this.config.queue.jobs.summarize_topic:
+        return this.summarizeTopicJob.process(job.data as SummarizeTopic);
       default:
         throw new Error('Unknown job name: ' + job.name);
     }

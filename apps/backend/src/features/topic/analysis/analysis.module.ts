@@ -12,6 +12,8 @@ import { OpenAiModule } from '../../../infrastructure/open-ai/open-ai.module';
 import { MergeBoundariesJob } from './jobs/merge-boundaries.job';
 import { ExtractSourceTopicsJob } from './jobs/extract-source-topics.job';
 import { MatchSourceTopicsJob } from './jobs/match-source-topics.job';
+import { FinalizeTopicAnalysisJob } from './jobs/finalize-topic-analysis.job';
+import { SummarizeTopicJob } from './jobs/summarize-topic.job';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { MatchSourceTopicsJob } from './jobs/match-source-topics.job';
     MergeBoundariesJob,
     ExtractSourceTopicsJob,
     MatchSourceTopicsJob,
+    FinalizeTopicAnalysisJob,
+    SummarizeTopicJob,
   ],
   exports: [AnalysisQueue],
 })

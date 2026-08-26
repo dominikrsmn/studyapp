@@ -4,7 +4,8 @@ export type AnalysisJobData =
   | MergeBoundaries
   | ExtractSourceTopics
   | MatchSourceTopics
-  | FinalizeTopicAnalysis;
+  | FinalizeTopicAnalysis
+  | SummarizeTopic;
 
 export interface PrepareTopicAnalysis {
   sourceId: string;
@@ -54,4 +55,8 @@ export interface MatchSourceTopics {
 }
 export interface FinalizeTopicAnalysis {
   sourceId: string;
+}
+export interface SummarizeTopic {
+  topicId: string;
+  contentRevision: number;
 }

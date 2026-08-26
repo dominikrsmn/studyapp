@@ -22,6 +22,10 @@ export const analysisConfig = registerAs('topicAnalysis', () => ({
     model: 'gpt-5.6-sol',
     reasoningEffort: 'medium' as const,
   },
+  topicSummaryGeneration: {
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'medium' as const,
+  },
   queue: {
     name: 'topic-analysis',
     jobs: {
@@ -31,6 +35,7 @@ export const analysisConfig = registerAs('topicAnalysis', () => ({
       extract_source_topics: 'extract-source-topics',
       match_source_topics: 'match-source-topics',
       finalize_topic_analysis: 'finalize-topic-analysis',
+      summarize_topic: 'summarize-topic',
     },
     defaultJobOptions: {
       attempts: 5,

@@ -25,7 +25,7 @@ import {
 } from './detect-boundaries.job';
 import { deriveOrderedDocumentUnitRefs } from './prepare-topic-analysis.job';
 
-interface ResolvedTopicSpan extends TopicSpan {
+export interface ResolvedTopicSpan extends TopicSpan {
   refs: string[];
   units: NodeItem[];
   pageStart: number | null;
@@ -405,7 +405,7 @@ function groundExtractedTopics(
   });
 }
 
-function pageRange(units: NodeItem[]): {
+export function pageRange(units: NodeItem[]): {
   pageStart: number | null;
   pageEnd: number | null;
 } {

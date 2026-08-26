@@ -125,6 +125,7 @@ export class MatchSourceTopicsJob {
         this.logger.log(
           `Skipping match-source-topics job because source "${sourceId}" has no unmatched source topics`,
         );
+        await this.analysisQueue.addFinalizeTopicAnalysis(sourceId);
         return;
       }
 

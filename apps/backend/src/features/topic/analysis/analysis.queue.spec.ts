@@ -154,4 +154,28 @@ describe('AnalysisQueue', () => {
       },
     );
   });
+
+  it('enqueues topic-analysis finalization after matching', async () => {
+    await analysisQueue.addFinalizeTopicAnalysis(sourceId);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      config.queue.jobs.finalize_topic_analysis,
+      { sourceId },
+      {
+        jobId: `${config.queue.jobs.finalize_topic_analysis}/${sourceId}`,
+      },
+    );
+  });
+
+  it('enqueues a deterministic summary job for a Topic revision', async () => {
+    await analysisQueue.addSummarizeTopic('topic-id', 3);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      config.queue.jobs.summarize_topic,
+      { topicId: 'topic-id', contentRevision: 3 },
+      {
+        jobId: `${config.queue.jobs.summarize_topic}/topic-id/3`,
+      },
+    );
+  });
 });
