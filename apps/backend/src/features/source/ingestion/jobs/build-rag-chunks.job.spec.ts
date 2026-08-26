@@ -1,20 +1,20 @@
 import { Logger } from '@nestjs/common';
-import { embeddingConfig } from '../../../infrastructure/config/embedding.config';
+import { embeddingConfig } from '../../../../infrastructure/config/embedding.config';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { DoclingService } from '../../../infrastructure/docling/docling.service';
+} from '../../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { DoclingService } from '../../../../infrastructure/docling/docling.service';
 import { ingestionConfig } from '../ingestion.config';
 import { IngestionQueue } from '../ingestion.queue';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 import { BuildRagChunksJob } from './build-rag-chunks.job';
 
-jest.mock('../../../infrastructure/docling/docling.service', () => ({
+jest.mock('../../../../infrastructure/docling/docling.service', () => ({
   DoclingService: class DoclingService {},
 }));
-jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
 

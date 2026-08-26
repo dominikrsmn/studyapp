@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
-import { IngestionModule } from '../ingestion/ingestion.module';
+import { IngestionModule } from '../source/ingestion/ingestion.module';
 import { AiController } from './ai.controller';
 import { AnswerGenerationService } from './answer-generation.service';
 import { QuestionAnsweringService } from './question-answering.service';

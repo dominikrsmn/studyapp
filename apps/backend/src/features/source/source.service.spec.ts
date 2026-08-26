@@ -1,9 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
-import { IngestionQueue } from '../ingestion/ingestion.queue';
+import { IngestionQueue } from './ingestion/ingestion.queue';
 import { SourceService } from './source.service';
-import type { SourceProcessingStageService } from '../ingestion/source-processing-stage.service';
+import type { SourceProcessingStageService } from './ingestion/source-processing-stage.service';
 import {
   ProcessingState,
   SourceProcessingStageType,

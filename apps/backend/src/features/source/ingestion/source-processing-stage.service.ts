@@ -6,13 +6,13 @@ import {
 import type {
   Prisma,
   SourceProcessingStage,
-} from '../../infrastructure/database/generated/client';
+} from '../../../infrastructure/database/generated/client';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
-import { SourceEventService } from '../source/source-event.service';
+} from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { SourceEventService } from '../source-event.service';
 
 type TransitionOptions = {
   error?: unknown;

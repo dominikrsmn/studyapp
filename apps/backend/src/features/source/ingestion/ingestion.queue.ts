@@ -5,7 +5,7 @@ import { FlowProducer, Queue } from 'bullmq';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../infrastructure/database/generated/enums';
+} from '../../../infrastructure/database/generated/enums';
 import { ingestionConfig } from './ingestion.config';
 import {
   BuildRagChunksJobData,

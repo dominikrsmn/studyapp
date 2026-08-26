@@ -1,19 +1,19 @@
 import { Logger } from '@nestjs/common';
 import { ParseDocumentJob } from './parse-document.job';
-import { FileStorageService } from '../../../infrastructure/filestorage/filestorage.service';
-import { DoclingService } from '../../../infrastructure/docling/docling.service';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
+import { DoclingService } from '../../../../infrastructure/docling/docling.service';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { IngestionQueue } from '../ingestion.queue';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
+} from '../../../../infrastructure/database/generated/enums';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 
-jest.mock('../../../infrastructure/docling/docling.service', () => ({
+jest.mock('../../../../infrastructure/docling/docling.service', () => ({
   DoclingService: class DoclingService {},
 }));
-jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
 

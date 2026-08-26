@@ -2,12 +2,12 @@ import { Logger } from '@nestjs/common';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+} from '../../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 import { FinalizeIngestionJob } from './finalize-ingestion.job';
 
-jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
 

@@ -6,7 +6,7 @@ import type { SourceProcessingStageService } from './source-processing-stage.ser
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../infrastructure/database/generated/enums';
+} from '../../../infrastructure/database/generated/enums';
 
 jest.mock('./source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},

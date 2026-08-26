@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+} from '../../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { FinalizeIngestionJobData } from '../ingestion.types';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 

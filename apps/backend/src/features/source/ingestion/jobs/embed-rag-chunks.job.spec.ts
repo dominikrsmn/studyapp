@@ -1,18 +1,18 @@
 import { Logger } from '@nestjs/common';
-import { embeddingConfig } from '../../../infrastructure/config/embedding.config';
+import { embeddingConfig } from '../../../../infrastructure/config/embedding.config';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+} from '../../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 import { EmbedRagChunksJob } from './embed-rag-chunks.job';
 
-jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../../../infrastructure/database/generated/client', () => ({
+jest.mock('../../../../infrastructure/database/generated/client', () => ({
   Prisma: {
     join: (values: unknown[]) => ({
       sql: values.map(() => '?').join(','),

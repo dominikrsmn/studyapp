@@ -1,13 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import { embeddingConfig } from '../../../infrastructure/config/embedding.config';
-import { Prisma } from '../../../infrastructure/database/generated/client';
+import { embeddingConfig } from '../../../../infrastructure/config/embedding.config';
+import { Prisma } from '../../../../infrastructure/database/generated/client';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+} from '../../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { EmbedRagChunksJobData } from '../ingestion.types';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 

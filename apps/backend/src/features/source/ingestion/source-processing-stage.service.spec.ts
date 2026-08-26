@@ -1,12 +1,12 @@
-import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../infrastructure/database/generated/enums';
+} from '../../../infrastructure/database/generated/enums';
 import { SourceProcessingStageService } from './source-processing-stage.service';
-import { SourceEventService } from '../source/source-event.service';
+import { SourceEventService } from '../source-event.service';
 
-jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
 

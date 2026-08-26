@@ -1,15 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ParseDocumentJobData } from '../ingestion.types';
-import { FileStorageService } from '../../../infrastructure/filestorage/filestorage.service';
-import { DoclingService } from '../../../infrastructure/docling/docling.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
+import { DoclingService } from '../../../../infrastructure/docling/docling.service';
 import type { ConvertDocumentResponse, DoclingDocument } from 'docling-sdk';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
+} from '../../../../infrastructure/database/generated/enums';
 import { IngestionQueue } from '../ingestion.queue';
-import { Prisma } from '../../../infrastructure/database/generated/client';
+import { Prisma } from '../../../../infrastructure/database/generated/client';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 
 @Injectable()

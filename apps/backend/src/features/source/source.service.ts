@@ -4,8 +4,8 @@ import type { Prisma } from '../../infrastructure/database/generated/client';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
-import { IngestionQueue } from '../ingestion/ingestion.queue';
-import { SourceProcessingStageService } from '../ingestion/source-processing-stage.service';
+import { IngestionQueue } from './ingestion/ingestion.queue';
+import { SourceProcessingStageService } from './ingestion/source-processing-stage.service';
 
 const sourceSelect = {
   id: true,
