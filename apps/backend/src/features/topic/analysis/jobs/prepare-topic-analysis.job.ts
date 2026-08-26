@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import type { DoclingDocument, NodeItem } from 'docling-sdk';
 import {
   ProcessingState,
   SourceProcessingStageType,
@@ -8,8 +7,13 @@ import {
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
+import {
+  AnalysisDocument,
+  AnalysisDocumentUnit,
+  parseAnalysisDocument,
+} from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
-import { PrepareTopicAnalysis } from '../analysis.types';
+import { AnalysisUnit, PrepareTopicAnalysis } from '../analysis.types';
 
 @Injectable()
 export class PrepareTopicAnalysisJob {
@@ -50,34 +54,21 @@ export class PrepareTopicAnalysisJob {
         throw new Error('Source has no converted Docling document');
       }
 
-      const document = source.document as unknown as DoclingDocument;
-      const unitRefs = deriveOrderedAnalysisUnitRefs(document);
-      if (unitRefs.length === 0) {
+      const document = parseAnalysisDocument(source.document);
+      const analysisUnits = createBoundaryAnalysisUnits(
+        document,
+        this.config.boundaryDetection.windowSize,
+        this.config.boundaryDetection.windowOverlap,
+      );
+
+      if (analysisUnits.length === 0) {
         throw new Error('Source document contains no analysis units');
       }
 
-      const windows: string[][] = [];
-
-      const stride =
-        this.config.boundaryDetection.windowSize -
-        this.config.boundaryDetection.windowOverlap;
-
-      for (let start = 0; start < unitRefs.length; start += stride) {
-        const window = unitRefs.slice(
-          start,
-          start + this.config.boundaryDetection.windowSize,
-        );
-        windows.push(window);
-
-        if (
-          start + this.config.boundaryDetection.windowSize >=
-          unitRefs.length
-        ) {
-          break;
-        }
-      }
-
-      await this.analysisQueue.addBoundaryDetectionFlow(sourceId, windows);
+      await this.analysisQueue.addBoundaryDetectionFlow(
+        sourceId,
+        analysisUnits,
+      );
     } catch (error) {
       this.logger.error(
         `Error preparing topic analysis for source "${sourceId}": ${error}`,
@@ -107,10 +98,45 @@ export class PrepareTopicAnalysisJob {
   }
 }
 
-export function deriveOrderedAnalysisUnitRefs(
-  document: DoclingDocument,
+export function createBoundaryAnalysisUnits(
+  document: AnalysisDocument,
+  windowSize: number,
+  windowOverlap: number,
+): AnalysisUnit[] {
+  if (
+    !Number.isInteger(windowSize) ||
+    !Number.isInteger(windowOverlap) ||
+    windowSize <= 0 ||
+    windowOverlap < 0 ||
+    windowOverlap >= windowSize
+  ) {
+    throw new Error('Invalid boundary analysis unit window configuration');
+  }
+
+  const documentUnitRefs = deriveOrderedDocumentUnitRefs(document);
+  const analysisUnits: AnalysisUnit[] = [];
+  const stride = windowSize - windowOverlap;
+
+  for (let start = 0; start < documentUnitRefs.length; start += stride) {
+    analysisUnits.push({
+      index: analysisUnits.length,
+      documentUnitRefs: documentUnitRefs.slice(start, start + windowSize),
+    });
+
+    if (start + windowSize >= documentUnitRefs.length) {
+      break;
+    }
+  }
+
+  return analysisUnits;
+}
+
+export function deriveOrderedDocumentUnitRefs(
+  document: AnalysisDocument,
 ): string[] {
-  const pending: NodeItem[] = [...(document.main_text ?? [])].reverse();
+  const pending: AnalysisDocumentUnit[] = [
+    ...(document.main_text ?? []),
+  ].reverse();
   const unitRefs: string[] = [];
 
   while (pending.length > 0) {

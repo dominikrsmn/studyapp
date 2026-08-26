@@ -3,6 +3,8 @@ import { registerAs } from '@nestjs/config';
 export const analysisConfig = registerAs('topicAnalysis', () => ({
   flowProducer: { name: 'topic-analysis-flow' },
   boundaryDetection: {
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'medium' as const,
     windowSize: 70,
     windowOverlap: 20,
   },

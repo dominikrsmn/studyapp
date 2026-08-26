@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { DoclingDocument } from 'docling-sdk';
+import { ZodError } from 'zod';
 import {
   ProcessingState,
   SourceProcessingStageType,
@@ -8,8 +9,10 @@ import { PrismaService } from '../../../../infrastructure/database/prisma/prisma
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { AnalysisQueue } from '../analysis.queue';
+import type { AnalysisUnit } from '../analysis.types';
 import {
-  deriveOrderedAnalysisUnitRefs,
+  createBoundaryAnalysisUnits,
+  deriveOrderedDocumentUnitRefs,
   PrepareTopicAnalysisJob,
 } from './prepare-topic-analysis.job';
 
@@ -74,7 +77,7 @@ describe('PrepareTopicAnalysisJob', () => {
     jest.restoreAllMocks();
   });
 
-  it('reads the canonical document and enqueues its ordered unit windows', async () => {
+  it('creates analysis units and fans them out through the boundary flow', async () => {
     await job.process({ sourceId });
 
     expect(sourceDelegate.findUnique).toHaveBeenCalledWith({
@@ -88,7 +91,18 @@ describe('PrepareTopicAnalysisJob', () => {
     );
     expect(analysisQueue.addBoundaryDetectionFlow).toHaveBeenCalledWith(
       sourceId,
-      [['#/texts/2', '#/texts/0', '#/tables/0', '#/pictures/0', '#/texts/1']],
+      [
+        {
+          index: 0,
+          documentUnitRefs: [
+            '#/texts/2',
+            '#/texts/0',
+            '#/tables/0',
+            '#/pictures/0',
+            '#/texts/1',
+          ],
+        },
+      ],
     );
   });
 
@@ -117,7 +131,26 @@ describe('PrepareTopicAnalysisJob', () => {
     expect(analysisQueue.addBoundaryDetectionFlow).not.toHaveBeenCalled();
   });
 
-  it('constructs overlapping windows across the full document stream', async () => {
+  it('rejects a malformed stored document before creating analysis units', async () => {
+    sourceDelegate.findUnique.mockResolvedValue({
+      document: {
+        name: 'Malformed document',
+        main_text: [{ label: 42, self_ref: 'ref-1' }],
+      },
+    });
+
+    await expect(job.process({ sourceId })).rejects.toBeInstanceOf(ZodError);
+
+    expect(sourceProcessingStageService.transition).toHaveBeenLastCalledWith(
+      sourceId,
+      SourceProcessingStageType.TOPIC_ANALYSIS,
+      ProcessingState.FAILED,
+      { error: expect.any(ZodError) },
+    );
+    expect(analysisQueue.addBoundaryDetectionFlow).not.toHaveBeenCalled();
+  });
+
+  it('constructs indexed overlapping analysis units across the document', async () => {
     sourceDelegate.findUnique.mockResolvedValue({
       document: {
         name: 'Long document',
@@ -130,15 +163,26 @@ describe('PrepareTopicAnalysisJob', () => {
 
     await job.process({ sourceId });
 
-    const windows = analysisQueue.addBoundaryDetectionFlow.mock.calls[0][1];
-    expect(windows).toHaveLength(3);
-    expect([windows[0][0], windows[0][69]]).toEqual(['ref-1', 'ref-70']);
-    expect([windows[1][0], windows[1][69]]).toEqual(['ref-51', 'ref-120']);
-    expect([windows[2][0], windows[2][69]]).toEqual(['ref-101', 'ref-170']);
+    const analysisUnits = analysisQueue.addBoundaryDetectionFlow.mock
+      .calls[0][1] as AnalysisUnit[];
+    expect(analysisUnits).toHaveLength(3);
+    expect(analysisUnits.map(({ index }) => index)).toEqual([0, 1, 2]);
+    expect([
+      analysisUnits[0].documentUnitRefs[0],
+      analysisUnits[0].documentUnitRefs[69],
+    ]).toEqual(['ref-1', 'ref-70']);
+    expect([
+      analysisUnits[1].documentUnitRefs[0],
+      analysisUnits[1].documentUnitRefs[69],
+    ]).toEqual(['ref-51', 'ref-120']);
+    expect([
+      analysisUnits[2].documentUnitRefs[0],
+      analysisUnits[2].documentUnitRefs[69],
+    ]).toEqual(['ref-101', 'ref-170']);
   });
 });
 
-describe('deriveOrderedAnalysisUnitRefs', () => {
+describe('boundary analysis unit creation', () => {
   it('follows nested main text in reading order without page boundaries', () => {
     const document = {
       name: 'Paged document',
@@ -173,11 +217,32 @@ describe('deriveOrderedAnalysisUnitRefs', () => {
       ],
     } satisfies DoclingDocument;
 
-    expect(deriveOrderedAnalysisUnitRefs(document)).toEqual([
+    expect(deriveOrderedDocumentUnitRefs(document)).toEqual([
       '#/texts/0',
       '#/texts/1',
       '#/texts/2',
       '#/texts/3',
+    ]);
+  });
+
+  it('creates one descriptor per detection job without document content', () => {
+    const document = {
+      name: 'Document',
+      main_text: Array.from({ length: 6 }, (_, index) => ({
+        label: 'paragraph',
+        self_ref: `ref-${index + 1}`,
+      })),
+    } satisfies DoclingDocument;
+
+    expect(createBoundaryAnalysisUnits(document, 4, 1)).toEqual([
+      {
+        index: 0,
+        documentUnitRefs: ['ref-1', 'ref-2', 'ref-3', 'ref-4'],
+      },
+      {
+        index: 1,
+        documentUnitRefs: ['ref-4', 'ref-5', 'ref-6'],
+      },
     ]);
   });
 });

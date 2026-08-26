@@ -9,9 +9,20 @@ export type AnalysisJobData =
 export interface PrepareTopicAnalysis {
   sourceId: string;
 }
+export interface AnalysisUnit {
+  index: number;
+  documentUnitRefs: string[];
+}
 export interface DetectBoundaries {
   sourceId: string;
-  window_refs: string[];
+  analysisUnit: AnalysisUnit;
+}
+export interface DetectedBoundary {
+  afterRef: string;
+  confidence: number;
+}
+export interface BoundaryDetectionResult {
+  boundaries: DetectedBoundary[];
 }
 export interface MergeBoundaries {
   sourceId: string;

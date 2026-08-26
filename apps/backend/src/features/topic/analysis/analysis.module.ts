@@ -7,6 +7,8 @@ import { IngestionModule } from '../../source/ingestion/ingestion.module';
 import { AnalysisProcessor } from './analysis.processor';
 import { AnalysisQueue } from './analysis.queue';
 import { PrepareTopicAnalysisJob } from './jobs/prepare-topic-analysis.job';
+import { DetectBoundariesJob } from './jobs/detect-boundaries.job';
+import { OpenAiModule } from '../../../infrastructure/open-ai/open-ai.module';
 
 @Module({
   imports: [
@@ -19,6 +21,7 @@ import { PrepareTopicAnalysisJob } from './jobs/prepare-topic-analysis.job';
       name: analysisConfig().flowProducer.name,
     }),
     PrismaModule,
+    OpenAiModule,
     IngestionModule,
   ],
   providers: [
@@ -26,6 +29,7 @@ import { PrepareTopicAnalysisJob } from './jobs/prepare-topic-analysis.job';
     AnalysisQueue,
     Logger,
     PrepareTopicAnalysisJob,
+    DetectBoundariesJob,
   ],
   exports: [AnalysisQueue],
 })

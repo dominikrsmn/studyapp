@@ -49,10 +49,10 @@ describe('AnalysisQueue', () => {
     );
   });
 
-  it('adds all detection windows as children of the merge job', async () => {
+  it('adds one detection child per analysis unit under the merge job', async () => {
     await analysisQueue.addBoundaryDetectionFlow(sourceId, [
-      ['ref-1', 'ref-2'],
-      ['ref-2', 'ref-3'],
+      { index: 0, documentUnitRefs: ['ref-1', 'ref-2'] },
+      { index: 1, documentUnitRefs: ['ref-2', 'ref-3'] },
     ]);
 
     expect(flowProducer.add).toHaveBeenCalledWith(
@@ -67,7 +67,13 @@ describe('AnalysisQueue', () => {
           {
             name: config.queue.jobs.detect_boundaries,
             queueName: config.queue.name,
-            data: { sourceId, window_refs: ['ref-1', 'ref-2'] },
+            data: {
+              sourceId,
+              analysisUnit: {
+                index: 0,
+                documentUnitRefs: ['ref-1', 'ref-2'],
+              },
+            },
             opts: {
               jobId: `${config.queue.jobs.detect_boundaries}/${sourceId}/0`,
               failParentOnFailure: true,
@@ -76,7 +82,13 @@ describe('AnalysisQueue', () => {
           {
             name: config.queue.jobs.detect_boundaries,
             queueName: config.queue.name,
-            data: { sourceId, window_refs: ['ref-2', 'ref-3'] },
+            data: {
+              sourceId,
+              analysisUnit: {
+                index: 1,
+                documentUnitRefs: ['ref-2', 'ref-3'],
+              },
+            },
             opts: {
               jobId: `${config.queue.jobs.detect_boundaries}/${sourceId}/1`,
               failParentOnFailure: true,
@@ -94,10 +106,12 @@ describe('AnalysisQueue', () => {
     );
   });
 
-  it('rejects empty boundary detection windows', async () => {
+  it('rejects invalid boundary analysis units', async () => {
     await expect(
-      analysisQueue.addBoundaryDetectionFlow(sourceId, [[]]),
-    ).rejects.toThrow('Cannot enqueue empty boundary detection windows');
+      analysisQueue.addBoundaryDetectionFlow(sourceId, [
+        { index: 0, documentUnitRefs: [] },
+      ]),
+    ).rejects.toThrow('Cannot enqueue invalid boundary analysis units');
 
     expect(flowProducer.add).not.toHaveBeenCalled();
   });

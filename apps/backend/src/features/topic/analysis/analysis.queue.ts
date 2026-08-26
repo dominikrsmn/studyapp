@@ -10,6 +10,7 @@ import { analysisConfig } from './analysis.config';
 import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
 import {
   AnalysisJobData,
+  AnalysisUnit,
   DetectBoundaries,
   MergeBoundaries,
   PrepareTopicAnalysis,
@@ -44,13 +45,20 @@ export class AnalysisQueue {
 
   async addBoundaryDetectionFlow(
     sourceId: string,
-    windows: string[][],
+    analysisUnits: AnalysisUnit[],
   ): Promise<void> {
     if (
-      windows.length === 0 ||
-      windows.some((windowRefs) => windowRefs.length === 0)
+      analysisUnits.length === 0 ||
+      analysisUnits.some(
+        ({ index, documentUnitRefs }) =>
+          !Number.isInteger(index) ||
+          index < 0 ||
+          documentUnitRefs.length === 0,
+      ) ||
+      new Set(analysisUnits.map(({ index }) => index)).size !==
+        analysisUnits.length
     ) {
-      throw new Error('Cannot enqueue empty boundary detection windows');
+      throw new Error('Cannot enqueue invalid boundary analysis units');
     }
 
     await this.flowProducer.add(
@@ -61,12 +69,12 @@ export class AnalysisQueue {
         opts: {
           jobId: `${this.config.queue.jobs.merge_boundaries}/${sourceId}`,
         },
-        children: windows.map((window_refs, windowIndex) => ({
+        children: analysisUnits.map((analysisUnit) => ({
           name: this.config.queue.jobs.detect_boundaries,
           queueName: this.config.queue.name,
-          data: { sourceId, window_refs } satisfies DetectBoundaries,
+          data: { sourceId, analysisUnit } satisfies DetectBoundaries,
           opts: {
-            jobId: `${this.config.queue.jobs.detect_boundaries}/${sourceId}/${windowIndex}`,
+            jobId: `${this.config.queue.jobs.detect_boundaries}/${sourceId}/${analysisUnit.index}`,
             failParentOnFailure: true,
           },
         })),
