@@ -115,7 +115,11 @@ describe('FinalizeTopicAnalysisJob', () => {
   ];
   const findUnique = jest.fn();
   const transaction = { source: { findUnique } };
-  const prismaService = { $transaction: jest.fn() };
+  const findProcessingStage = jest.fn();
+  const prismaService = {
+    sourceProcessingStage: { findUnique: findProcessingStage },
+    $transaction: jest.fn(),
+  };
   const transition = jest.fn();
   const addSummarizeTopic = jest.fn();
   let job: FinalizeTopicAnalysisJob;
@@ -126,7 +130,11 @@ describe('FinalizeTopicAnalysisJob', () => {
     findUnique.mockResolvedValue({
       document,
       moduleId: 'module-id',
+      processingStages: [{ state: ProcessingState.PROCESSING }],
       sourceTopics,
+    });
+    findProcessingStage.mockResolvedValue({
+      state: ProcessingState.PROCESSING,
     });
     prismaService.$transaction.mockImplementation((operation) =>
       operation(transaction),
@@ -162,6 +170,7 @@ describe('FinalizeTopicAnalysisJob', () => {
     findUnique.mockResolvedValue({
       document,
       moduleId: 'module-id',
+      processingStages: [{ state: ProcessingState.PROCESSING }],
       sourceTopics: [
         {
           ...sourceTopics[0],
@@ -205,11 +214,13 @@ describe('FinalizeTopicAnalysisJob', () => {
       .mockResolvedValueOnce({
         document,
         moduleId: 'module-id',
+        processingStages: [{ state: ProcessingState.PROCESSING }],
         sourceTopics,
       })
       .mockResolvedValueOnce({
         document,
         moduleId: 'module-id',
+        processingStages: [{ state: ProcessingState.PROCESSING }],
         sourceTopics: [
           {
             ...sourceTopics[0],
@@ -237,6 +248,48 @@ describe('FinalizeTopicAnalysisJob', () => {
 
     expect(addSummarizeTopic).not.toHaveBeenCalled();
     expect(transition).not.toHaveBeenCalled();
+  });
+
+  it('does not publish summaries or regress an already completed analysis', async () => {
+    findUnique.mockResolvedValue({
+      document,
+      moduleId: 'module-id',
+      processingStages: [{ state: ProcessingState.COMPLETED }],
+      sourceTopics,
+    });
+    addSummarizeTopic.mockRejectedValue(new Error('Redis unavailable'));
+
+    await expect(job.process({ sourceId })).resolves.toBeUndefined();
+
+    expect(addSummarizeTopic).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
+  });
+
+  it('preserves completion if summary queuing races with a successful finalizer', async () => {
+    addSummarizeTopic.mockRejectedValue(new Error('Redis unavailable'));
+    findProcessingStage.mockResolvedValue({
+      state: ProcessingState.COMPLETED,
+    });
+
+    await expect(job.process({ sourceId })).rejects.toThrow(
+      'Redis unavailable',
+    );
+
+    expect(findProcessingStage).toHaveBeenCalledWith({
+      where: {
+        sourceId_stage: {
+          sourceId,
+          stage: SourceProcessingStageType.TOPIC_ANALYSIS,
+        },
+      },
+      select: { state: true },
+    });
+    expect(transition).not.toHaveBeenCalledWith(
+      sourceId,
+      SourceProcessingStageType.TOPIC_ANALYSIS,
+      ProcessingState.FAILED,
+      expect.anything(),
+    );
   });
 });
 

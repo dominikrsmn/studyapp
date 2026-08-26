@@ -79,6 +79,7 @@ export class FinalizeTopicAnalysisJob {
 
   async process({ sourceId }: FinalizeTopicAnalysis): Promise<void> {
     let sourceFound = false;
+    let analysisAlreadyCompleted = false;
 
     try {
       const summaryRevisions = await this.prismaService.$transaction(
@@ -89,6 +90,11 @@ export class FinalizeTopicAnalysisJob {
           }
 
           sourceFound = true;
+          if (source.processingStages[0]?.state === ProcessingState.COMPLETED) {
+            analysisAlreadyCompleted = true;
+            return [];
+          }
+
           return validateFinalTopicAnalysis(
             source.document,
             source.moduleId,
@@ -100,6 +106,12 @@ export class FinalizeTopicAnalysisJob {
       if (summaryRevisions === null) {
         this.logger.warn(
           `Skipping finalize-topic-analysis job because source "${sourceId}" no longer exists`,
+        );
+        return;
+      }
+      if (analysisAlreadyCompleted) {
+        this.logger.log(
+          `Skipping finalize-topic-analysis job because source "${sourceId}" is already complete`,
         );
         return;
       }
@@ -140,21 +152,16 @@ export class FinalizeTopicAnalysisJob {
       );
 
       if (sourceFound) {
-        await this.sourceProcessingStageService
-          .transition(
-            sourceId,
-            SourceProcessingStageType.TOPIC_ANALYSIS,
-            ProcessingState.FAILED,
-            { error },
-          )
-          .catch((stageUpdateError: unknown) => {
+        await this.recordFailureUnlessCompleted(sourceId, error).catch(
+          (stageUpdateError: unknown) => {
             this.logger.error(
               `Failed to record topic analysis failure for source "${sourceId}"`,
               stageUpdateError instanceof Error
                 ? stageUpdateError.stack
                 : undefined,
             );
-          });
+          },
+        );
       }
 
       throw error;
@@ -167,12 +174,47 @@ export class FinalizeTopicAnalysisJob {
       select: {
         document: true,
         moduleId: true,
+        processingStages: {
+          where: { stage: SourceProcessingStageType.TOPIC_ANALYSIS },
+          select: { state: true },
+          take: 1,
+        },
         sourceTopics: {
           orderBy: { spanIndex: 'asc' },
           select: finalSourceTopicSelect,
         },
       },
     });
+  }
+
+  private async recordFailureUnlessCompleted(
+    sourceId: string,
+    error: unknown,
+  ): Promise<void> {
+    const processingStage =
+      await this.prismaService.sourceProcessingStage.findUnique({
+        where: {
+          sourceId_stage: {
+            sourceId,
+            stage: SourceProcessingStageType.TOPIC_ANALYSIS,
+          },
+        },
+        select: { state: true },
+      });
+
+    if (processingStage?.state === ProcessingState.COMPLETED) {
+      this.logger.warn(
+        `Preserving completed topic analysis for source "${sourceId}" after a later finalization failure`,
+      );
+      return;
+    }
+
+    await this.sourceProcessingStageService.transition(
+      sourceId,
+      SourceProcessingStageType.TOPIC_ANALYSIS,
+      ProcessingState.FAILED,
+      { error },
+    );
   }
 }
 
