@@ -115,4 +115,43 @@ describe('AnalysisQueue', () => {
 
     expect(flowProducer.add).not.toHaveBeenCalled();
   });
+
+  it('enqueues finalized topic spans for extraction', async () => {
+    const spans = [
+      { spanIndex: 0, startRef: 'ref-1', endRef: 'ref-3' },
+      { spanIndex: 1, startRef: 'ref-4', endRef: 'ref-6' },
+    ];
+
+    await analysisQueue.addExtractSourceTopics(sourceId, spans);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      config.queue.jobs.extract_source_topics,
+      { sourceId, spans },
+      {
+        jobId: `${config.queue.jobs.extract_source_topics}/${sourceId}`,
+      },
+    );
+  });
+
+  it('rejects non-contiguous extraction span indexes', async () => {
+    await expect(
+      analysisQueue.addExtractSourceTopics(sourceId, [
+        { spanIndex: 1, startRef: 'ref-1', endRef: 'ref-2' },
+      ]),
+    ).rejects.toThrow('Cannot enqueue invalid topic spans');
+
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('enqueues source-topic matching after extraction', async () => {
+    await analysisQueue.addMatchSourceTopics(sourceId);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      config.queue.jobs.match_source_topics,
+      { sourceId },
+      {
+        jobId: `${config.queue.jobs.match_source_topics}/${sourceId}`,
+      },
+    );
+  });
 });

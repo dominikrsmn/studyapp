@@ -41,13 +41,13 @@ export interface MergedBoundary {
   evidence: BoundaryConfidenceEvidence;
 }
 export interface TopicSpan {
-  index: number;
+  spanIndex: number;
   startRef: string;
   endRef: string;
 }
 export interface ExtractSourceTopics {
   sourceId: string;
-  span_descriptors: string[];
+  spans: TopicSpan[];
 }
 export interface MatchSourceTopics {
   sourceId: string;

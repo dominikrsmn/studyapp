@@ -12,8 +12,11 @@ import {
   AnalysisJobData,
   AnalysisUnit,
   DetectBoundaries,
+  ExtractSourceTopics,
+  MatchSourceTopics,
   MergeBoundaries,
   PrepareTopicAnalysis,
+  TopicSpan,
 } from './analysis.types';
 
 @Injectable()
@@ -89,6 +92,31 @@ export class AnalysisQueue {
     );
   }
 
+  async addExtractSourceTopics(
+    sourceId: string,
+    spans: TopicSpan[],
+  ): Promise<void> {
+    validateTopicSpans(spans);
+
+    await this.queue.add(
+      this.config.queue.jobs.extract_source_topics,
+      { sourceId, spans } satisfies ExtractSourceTopics,
+      {
+        jobId: `${this.config.queue.jobs.extract_source_topics}/${sourceId}`,
+      },
+    );
+  }
+
+  async addMatchSourceTopics(sourceId: string): Promise<void> {
+    await this.queue.add(
+      this.config.queue.jobs.match_source_topics,
+      { sourceId } satisfies MatchSourceTopics,
+      {
+        jobId: `${this.config.queue.jobs.match_source_topics}/${sourceId}`,
+      },
+    );
+  }
+
   private async enqueueStage(
     sourceId: string,
     stage: SourceProcessingStageType,
@@ -108,5 +136,19 @@ export class AnalysisQueue {
         .catch(() => undefined);
       throw error;
     }
+  }
+}
+
+function validateTopicSpans(spans: TopicSpan[]): void {
+  if (
+    spans.length === 0 ||
+    spans.some(
+      ({ spanIndex, startRef, endRef }, index) =>
+        spanIndex !== index ||
+        startRef.trim().length === 0 ||
+        endRef.trim().length === 0,
+    )
+  ) {
+    throw new Error('Cannot enqueue invalid topic spans');
   }
 }

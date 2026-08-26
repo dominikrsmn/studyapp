@@ -16,6 +16,16 @@ export interface AnalysisDocumentUnit {
   label: string;
   self_ref?: string;
   children?: AnalysisDocumentUnit[];
+  prov?: Array<{
+    page_no: number;
+    bbox: {
+      l: number;
+      t: number;
+      r: number;
+      b: number;
+      coord_origin?: 'TOPLEFT' | 'BOTTOMLEFT';
+    };
+  }>;
   text?: string;
   level?: number;
   data?: Array<Array<{ text?: string }>>;
@@ -28,6 +38,24 @@ const analysisDocumentUnitSchema: z.ZodType<AnalysisDocumentUnit> = z.lazy(() =>
       label: z.string().min(1),
       self_ref: z.string().min(1).optional(),
       children: z.array(analysisDocumentUnitSchema).optional(),
+      prov: z
+        .array(
+          z
+            .object({
+              page_no: z.number().int().positive(),
+              bbox: z
+                .object({
+                  l: z.number(),
+                  t: z.number(),
+                  r: z.number(),
+                  b: z.number(),
+                  coord_origin: z.enum(['TOPLEFT', 'BOTTOMLEFT']).optional(),
+                })
+                .passthrough(),
+            })
+            .passthrough(),
+        )
+        .optional(),
       text: z.string().optional(),
       level: z.number().int().positive().optional(),
       data: z.array(z.array(tableCellSchema)).optional(),

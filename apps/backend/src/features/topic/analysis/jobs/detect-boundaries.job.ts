@@ -14,7 +14,7 @@ import { analysisConfig } from '../analysis.config';
 import { parseAnalysisDocument } from '../analysis-document.schema';
 import { BoundaryDetectionResult, DetectBoundaries } from '../analysis.types';
 
-type DocumentUnit = DocItem & {
+export type DocumentUnit = DocItem & {
   children?: NodeItem[];
   data?: Array<Array<{ text?: string }>>;
   level?: number;
@@ -212,7 +212,7 @@ export function serializeDocumentUnits(documentUnits: DocumentUnit[]): string {
   return `<document-units>\n${serialized.join('\n')}\n</document-units>`;
 }
 
-function documentUnitContent(documentUnit: DocumentUnit): string {
+export function documentUnitContent(documentUnit: DocumentUnit): string {
   if (typeof documentUnit.text === 'string') {
     return documentUnit.text.trim();
   }

@@ -13,6 +13,7 @@ import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.servic
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { parseAnalysisDocument } from '../analysis-document.schema';
+import { AnalysisQueue } from '../analysis.queue';
 import {
   BoundaryDetectionResult,
   MergeBoundaries,
@@ -66,6 +67,7 @@ export class MergeBoundariesJob {
     private readonly prismaService: PrismaService,
     private readonly openAiService: OpenAiService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
+    private readonly analysisQueue: AnalysisQueue,
     @Inject(analysisConfig.KEY)
     private readonly config: ConfigType<typeof analysisConfig>,
   ) {}
@@ -117,68 +119,67 @@ export class MergeBoundariesJob {
         this.config.boundaryMerging.shortSpanReviewThreshold,
       );
 
-      if (candidates.length === 0) {
-        return;
+      let boundaries: MergedBoundary[] = [];
+      if (candidates.length > 0) {
+        const eligibleAfterRefs = candidates.map(
+          ({ afterRef }) => afterRef,
+        ) as [string, ...string[]];
+        const responseSchema = boundaryAdjudicationSchema(eligibleAfterRefs);
+        const response = await this.openAiService.client.responses.parse({
+          model: this.config.boundaryMerging.model,
+          reasoning: {
+            effort: this.config.boundaryMerging.reasoningEffort,
+          },
+          input: [
+            {
+              role: 'developer',
+              content: boundaryMergingPrompt(),
+            },
+            {
+              role: 'user',
+              content: serializeCandidates(candidates),
+            },
+          ],
+          text: {
+            format: zodTextFormat(responseSchema, 'merged_topic_boundaries'),
+          },
+        });
+
+        if (response.output_parsed === null) {
+          throw new Error('Boundary merging model returned no parsed output');
+        }
+
+        const parsed = responseSchema.parse(response.output_parsed);
+        const adjudications = validateAdjudications(
+          parsed.adjudications,
+          eligibleAfterRefs,
+        );
+        const candidatesByRef = new Map(
+          candidates.map((candidate) => [candidate.afterRef, candidate]),
+        );
+        boundaries = adjudications
+          .filter(({ isBoundary }) => isBoundary)
+          .map((adjudication) => {
+            const candidate = candidatesByRef.get(adjudication.afterRef);
+            if (!candidate) {
+              throw new Error(
+                `Boundary merging model returned unknown candidate "${adjudication.afterRef}"`,
+              );
+            }
+            return {
+              boundary: mergedBoundary(candidate, adjudication),
+              documentIndex: candidate.documentIndex,
+            };
+          })
+          .sort((left, right) => left.documentIndex - right.documentIndex)
+          .map(({ boundary }) => boundary);
       }
 
-      const eligibleAfterRefs = candidates.map(({ afterRef }) => afterRef) as [
-        string,
-        ...string[],
-      ];
-      const responseSchema = boundaryAdjudicationSchema(eligibleAfterRefs);
-      const response = await this.openAiService.client.responses.parse({
-        model: this.config.boundaryMerging.model,
-        reasoning: {
-          effort: this.config.boundaryMerging.reasoningEffort,
-        },
-        input: [
-          {
-            role: 'developer',
-            content: boundaryMergingPrompt(),
-          },
-          {
-            role: 'user',
-            content: serializeCandidates(candidates),
-          },
-        ],
-        text: {
-          format: zodTextFormat(responseSchema, 'merged_topic_boundaries'),
-        },
-      });
-
-      if (response.output_parsed === null) {
-        throw new Error('Boundary merging model returned no parsed output');
-      }
-
-      const parsed = responseSchema.parse(response.output_parsed);
-      const adjudications = validateAdjudications(
-        parsed.adjudications,
-        eligibleAfterRefs,
-      );
-      const candidatesByRef = new Map(
-        candidates.map((candidate) => [candidate.afterRef, candidate]),
-      );
-      const boundaries = adjudications
-        .filter(({ isBoundary }) => isBoundary)
-        .map((adjudication) => {
-          const candidate = candidatesByRef.get(adjudication.afterRef);
-          if (!candidate) {
-            throw new Error(
-              `Boundary merging model returned unknown candidate "${adjudication.afterRef}"`,
-            );
-          }
-          return {
-            boundary: mergedBoundary(candidate, adjudication),
-            documentIndex: candidate.documentIndex,
-          };
-        })
-        .sort((left, right) => left.documentIndex - right.documentIndex)
-        .map(({ boundary }) => boundary);
-
-      createTopicSpans(
+      const spans = createTopicSpans(
         documentUnitRefs,
         boundaries.map(({ afterRef }) => afterRef),
       );
+      await this.analysisQueue.addExtractSourceTopics(sourceId, spans);
     } catch (error) {
       this.logger.error(
         `Error merging topic boundaries for source "${sourceId}": ${error}`,
@@ -453,7 +454,7 @@ export function createTopicSpans(
   let startIndex = 0;
   for (const endIndex of [...boundaryIndexes, documentUnitRefs.length - 1]) {
     spans.push({
-      index: spans.length,
+      spanIndex: spans.length,
       startRef: documentUnitRefs[startIndex],
       endRef: documentUnitRefs[endIndex],
     });

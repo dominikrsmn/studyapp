@@ -9,6 +9,7 @@ import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.servic
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { parseAnalysisDocument } from '../analysis-document.schema';
+import { AnalysisQueue } from '../analysis.queue';
 import { MergeBoundaries } from '../analysis.types';
 import {
   boundaryMergingPrompt,
@@ -42,6 +43,7 @@ describe('MergeBoundariesJob', () => {
   const getChildrenValues = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
+  const addExtractSourceTopics = jest.fn();
   const config = {
     ...analysisConfig(),
     boundaryDetection: {
@@ -80,11 +82,13 @@ describe('MergeBoundariesJob', () => {
       },
     });
     transition.mockResolvedValue({ id: 'stage-id' });
+    addExtractSourceTopics.mockResolvedValue(undefined);
 
     mergeJob = new MergeBoundariesJob(
       { source: { findUnique } } as unknown as PrismaService,
       { client: { responses: { parse } } } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
+      { addExtractSourceTopics } as unknown as AnalysisQueue,
       config,
     );
     bullJob = {
@@ -117,6 +121,10 @@ describe('MergeBoundariesJob', () => {
     expect(request.input[1].content).toContain(
       '"requiresShortSpanReview": true',
     );
+    expect(addExtractSourceTopics).toHaveBeenCalledWith(sourceId, [
+      { spanIndex: 0, startRef: 'r0', endRef: 'r4' },
+      { spanIndex: 1, startRef: 'r5', endRef: 'r9' },
+    ]);
   });
 
   it('accepts a short topic when the model independently keeps it', async () => {
@@ -131,6 +139,9 @@ describe('MergeBoundariesJob', () => {
 
     await expect(mergeJob.process(bullJob)).resolves.toBeUndefined();
     expect(parse).not.toHaveBeenCalled();
+    expect(addExtractSourceTopics).toHaveBeenCalledWith(sourceId, [
+      { spanIndex: 0, startRef: 'r0', endRef: 'r9' },
+    ]);
   });
 
   it('uses the model decision rather than a mechanical confidence threshold', async () => {
@@ -207,8 +218,8 @@ describe('boundary merging evidence', () => {
 
   it('creates spans using actual reading-order successors, not ref arithmetic', () => {
     expect(createTopicSpans(['alpha', 'zeta', 'omega'], ['alpha'])).toEqual([
-      { index: 0, startRef: 'alpha', endRef: 'alpha' },
-      { index: 1, startRef: 'zeta', endRef: 'omega' },
+      { spanIndex: 0, startRef: 'alpha', endRef: 'alpha' },
+      { spanIndex: 1, startRef: 'zeta', endRef: 'omega' },
     ]);
   });
 
