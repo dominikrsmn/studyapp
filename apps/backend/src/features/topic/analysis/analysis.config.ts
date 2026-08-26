@@ -1,16 +1,21 @@
 import { registerAs } from '@nestjs/config';
 
 export const analysisConfig = registerAs('topicAnalysis', () => ({
+  flowProducer: { name: 'topic-analysis-flow' },
+  boundaryDetection: {
+    windowSize: 70,
+    windowOverlap: 20,
+  },
   queue: {
     name: 'topic-analysis',
-    jobs: [
-      'prepare-topic-analysis',
-      'detect-boundaries',
-      'merge-boundaries',
-      'extract-source-topics',
-      'match-source-topics',
-      'finalize-topic-analysis',
-    ],
+    jobs: {
+      prepare_topic_analysis: 'prepare-topic-analysis',
+      detect_boundaries: 'detect-boundaries',
+      merge_boundaries: 'merge-boundaries',
+      extract_source_topics: 'extract-source-topics',
+      match_source_topics: 'match-source-topics',
+      finalize_topic_analysis: 'finalize-topic-analysis',
+    },
     defaultJobOptions: {
       attempts: 5,
       backoff: {

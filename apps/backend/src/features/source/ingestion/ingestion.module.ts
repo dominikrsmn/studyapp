@@ -7,7 +7,6 @@ import { ingestionConfig } from './ingestion.config';
 import { BullModule } from '@nestjs/bullmq';
 import { IngestionQueue } from './ingestion.queue';
 import { IngestionProcessor } from './ingestion.processor';
-import { TopicModule } from '../../topic/topic.module';
 import { EmbeddingModule } from '../../../infrastructure/embedding/embedding.module';
 import { ParseDocumentJob } from './jobs/parse-document.job';
 import { DoclingModule } from '../../../infrastructure/docling/docling.module';
@@ -30,7 +29,6 @@ import { SourceModule } from '../source.module';
     FileStorageModule,
     PrismaModule,
     OpenAiModule,
-    TopicModule,
     EmbeddingModule,
     DoclingModule,
     forwardRef(() => SourceModule), // TODO: probably move source events into own module to avoid circular dependency (also in source module)
