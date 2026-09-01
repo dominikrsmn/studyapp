@@ -93,19 +93,7 @@ export class ExtractSourceTopicsJob {
 
       const document = parseStoredAnalysisDocument(storedDocument);
       const resolvedSpans = resolveTopicSpans(document, spans);
-      const evidenceRefs = resolvedSpans.flatMap(
-        (span) => span.evidenceRefs,
-      ) as [
-        string,
-        ...string[],
-      ];
-      if (evidenceRefs.length === 0) {
-        throw new Error('Source document contains no evidence-bearing units');
-      }
-      const responseSchema = sourceTopicExtractionSchema(
-        evidenceRefs,
-        resolvedSpans.length,
-      );
+      const responseSchema = sourceTopicExtractionSchema(resolvedSpans);
       const response = await this.openAiService.client.responses.parse({
         model: this.config.sourceTopicExtraction.model,
         reasoning: {
@@ -252,9 +240,9 @@ export class ExtractSourceTopicsJob {
   }
 }
 
-function sourceTopicExtractionSchema(
+function sourceTopicSchema(
+  spanIndex: number,
   documentRefs: [string, ...string[]],
-  spanCount: number,
 ) {
   const evidenceSpanSchema = z.object({
     startRef: z
@@ -266,24 +254,36 @@ function sourceTopicExtractionSchema(
   });
 
   return z.object({
-    topics: z
+    spanIndex: z.literal(spanIndex),
+    title: z.string().min(1).max(120),
+    description: z.string().min(1),
+    detectionConfidence: z.number().min(0).max(1),
+    evidence: z
       .array(
         z.object({
-          spanIndex: z.number().int().nonnegative(),
-          title: z.string().min(1).max(120),
           description: z.string().min(1),
-          detectionConfidence: z.number().min(0).max(1),
-          evidence: z
-            .array(
-              z.object({
-                description: z.string().min(1),
-                spans: z.array(evidenceSpanSchema).min(1),
-              }),
-            )
-            .min(1),
+          spans: z.array(evidenceSpanSchema).min(1),
         }),
       )
-      .length(spanCount),
+      .min(1),
+  });
+}
+
+function sourceTopicExtractionSchema(spans: ResolvedTopicSpan[]) {
+  const topicSchemas = spans.map((span) =>
+    sourceTopicSchema(
+      span.spanIndex,
+      span.evidenceRefs as [string, ...string[]],
+    ),
+  ) as [
+    ReturnType<typeof sourceTopicSchema>,
+    ...ReturnType<typeof sourceTopicSchema>[],
+  ];
+
+  return z.object({
+    topics: z
+      .array(z.discriminatedUnion('spanIndex', topicSchemas))
+      .length(spans.length),
   });
 }
 

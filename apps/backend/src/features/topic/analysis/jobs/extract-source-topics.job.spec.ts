@@ -306,9 +306,7 @@ describe('ExtractSourceTopicsJob', () => {
     ];
     parse.mockResolvedValue(output);
 
-    await expect(job.process(data)).rejects.toThrow(
-      'references a unit outside the topic',
-    );
+    await expect(job.process(data)).rejects.toThrow('Invalid option');
     expect(prismaService.$transaction).not.toHaveBeenCalled();
     expect(addMatchSourceTopics).not.toHaveBeenCalled();
     expect(transition).toHaveBeenCalledWith(
