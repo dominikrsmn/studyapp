@@ -5,6 +5,7 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
@@ -59,6 +60,7 @@ describe('DetectBoundariesJob', () => {
     ]),
   );
   const findUnique = jest.fn();
+  const readDoclingDocument = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
   const config = analysisConfig();
@@ -68,7 +70,10 @@ describe('DetectBoundariesJob', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
-    findUnique.mockResolvedValue({ document });
+    findUnique.mockResolvedValue({ id: sourceId });
+    readDoclingDocument.mockResolvedValue(
+      Buffer.from(JSON.stringify(document)),
+    );
     parse.mockResolvedValue({
       output_parsed: {
         boundaries: [{ afterRef: 'r144', confidence: 0.86 }],
@@ -78,6 +83,7 @@ describe('DetectBoundariesJob', () => {
 
     job = new DetectBoundariesJob(
       { source: { findUnique } } as unknown as PrismaService,
+      { readDoclingDocument } as unknown as FileStorageService,
       { client: { responses: { parse } } } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
       config,
@@ -103,7 +109,7 @@ describe('DetectBoundariesJob', () => {
 
     expect(findUnique).toHaveBeenCalledWith({
       where: { id: sourceId },
-      select: { document: true },
+      select: { id: true },
     });
     expect(parse).toHaveBeenCalledTimes(1);
 
@@ -191,13 +197,15 @@ describe('DetectBoundariesJob', () => {
   });
 
   it('rejects a malformed stored document before resolving its references', async () => {
-    findUnique.mockResolvedValue({
-      document: {
-        schema_name: 'DoclingDocument',
-        name: 'Malformed document',
-        body: { self_ref: '#/body', children: 'not-an-array' },
-      },
-    });
+    readDoclingDocument.mockResolvedValue(
+      Buffer.from(
+        JSON.stringify({
+          schema_name: 'DoclingDocument',
+          name: 'Malformed document',
+          body: { self_ref: '#/body', children: 'not-an-array' },
+        }),
+      ),
+    );
 
     await expect(
       job.process({

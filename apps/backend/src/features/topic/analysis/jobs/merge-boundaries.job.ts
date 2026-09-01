@@ -8,10 +8,11 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
-import { parseAnalysisDocument } from '../analysis-document.schema';
+import { parseStoredAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
 import {
   BoundaryDetectionResult,
@@ -64,6 +65,7 @@ export class MergeBoundariesJob {
 
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly fileStorageService: FileStorageService,
     private readonly openAiService: OpenAiService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
     private readonly analysisQueue: AnalysisQueue,
@@ -77,7 +79,7 @@ export class MergeBoundariesJob {
     try {
       const source = await this.prismaService.source.findUnique({
         where: { id: sourceId },
-        select: { document: true },
+        select: { id: true },
       });
 
       if (!source) {
@@ -86,11 +88,13 @@ export class MergeBoundariesJob {
         );
         return;
       }
-      if (source.document === null) {
+      const storedDocument =
+        await this.fileStorageService.readDoclingDocument(sourceId);
+      if (storedDocument === null) {
         throw new Error('Source has no converted Docling document');
       }
 
-      const document = parseAnalysisDocument(source.document);
+      const document = parseStoredAnalysisDocument(storedDocument);
       const documentUnitRefs = deriveOrderedDocumentUnitRefs(document);
       if (documentUnitRefs.length === 0) {
         throw new Error('Source document contains no analysis units');
@@ -240,7 +244,7 @@ function matchChildResultsToAnalysisUnits(
 }
 
 export function buildBoundaryCandidates(
-  document: ReturnType<typeof parseAnalysisDocument>,
+  document: ReturnType<typeof parseStoredAnalysisDocument>,
   documentUnitRefs: string[],
   unitResults: Array<{
     analysisUnit: { documentUnitRefs: string[] };

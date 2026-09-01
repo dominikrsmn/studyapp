@@ -8,7 +8,6 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { IngestionQueue } from '../ingestion.queue';
-import { Prisma } from '../../../../infrastructure/database/generated/client';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 
 @Injectable()
@@ -30,7 +29,6 @@ export class ParseDocumentJob {
       const source = await this.prismaService.source.findUnique({
         where: { id: sourceId },
         select: {
-          document: true,
           processingStages: {
             where: { stage: SourceProcessingStageType.CONVERSION },
             select: { state: true },
@@ -48,10 +46,15 @@ export class ParseDocumentJob {
       }
 
       const conversionStage = source.processingStages[0];
-      if (
-        conversionStage?.state === ProcessingState.COMPLETED &&
-        source.document !== null
-      ) {
+      if (await this.fileStorageService.hasDoclingDocument(sourceId)) {
+        if (conversionStage?.state !== ProcessingState.COMPLETED) {
+          await this.sourceProcessingStageService.transition(
+            sourceId,
+            SourceProcessingStageType.CONVERSION,
+            ProcessingState.COMPLETED,
+          );
+        }
+
         conversionCompleted = true;
         await this.ingestionQueue.addBuildRagChunks(sourceId);
         return;
@@ -78,31 +81,20 @@ export class ParseDocumentJob {
         throw new Error('Document conversion returned no JSON content');
       }
 
-      const document = JSON.parse(
-        JSON.stringify(jsonContent),
-      ) as Prisma.InputJsonValue;
-
+      const document = JSON.stringify(jsonContent);
       if (!document) {
         throw new Error('Document conversion returned invalid JSON content');
       }
 
-      await this.prismaService.$transaction(async (transaction) => {
-        await transaction.source.update({
-          where: {
-            id: sourceId,
-          },
-          data: {
-            document,
-          },
-        });
-
-        await this.sourceProcessingStageService.transition(
-          sourceId,
-          SourceProcessingStageType.CONVERSION,
-          ProcessingState.COMPLETED,
-          { transaction },
-        );
-      });
+      await this.fileStorageService.saveDoclingDocument(
+        sourceId,
+        Buffer.from(document),
+      );
+      await this.sourceProcessingStageService.transition(
+        sourceId,
+        SourceProcessingStageType.CONVERSION,
+        ProcessingState.COMPLETED,
+      );
 
       conversionCompleted = true;
       await this.ingestionQueue.addBuildRagChunks(sourceId);

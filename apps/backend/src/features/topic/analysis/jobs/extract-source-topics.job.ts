@@ -12,10 +12,11 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
-import { parseAnalysisDocument } from '../analysis-document.schema';
+import { parseStoredAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
 import { ExtractSourceTopics, TopicSpan } from '../analysis.types';
 import {
@@ -61,6 +62,7 @@ export class ExtractSourceTopicsJob {
 
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly fileStorageService: FileStorageService,
     private readonly openAiService: OpenAiService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
     private readonly analysisQueue: AnalysisQueue,
@@ -72,7 +74,7 @@ export class ExtractSourceTopicsJob {
     try {
       const source = await this.prismaService.source.findUnique({
         where: { id: sourceId },
-        select: { document: true },
+        select: { id: true },
       });
 
       if (!source) {
@@ -81,11 +83,13 @@ export class ExtractSourceTopicsJob {
         );
         return;
       }
-      if (source.document === null) {
+      const storedDocument =
+        await this.fileStorageService.readDoclingDocument(sourceId);
+      if (storedDocument === null) {
         throw new Error('Source has no converted Docling document');
       }
 
-      const document = parseAnalysisDocument(source.document);
+      const document = parseStoredAnalysisDocument(storedDocument);
       const resolvedSpans = resolveTopicSpans(document, spans);
       const allRefs = resolvedSpans.flatMap(({ refs }) => refs) as [
         string,

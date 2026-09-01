@@ -4,4 +4,5 @@ import { join } from 'node:path';
 export const fileStorageConfig = registerAs('fileStorage', () => ({
   directory: join(process.cwd(), 'uploads'),
   originalFileName: 'original.pdf',
+  doclingDocumentFileName: 'docling.json',
 }));

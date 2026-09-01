@@ -6,6 +6,7 @@ import {
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { DoclingService } from '../../../../infrastructure/docling/docling.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { ingestionConfig } from '../ingestion.config';
 import { IngestionQueue } from '../ingestion.queue';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
@@ -20,7 +21,8 @@ jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
 
 describe('BuildRagChunksJob', () => {
   const sourceId = 'source-id';
-  const source = { document: { schema_name: 'DoclingDocument' } };
+  const source = { id: sourceId };
+  const document = Buffer.from('{"schema_name":"DoclingDocument"}');
   const sourceDelegate = { findUnique: jest.fn() };
   const sourceChunkDelegate = {
     upsert: jest.fn(),
@@ -35,6 +37,7 @@ describe('BuildRagChunksJob', () => {
   const doclingService = {
     client: { chunk },
   };
+  const fileStorageService = { readDoclingDocument: jest.fn() };
   const ingestionQueue = { addRagEmbeddingFlow: jest.fn() };
   const sourceProcessingStageService = { transition: jest.fn() };
   const config = ingestionConfig();
@@ -47,6 +50,7 @@ describe('BuildRagChunksJob', () => {
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     sourceDelegate.findUnique.mockResolvedValue(source);
+    fileStorageService.readDoclingDocument.mockResolvedValue(document);
     sourceChunkDelegate.upsert.mockImplementation(({ create }) =>
       Promise.resolve({
         id: `chunk-${create.chunkIndex}`,
@@ -103,6 +107,7 @@ describe('BuildRagChunksJob', () => {
 
     job = new BuildRagChunksJob(
       doclingService as unknown as DoclingService,
+      fileStorageService as unknown as FileStorageService,
       prismaService as unknown as PrismaService,
       ingestionQueue as unknown as IngestionQueue,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
@@ -126,7 +131,7 @@ describe('BuildRagChunksJob', () => {
     );
     expect(chunk).toHaveBeenCalledWith(
       {
-        data: Buffer.from(JSON.stringify(source.document)),
+        data: document,
         filename: `${sourceId}.json`,
         contentType: 'application/json',
       },
@@ -216,6 +221,22 @@ describe('BuildRagChunksJob', () => {
     expect(sourceProcessingStageService.transition).not.toHaveBeenCalled();
     expect(chunk).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('fails indexing when the stored Docling document is missing', async () => {
+    fileStorageService.readDoclingDocument.mockResolvedValue(null);
+
+    await expect(job.process({ sourceId })).rejects.toThrow(
+      'Source has no converted Docling document',
+    );
+
+    expect(chunk).not.toHaveBeenCalled();
+    expect(sourceProcessingStageService.transition).toHaveBeenLastCalledWith(
+      sourceId,
+      SourceProcessingStageType.RAG_INDEXING,
+      ProcessingState.FAILED,
+      { error: expect.any(Error) },
+    );
   });
 
   it('records RAG indexing failures and rethrows for retry handling', async () => {

@@ -91,3 +91,7 @@ export const analysisDocumentSchema = z
 export function parseAnalysisDocument(value: unknown): DoclingDocument {
   return analysisDocumentSchema.parse(value) as DoclingDocument;
 }
+
+export function parseStoredAnalysisDocument(value: Buffer): DoclingDocument {
+  return parseAnalysisDocument(JSON.parse(value.toString('utf8')));
+}

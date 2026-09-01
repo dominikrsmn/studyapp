@@ -6,8 +6,12 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
-import { parseAnalysisDocument } from '../analysis-document.schema';
+import {
+  parseAnalysisDocument,
+  parseStoredAnalysisDocument,
+} from '../analysis-document.schema';
 import { FinalizeTopicAnalysis } from '../analysis.types';
 import { documentUnitContent } from './detect-boundaries.job';
 import {
@@ -61,6 +65,7 @@ export class FinalizeTopicAnalysisJob {
 
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly fileStorageService: FileStorageService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
   ) {}
 
@@ -68,7 +73,6 @@ export class FinalizeTopicAnalysisJob {
     const source = await this.prismaService.source.findUnique({
       where: { id: sourceId },
       select: {
-        document: true,
         moduleId: true,
         sourceTopics: {
           orderBy: { spanIndex: 'asc' },
@@ -85,8 +89,14 @@ export class FinalizeTopicAnalysisJob {
     }
 
     try {
+      const storedDocument =
+        await this.fileStorageService.readDoclingDocument(sourceId);
+      if (storedDocument === null) {
+        throw new Error('Source has no converted Docling document');
+      }
+
       validateFinalTopicAnalysis(
-        source.document,
+        parseStoredAnalysisDocument(storedDocument),
         source.moduleId,
         source.sourceTopics,
       );

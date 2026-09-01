@@ -4,6 +4,7 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { AnalysisQueue } from '../../../topic/analysis/analysis.queue';
 import { FinalizeIngestionJobData } from '../ingestion.types';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
@@ -18,6 +19,7 @@ export class FinalizeIngestionJob {
 
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly fileStorageService: FileStorageService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
     private readonly analysisQueue: AnalysisQueue,
   ) {}
@@ -26,25 +28,25 @@ export class FinalizeIngestionJob {
     let sourceFound = false;
 
     try {
+      const source = await this.prismaService.source.findUnique({
+        where: { id: sourceId },
+        select: { id: true },
+      });
+
+      if (!source) {
+        this.logger.warn(
+          `Skipping finalize-ingestion job because source "${sourceId}" no longer exists`,
+        );
+        return;
+      }
+
+      sourceFound = true;
+
+      if (!(await this.fileStorageService.hasDoclingDocument(sourceId))) {
+        throw new Error('Source has no converted Docling document');
+      }
+
       await this.prismaService.$transaction(async (transaction) => {
-        const source = await transaction.source.findUnique({
-          where: { id: sourceId },
-          select: { document: true },
-        });
-
-        if (!source) {
-          this.logger.warn(
-            `Skipping finalize-ingestion job because source "${sourceId}" no longer exists`,
-          );
-          return;
-        }
-
-        sourceFound = true;
-
-        if (source.document === null) {
-          throw new Error('Source has no converted Docling document');
-        }
-
         const [chunkMissingEmbedding] = await transaction.$queryRaw<
           ChunkMissingEmbedding[]
         >`

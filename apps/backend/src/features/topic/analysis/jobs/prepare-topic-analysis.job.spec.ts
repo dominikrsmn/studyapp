@@ -5,6 +5,7 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { createTestDoclingDocument } from '../analysis-document.fixture';
@@ -45,6 +46,7 @@ describe('PrepareTopicAnalysisJob', () => {
   ]);
   const sourceDelegate = { findUnique: jest.fn() };
   const prismaService = { source: sourceDelegate };
+  const fileStorageService = { readDoclingDocument: jest.fn() };
   const analysisQueue = { addBoundaryDetectionFlow: jest.fn() };
   const sourceProcessingStageService = { transition: jest.fn() };
   const config = analysisConfig();
@@ -55,7 +57,10 @@ describe('PrepareTopicAnalysisJob', () => {
     jest.clearAllMocks();
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
-    sourceDelegate.findUnique.mockResolvedValue({ document });
+    sourceDelegate.findUnique.mockResolvedValue({ id: sourceId });
+    fileStorageService.readDoclingDocument.mockResolvedValue(
+      Buffer.from(JSON.stringify(document)),
+    );
     analysisQueue.addBoundaryDetectionFlow.mockResolvedValue(undefined);
     sourceProcessingStageService.transition.mockResolvedValue({
       id: 'stage-id',
@@ -63,6 +68,7 @@ describe('PrepareTopicAnalysisJob', () => {
 
     job = new PrepareTopicAnalysisJob(
       prismaService as unknown as PrismaService,
+      fileStorageService as unknown as FileStorageService,
       analysisQueue as unknown as AnalysisQueue,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
       config,
@@ -78,7 +84,7 @@ describe('PrepareTopicAnalysisJob', () => {
 
     expect(sourceDelegate.findUnique).toHaveBeenCalledWith({
       where: { id: sourceId },
-      select: { document: true },
+      select: { id: true },
     });
     expect(sourceProcessingStageService.transition).toHaveBeenCalledWith(
       sourceId,
@@ -112,7 +118,7 @@ describe('PrepareTopicAnalysisJob', () => {
   });
 
   it('records preparation failures and rethrows for retry handling', async () => {
-    sourceDelegate.findUnique.mockResolvedValue({ document: null });
+    fileStorageService.readDoclingDocument.mockResolvedValue(null);
 
     await expect(job.process({ sourceId })).rejects.toThrow(
       'Source has no converted Docling document',
@@ -128,17 +134,19 @@ describe('PrepareTopicAnalysisJob', () => {
   });
 
   it('rejects a malformed stored document before creating analysis units', async () => {
-    sourceDelegate.findUnique.mockResolvedValue({
-      document: {
-        schema_name: 'DoclingDocument',
-        name: 'Malformed document',
-        body: {
-          self_ref: '#/body',
-          children: [{ $ref: '#/texts/0' }],
-        },
-        texts: [{ label: 42, self_ref: 'ref-1', text: '', orig: '' }],
-      },
-    });
+    fileStorageService.readDoclingDocument.mockResolvedValue(
+      Buffer.from(
+        JSON.stringify({
+          schema_name: 'DoclingDocument',
+          name: 'Malformed document',
+          body: {
+            self_ref: '#/body',
+            children: [{ $ref: '#/texts/0' }],
+          },
+          texts: [{ label: 42, self_ref: 'ref-1', text: '', orig: '' }],
+        }),
+      ),
+    );
 
     await expect(job.process({ sourceId })).rejects.toBeInstanceOf(ZodError);
 
@@ -152,15 +160,19 @@ describe('PrepareTopicAnalysisJob', () => {
   });
 
   it('constructs indexed overlapping analysis units across the document', async () => {
-    sourceDelegate.findUnique.mockResolvedValue({
-      document: createTestDoclingDocument(
-        'Long document',
-        Array.from({ length: 170 }, (_, index) => ({
-          label: 'paragraph',
-          self_ref: `ref-${index + 1}`,
-        })),
+    fileStorageService.readDoclingDocument.mockResolvedValue(
+      Buffer.from(
+        JSON.stringify(
+          createTestDoclingDocument(
+            'Long document',
+            Array.from({ length: 170 }, (_, index) => ({
+              label: 'paragraph',
+              self_ref: `ref-${index + 1}`,
+            })),
+          ),
+        ),
       ),
-    });
+    );
 
     await job.process({ sourceId });
 

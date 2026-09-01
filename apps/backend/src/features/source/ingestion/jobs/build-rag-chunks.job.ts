@@ -8,6 +8,7 @@ import {
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { DoclingService } from '../../../../infrastructure/docling/docling.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { ingestionConfig } from '../ingestion.config';
 import { IngestionQueue } from '../ingestion.queue';
 import { BuildRagChunksJobData } from '../ingestion.types';
@@ -30,6 +31,7 @@ export class BuildRagChunksJob {
 
   constructor(
     private readonly doclingService: DoclingService,
+    private readonly fileStorageService: FileStorageService,
     private readonly prismaService: PrismaService,
     private readonly ingestionQueue: IngestionQueue,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
@@ -45,7 +47,7 @@ export class BuildRagChunksJob {
     try {
       const source = await this.prismaService.source.findUnique({
         where: { id: sourceId },
-        select: { document: true },
+        select: { id: true },
       });
 
       if (!source) {
@@ -62,13 +64,15 @@ export class BuildRagChunksJob {
       );
       indexingStarted = true;
 
-      if (source.document === null) {
+      const document =
+        await this.fileStorageService.readDoclingDocument(sourceId);
+      if (document === null) {
         throw new Error('Source has no converted Docling document');
       }
 
       const chunking = await this.doclingService.client.chunk(
         {
-          data: Buffer.from(JSON.stringify(source.document)),
+          data: document,
           filename: `${sourceId}.json`,
           contentType: 'application/json',
         },

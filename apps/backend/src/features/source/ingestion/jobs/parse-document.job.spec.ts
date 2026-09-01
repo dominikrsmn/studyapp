@@ -21,15 +21,14 @@ describe('ParseDocumentJob', () => {
   const sourceId = 'source-id';
   const sourceDelegate = {
     findUnique: jest.fn(),
-    update: jest.fn(),
   };
-  const transaction = { source: sourceDelegate };
   const prismaService = {
     source: sourceDelegate,
-    $transaction: jest.fn(),
   };
   const fileStorageService = {
     getSourcePath: jest.fn(),
+    hasDoclingDocument: jest.fn(),
+    saveDoclingDocument: jest.fn(),
   };
   const doclingService = {
     client: {
@@ -50,17 +49,14 @@ describe('ParseDocumentJob', () => {
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     sourceDelegate.findUnique.mockResolvedValue({
-      document: null,
       processingStages: [],
     });
-    sourceDelegate.update.mockResolvedValue({ id: sourceId });
     sourceProcessingStageService.transition.mockResolvedValue({
       id: 'stage-id',
     });
-    prismaService.$transaction.mockImplementation((operation) =>
-      operation(transaction),
-    );
     fileStorageService.getSourcePath.mockReturnValue('/uploads/source.pdf');
+    fileStorageService.hasDoclingDocument.mockResolvedValue(false);
+    fileStorageService.saveDoclingDocument.mockResolvedValue(undefined);
     doclingService.client.convert.mockResolvedValue({
       document: { name: 'converted document' },
     });
@@ -92,23 +88,22 @@ describe('ParseDocumentJob', () => {
       '/uploads/source.pdf',
       { options: { to_formats: ['json'], abort_on_error: true } },
     );
-    expect(sourceDelegate.update).toHaveBeenCalledWith({
-      where: { id: sourceId },
-      data: { document: { name: 'converted document' } },
-    });
+    expect(fileStorageService.saveDoclingDocument).toHaveBeenCalledWith(
+      sourceId,
+      Buffer.from('{"name":"converted document"}'),
+    );
     expect(sourceProcessingStageService.transition).toHaveBeenNthCalledWith(
       2,
       sourceId,
       SourceProcessingStageType.CONVERSION,
       ProcessingState.COMPLETED,
-      { transaction },
     );
     expect(ingestionQueue.addBuildRagChunks).toHaveBeenCalledWith(sourceId);
   });
 
   it('resumes at the next job when conversion is already complete', async () => {
+    fileStorageService.hasDoclingDocument.mockResolvedValue(true);
     sourceDelegate.findUnique.mockResolvedValue({
-      document: { name: 'converted document' },
       processingStages: [{ state: ProcessingState.COMPLETED }],
     });
 
@@ -116,6 +111,20 @@ describe('ParseDocumentJob', () => {
 
     expect(sourceProcessingStageService.transition).not.toHaveBeenCalled();
     expect(doclingService.client.convert).not.toHaveBeenCalled();
+    expect(ingestionQueue.addBuildRagChunks).toHaveBeenCalledWith(sourceId);
+  });
+
+  it('repairs the conversion state when the document was stored before a retry', async () => {
+    fileStorageService.hasDoclingDocument.mockResolvedValue(true);
+
+    await job.process({ sourceId });
+
+    expect(doclingService.client.convert).not.toHaveBeenCalled();
+    expect(sourceProcessingStageService.transition).toHaveBeenCalledWith(
+      sourceId,
+      SourceProcessingStageType.CONVERSION,
+      ProcessingState.COMPLETED,
+    );
     expect(ingestionQueue.addBuildRagChunks).toHaveBeenCalledWith(sourceId);
   });
 
@@ -144,7 +153,6 @@ describe('ParseDocumentJob', () => {
       sourceId,
       SourceProcessingStageType.CONVERSION,
       ProcessingState.COMPLETED,
-      { transaction },
     );
     expect(sourceProcessingStageService.transition).not.toHaveBeenCalledWith(
       sourceId,

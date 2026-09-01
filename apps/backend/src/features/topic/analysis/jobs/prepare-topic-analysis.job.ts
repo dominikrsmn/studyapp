@@ -9,9 +9,10 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
-import { parseAnalysisDocument } from '../analysis-document.schema';
+import { parseStoredAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';
 import { AnalysisUnit, PrepareTopicAnalysis } from '../analysis.types';
 
@@ -21,6 +22,7 @@ export class PrepareTopicAnalysisJob {
 
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly fileStorageService: FileStorageService,
     private readonly analysisQueue: AnalysisQueue,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
     @Inject(analysisConfig.KEY)
@@ -33,7 +35,7 @@ export class PrepareTopicAnalysisJob {
     try {
       const source = await this.prismaService.source.findUnique({
         where: { id: sourceId },
-        select: { document: true },
+        select: { id: true },
       });
 
       if (!source) {
@@ -50,11 +52,13 @@ export class PrepareTopicAnalysisJob {
       );
       analysisStarted = true;
 
-      if (source.document === null) {
+      const storedDocument =
+        await this.fileStorageService.readDoclingDocument(sourceId);
+      if (storedDocument === null) {
         throw new Error('Source has no converted Docling document');
       }
 
-      const document = parseAnalysisDocument(source.document);
+      const document = parseStoredAnalysisDocument(storedDocument);
       const analysisUnits = createBoundaryAnalysisUnits(
         document,
         this.config.boundaryDetection.windowSize,

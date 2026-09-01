@@ -5,6 +5,7 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
@@ -43,6 +44,7 @@ describe('MergeBoundariesJob', () => {
     ),
   );
   const findUnique = jest.fn();
+  const readDoclingDocument = jest.fn();
   const getChildrenValues = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
@@ -62,7 +64,10 @@ describe('MergeBoundariesJob', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
-    findUnique.mockResolvedValue({ document });
+    findUnique.mockResolvedValue({ id: sourceId });
+    readDoclingDocument.mockResolvedValue(
+      Buffer.from(JSON.stringify(document)),
+    );
     getChildrenValues.mockResolvedValue({
       'bull:topic-analysis:detect-boundaries/source-id/0': {
         boundaries: [{ afterRef: 'r4', confidence: 0.8 }],
@@ -89,6 +94,7 @@ describe('MergeBoundariesJob', () => {
 
     mergeJob = new MergeBoundariesJob(
       { source: { findUnique } } as unknown as PrismaService,
+      { readDoclingDocument } as unknown as FileStorageService,
       { client: { responses: { parse } } } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
       { addExtractSourceTopics } as unknown as AnalysisQueue,

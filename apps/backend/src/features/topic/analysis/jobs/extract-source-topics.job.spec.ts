@@ -4,6 +4,7 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
@@ -71,6 +72,7 @@ describe('ExtractSourceTopicsJob', () => {
     ],
   };
   const findUnique = jest.fn();
+  const readDoclingDocument = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
   const addMatchSourceTopics = jest.fn();
@@ -93,7 +95,10 @@ describe('ExtractSourceTopicsJob', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
-    findUnique.mockResolvedValue({ document });
+    findUnique.mockResolvedValue({ id: sourceId });
+    readDoclingDocument.mockResolvedValue(
+      Buffer.from(JSON.stringify(document)),
+    );
     parse.mockResolvedValue({
       output_parsed: {
         topics: [
@@ -142,6 +147,7 @@ describe('ExtractSourceTopicsJob', () => {
 
     job = new ExtractSourceTopicsJob(
       prismaService as unknown as PrismaService,
+      { readDoclingDocument } as unknown as FileStorageService,
       { client: { responses: { parse } } } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
       { addMatchSourceTopics } as unknown as AnalysisQueue,

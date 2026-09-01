@@ -4,6 +4,7 @@ import {
   SourceProcessingStageType,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { AnalysisQueue } from '../../../topic/analysis/analysis.queue';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 import { FinalizeIngestionJob } from './finalize-ingestion.job';
@@ -19,8 +20,12 @@ describe('FinalizeIngestionJob', () => {
   const sourceId = 'source-id';
   const sourceDelegate = { findUnique: jest.fn() };
   const queryRaw = jest.fn();
-  const transaction = { source: sourceDelegate, $queryRaw: queryRaw };
-  const prismaService = { $transaction: jest.fn() };
+  const transaction = { $queryRaw: queryRaw };
+  const prismaService = {
+    source: sourceDelegate,
+    $transaction: jest.fn(),
+  };
+  const fileStorageService = { hasDoclingDocument: jest.fn() };
   const sourceProcessingStageService = { transition: jest.fn() };
   const analysisQueue = { addPrepareTopicAnalysis: jest.fn() };
 
@@ -30,9 +35,8 @@ describe('FinalizeIngestionJob', () => {
     jest.clearAllMocks();
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
-    sourceDelegate.findUnique.mockResolvedValue({
-      document: { schema_name: 'DoclingDocument' },
-    });
+    sourceDelegate.findUnique.mockResolvedValue({ id: sourceId });
+    fileStorageService.hasDoclingDocument.mockResolvedValue(true);
     queryRaw.mockResolvedValue([]);
     prismaService.$transaction.mockImplementation((operation) =>
       operation(transaction),
@@ -44,6 +48,7 @@ describe('FinalizeIngestionJob', () => {
 
     job = new FinalizeIngestionJob(
       prismaService as unknown as PrismaService,
+      fileStorageService as unknown as FileStorageService,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
       analysisQueue as unknown as AnalysisQueue,
     );
@@ -58,7 +63,7 @@ describe('FinalizeIngestionJob', () => {
 
     expect(sourceDelegate.findUnique).toHaveBeenCalledWith({
       where: { id: sourceId },
-      select: { document: true },
+      select: { id: true },
     });
     expect(queryRaw).toHaveBeenCalledTimes(1);
 
@@ -109,7 +114,7 @@ describe('FinalizeIngestionJob', () => {
   });
 
   it('rejects finalization when document conversion has no result', async () => {
-    sourceDelegate.findUnique.mockResolvedValue({ document: null });
+    fileStorageService.hasDoclingDocument.mockResolvedValue(false);
 
     await expect(job.process({ sourceId })).rejects.toThrow(
       'Source has no converted Docling document',

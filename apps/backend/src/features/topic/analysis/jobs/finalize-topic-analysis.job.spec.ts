@@ -5,9 +5,9 @@ import {
   TopicState,
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
 import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
 import { createTestDoclingDocument } from '../analysis-document.fixture';
-import { AnalysisQueue } from '../analysis.queue';
 import {
   FinalizeTopicAnalysisJob,
   validateFinalTopicAnalysis,
@@ -114,6 +114,7 @@ describe('FinalizeTopicAnalysisJob', () => {
     }),
   ];
   const findUnique = jest.fn();
+  const readDoclingDocument = jest.fn();
   const transaction = { source: { findUnique } };
   const findProcessingStage = jest.fn();
   const prismaService = {
@@ -133,6 +134,9 @@ describe('FinalizeTopicAnalysisJob', () => {
       processingStages: [{ state: ProcessingState.PROCESSING }],
       sourceTopics,
     });
+    readDoclingDocument.mockResolvedValue(
+      Buffer.from(JSON.stringify(document)),
+    );
     findProcessingStage.mockResolvedValue({
       state: ProcessingState.PROCESSING,
     });
@@ -143,8 +147,8 @@ describe('FinalizeTopicAnalysisJob', () => {
     addSummarizeTopic.mockResolvedValue(undefined);
     job = new FinalizeTopicAnalysisJob(
       prismaService as unknown as PrismaService,
+      { readDoclingDocument } as unknown as FileStorageService,
       { transition } as unknown as SourceProcessingStageService,
-      { addSummarizeTopic } as unknown as AnalysisQueue,
     );
   });
 

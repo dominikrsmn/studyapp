@@ -14,6 +14,7 @@ import { ExtractSourceTopicsJob } from './jobs/extract-source-topics.job';
 import { MatchSourceTopicsJob } from './jobs/match-source-topics.job';
 import { FinalizeTopicAnalysisJob } from './jobs/finalize-topic-analysis.job';
 import { SummarizeTopicJob } from './jobs/summarize-topic.job';
+import { FileStorageModule } from '../../../infrastructure/filestorage/filestorage.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SummarizeTopicJob } from './jobs/summarize-topic.job';
       name: analysisConfig().flowProducer.name,
     }),
     PrismaModule,
+    FileStorageModule,
     OpenAiModule,
     forwardRef(() => IngestionModule),
   ],
