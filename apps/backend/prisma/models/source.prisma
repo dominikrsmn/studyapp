@@ -4,8 +4,6 @@ model Source {
   mimeType   String
   storageKey String?
 
-  document Json?
-
   moduleId String
   module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
