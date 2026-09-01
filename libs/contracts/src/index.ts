@@ -6,6 +6,8 @@ export * from './source/source.schema';
 export * from './source/create-source.schema';
 export * from './source/source-events.schema';
 
+export * from './topic/topic.schema';
+
 export * from './search/semantic-search.schema';
 export * from './ai/question-answering.schema';
 

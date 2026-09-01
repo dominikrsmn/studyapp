@@ -4,9 +4,11 @@ import { TopicService } from './topic.service';
 
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
 import { AnalysisModule } from './analysis/analysis.module';
+import { TopicController } from './topic.controller';
 
 @Module({
   imports: [AnalysisModule, PrismaModule, OpenAiModule],
+  controllers: [TopicController],
   providers: [TopicService],
   exports: [TopicService],
 })
