@@ -317,6 +317,67 @@ describe('ExtractSourceTopicsJob', () => {
     );
   });
 
+  it('keeps an undescribed picture in the topic span but rejects it as an evidence endpoint', async () => {
+    const documentWithEmptyPicture = createTestDoclingDocument(
+      'Illustrated graph algorithms',
+      [
+        {
+          label: 'section_header',
+          self_ref: 'heading',
+          text: 'Shortest Paths',
+          level: 1,
+        },
+        {
+          label: 'picture',
+          self_ref: 'empty-picture',
+          annotations: [],
+        },
+        {
+          label: 'paragraph',
+          self_ref: 'explanation',
+          text: 'Relaxation improves tentative distances.',
+        },
+      ],
+    );
+    readDoclingDocument.mockResolvedValue(
+      Buffer.from(JSON.stringify(documentWithEmptyPicture)),
+    );
+    parse.mockResolvedValue({
+      output_parsed: {
+        topics: [
+          {
+            spanIndex: 0,
+            title: 'Shortest Paths',
+            description: 'Shortest-path computation through relaxation.',
+            detectionConfidence: 0.9,
+            evidence: [
+              {
+                description: 'The source explains relaxation.',
+                spans: [
+                  { startRef: 'empty-picture', endRef: 'empty-picture' },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    await expect(
+      job.process({
+        sourceId,
+        spans: [{ spanIndex: 0, startRef: 'heading', endRef: 'explanation' }],
+      }),
+    ).rejects.toThrow('Invalid option');
+
+    const serializedInput = JSON.parse(parse.mock.calls[0][0].input[1].content);
+    expect(serializedInput.spans[0].documentUnits).toContain(
+      '<unit ref="empty-picture" type="picture">\n\n</unit>',
+    );
+    expect(prismaService.$transaction).not.toHaveBeenCalled();
+    expect(addMatchSourceTopics).not.toHaveBeenCalled();
+  });
+
   it('validates complete contiguous segmentation before calling the model', async () => {
     await expect(
       job.process({
