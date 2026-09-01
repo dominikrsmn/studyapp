@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
+import { randomUUID } from 'node:crypto';
 import {
   type DoclingDocument,
   isDocling,
@@ -162,6 +163,11 @@ export class ExtractSourceTopicsJob {
     spanCount: number,
   ): Promise<void> {
     await this.prismaService.$transaction(async (transaction) => {
+      const persistedTopics: Array<{
+        id: string;
+        topic: ExtractedTopic;
+      }> = [];
+
       for (const topic of topics) {
         const sourceTopic = await transaction.sourceTopic.upsert({
           where: {
@@ -195,22 +201,40 @@ export class ExtractSourceTopicsJob {
           select: { id: true },
         });
 
-        await transaction.topicEvidence.deleteMany({
-          where: { sourceTopicId: sourceTopic.id },
-        });
-
-        for (const evidence of topic.evidence) {
-          await transaction.topicEvidence.create({
-            data: {
-              sourceTopicId: sourceTopic.id,
-              content: evidence.description,
-              spans: {
-                create: evidence.spans,
-              },
-            },
-          });
-        }
+        persistedTopics.push({ id: sourceTopic.id, topic });
       }
+
+      const sourceTopicIds = persistedTopics.map(({ id }) => id);
+      await transaction.topicEvidence.deleteMany({
+        where: { sourceTopicId: { in: sourceTopicIds } },
+      });
+
+      const evidenceRows = persistedTopics.flatMap(({ id, topic }) =>
+        topic.evidence.map((evidence) => ({
+          id: randomUUID(),
+          sourceTopicId: id,
+          content: evidence.description,
+          spans: evidence.spans,
+        })),
+      );
+
+      await transaction.topicEvidence.createMany({
+        data: evidenceRows.map(({ id, sourceTopicId, content }) => ({
+          id,
+          sourceTopicId,
+          content,
+        })),
+      });
+
+      await transaction.topicEvidenceSpan.createMany({
+        data: evidenceRows.flatMap(({ id, spans }) =>
+          spans.map((span) => ({
+            id: randomUUID(),
+            topicEvidenceId: id,
+            ...span,
+          })),
+        ),
+      });
 
       await transaction.sourceTopic.deleteMany({
         where: {

@@ -27,6 +27,40 @@ jest.mock('../../../../infrastructure/open-ai/open-ai.service', () => ({
 jest.mock('../../../source/ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},
 }));
+jest.mock('@docling/docling-core', () => ({
+  iterateDocumentItems: function* (document: {
+    body: { children?: Array<{ $ref: string }> };
+    [collection: string]: unknown;
+  }) {
+    const resolve = (ref: string) => {
+      const [, collection, rawIndex] = ref.split('/');
+      return (document[collection] as Array<Record<string, unknown>>)[
+        Number(rawIndex)
+      ];
+    };
+    const visit = function* (
+      item: Record<string, unknown>,
+    ): Generator<[Record<string, unknown>]> {
+      yield [item];
+      for (const child of (item.children ?? []) as Array<{ $ref: string }>) {
+        yield* visit(resolve(child.$ref));
+      }
+    };
+
+    for (const child of document.body.children ?? []) {
+      yield* visit(resolve(child.$ref));
+    }
+  },
+  isDocling: {
+    DocItem: (item: Record<string, unknown>) => 'label' in item,
+    SectionHeaderItem: (item: Record<string, unknown>) =>
+      item.label === 'section_header',
+    TableItem: (item: Record<string, unknown>) => item.label === 'table',
+    PictureItem: (item: Record<string, unknown>) => item.label === 'picture',
+    PictureDescription: (annotation: Record<string, unknown>) =>
+      annotation.kind === 'description',
+  },
+}));
 
 describe('ExtractSourceTopicsJob', () => {
   const sourceId = 'source-id';
@@ -82,9 +116,12 @@ describe('ExtractSourceTopicsJob', () => {
   };
   const topicEvidence = {
     deleteMany: jest.fn(),
-    create: jest.fn(),
+    createMany: jest.fn(),
   };
-  const transaction = { sourceTopic, topicEvidence };
+  const topicEvidenceSpan = {
+    createMany: jest.fn(),
+  };
+  const transaction = { sourceTopic, topicEvidence, topicEvidenceSpan };
   const prismaService = {
     source: { findUnique },
     $transaction: jest.fn(),
@@ -138,7 +175,8 @@ describe('ExtractSourceTopicsJob', () => {
     );
     sourceTopic.deleteMany.mockResolvedValue({ count: 0 });
     topicEvidence.deleteMany.mockResolvedValue({ count: 0 });
-    topicEvidence.create.mockResolvedValue({ id: 'evidence-id' });
+    topicEvidence.createMany.mockResolvedValue({ count: 2 });
+    topicEvidenceSpan.createMany.mockResolvedValue({ count: 2 });
     prismaService.$transaction.mockImplementation((operation) =>
       operation(transaction),
     );
@@ -202,33 +240,63 @@ describe('ExtractSourceTopicsJob', () => {
       }),
       select: { id: true },
     });
-    expect(topicEvidence.create).toHaveBeenNthCalledWith(1, {
-      data: {
+    expect(topicEvidence.deleteMany).toHaveBeenCalledTimes(1);
+    expect(topicEvidence.deleteMany).toHaveBeenCalledWith({
+      where: {
+        sourceTopicId: { in: ['source-topic-0', 'source-topic-1'] },
+      },
+    });
+    const evidenceRows = topicEvidence.createMany.mock.calls[0][0].data;
+    expect(evidenceRows).toEqual([
+      {
+        id: expect.any(String),
         sourceTopicId: 'source-topic-0',
         content:
           'The algorithm greedily selects a minimum-distance unsettled vertex and relaxes outgoing edges.',
-        spans: {
-          create: [
-            {
-              content:
-                'Dijkstra selects the unsettled vertex with minimum distance.\n\nRelaxation improves a tentative distance through an edge.',
-              startRef: 'r1',
-              endRef: 'r2',
-              pageStart: 1,
-              pageEnd: 2,
-            },
-          ],
-        },
       },
+      {
+        id: expect.any(String),
+        sourceTopicId: 'source-topic-1',
+        content:
+          'Bellman–Ford computes paths through repeated edge relaxation.',
+      },
+    ]);
+    expect(topicEvidenceSpan.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          id: expect.any(String),
+          topicEvidenceId: evidenceRows[0].id,
+          content:
+            'Dijkstra selects the unsettled vertex with minimum distance.\n\nRelaxation improves a tentative distance through an edge.',
+          startRef: 'r1',
+          endRef: 'r2',
+          pageStart: 1,
+          pageEnd: 2,
+        },
+        {
+          id: expect.any(String),
+          topicEvidenceId: evidenceRows[1].id,
+          content: 'Bellman-Ford repeatedly relaxes every edge.',
+          startRef: 'r4',
+          endRef: 'r4',
+          pageStart: 3,
+          pageEnd: 3,
+        },
+      ],
     });
     expect(sourceTopic.deleteMany).toHaveBeenCalledWith({
       where: { sourceId, spanIndex: { gte: 2 } },
     });
     expect(addMatchSourceTopics).toHaveBeenCalledWith(sourceId);
-    const evidenceCallOrder = topicEvidence.create.mock.invocationCallOrder;
-    expect(evidenceCallOrder[evidenceCallOrder.length - 1]).toBeLessThan(
-      addMatchSourceTopics.mock.invocationCallOrder[0],
+    expect(topicEvidence.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+      topicEvidence.createMany.mock.invocationCallOrder[0],
     );
+    expect(topicEvidence.createMany.mock.invocationCallOrder[0]).toBeLessThan(
+      topicEvidenceSpan.createMany.mock.invocationCallOrder[0],
+    );
+    expect(
+      topicEvidenceSpan.createMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(addMatchSourceTopics.mock.invocationCallOrder[0]);
   });
 
   it('rejects evidence refs outside their final topic span', async () => {
