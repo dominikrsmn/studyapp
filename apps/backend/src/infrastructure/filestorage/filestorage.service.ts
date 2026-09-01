@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { mkdir, readFile, rm, writeFile } from 'fs/promises';
+import { access, mkdir, readFile, rename, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { randomUUID } from 'node:crypto';
 import { ConfigType } from '@nestjs/config';
 import { fileStorageConfig } from '../config/filestorage.config';
 
@@ -18,6 +19,45 @@ export class FileStorageService {
 
   async read(key: string): Promise<Buffer> {
     return await readFile(this.filePath(key));
+  }
+
+  async saveDoclingDocument(key: string, document: Buffer): Promise<void> {
+    await mkdir(this.fileDir(key), { recursive: true });
+
+    const path = this.doclingDocumentPath(key);
+    const temporaryPath = `${path}.${randomUUID()}.tmp`;
+
+    try {
+      await writeFile(temporaryPath, document);
+      await rename(temporaryPath, path);
+    } finally {
+      await rm(temporaryPath, { force: true }).catch(() => undefined);
+    }
+  }
+
+  async readDoclingDocument(key: string): Promise<Buffer | null> {
+    try {
+      return await readFile(this.doclingDocumentPath(key));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
+  async hasDoclingDocument(key: string): Promise<boolean> {
+    try {
+      await access(this.doclingDocumentPath(key));
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+        return false;
+      }
+
+      throw error;
+    }
   }
 
   async delete(key: string): Promise<void> {
@@ -42,5 +82,9 @@ export class FileStorageService {
 
   private filePath(key: string) {
     return join(this.fileDir(key), this.config.originalFileName);
+  }
+
+  private doclingDocumentPath(key: string) {
+    return join(this.fileDir(key), this.config.doclingDocumentFileName);
   }
 }
