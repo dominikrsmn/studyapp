@@ -92,12 +92,19 @@ export class ExtractSourceTopicsJob {
 
       const document = parseStoredAnalysisDocument(storedDocument);
       const resolvedSpans = resolveTopicSpans(document, spans);
-      const allRefs = resolvedSpans.flatMap(({ refs }) => refs) as [
+      const evidenceRefs = resolvedSpans.flatMap(({ units }) =>
+        units
+          .filter((unit) => documentUnitContent(unit).length > 0)
+          .map((unit) => unit.self_ref),
+      ) as [
         string,
         ...string[],
       ];
+      if (evidenceRefs.length === 0) {
+        throw new Error('Source document contains no evidence-bearing units');
+      }
       const responseSchema = sourceTopicExtractionSchema(
-        allRefs,
+        evidenceRefs,
         resolvedSpans.length,
       );
       const response = await this.openAiService.client.responses.parse({
