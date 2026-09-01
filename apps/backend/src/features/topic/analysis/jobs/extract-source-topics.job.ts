@@ -416,7 +416,7 @@ function groundExtractedTopics(
           .join('\n\n');
         if (!content) {
           throw new Error(
-            'Selected evidence span contains no canonical content',
+            'Selected evidence span contains no canonical content; evidence refs are never expanded automatically',
           );
         }
 
@@ -502,6 +502,8 @@ Define the topic's scope rather than summarizing the passage. State what knowled
 A SourceTopic is one contiguous occurrence of a topic. Each evidence item is one meaningful piece of learnable information contained in that occurrence. Put factual, methodological, conceptual, or explanatory detail in evidence descriptions, not in the topic title.
 
 Ground every evidence item with one or more exact inclusive locations. Select startRef and endRef only from units inside that topic's supplied span. A location may cover one unit by using the same ref twice. Multiple locations for one evidence item must be non-overlapping and in document order. Do not quote or reproduce source excerpts: the system reconstructs evidence content deterministically from the selected canonical refs.
+
+Select the exact content-bearing endpoints that support the evidence. Never rely on the system to replace an empty ref or expand a location to nearby content.
 
 # Confidence
 
