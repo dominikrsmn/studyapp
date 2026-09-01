@@ -41,7 +41,10 @@ export class PrismaService
         logDriverError('PostgreSQL connection error', error),
     });
 
-    super({ adapter });
+    super({
+      adapter,
+      transactionOptions: { maxWait: 15_000 },
+    });
     this.pool = pool;
   }
 
