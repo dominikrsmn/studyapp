@@ -29,6 +29,7 @@ import { deriveOrderedDocumentUnitRefs } from './prepare-topic-analysis.job';
 
 export interface ResolvedTopicSpan extends TopicSpan {
   refs: string[];
+  evidenceRefs: string[];
   units: NodeItem[];
   pageStart: number | null;
   pageEnd: number | null;
@@ -92,10 +93,8 @@ export class ExtractSourceTopicsJob {
 
       const document = parseStoredAnalysisDocument(storedDocument);
       const resolvedSpans = resolveTopicSpans(document, spans);
-      const evidenceRefs = resolvedSpans.flatMap(({ units }) =>
-        units
-          .filter((unit) => documentUnitContent(unit).length > 0)
-          .map((unit) => unit.self_ref),
+      const evidenceRefs = resolvedSpans.flatMap(
+        (span) => span.evidenceRefs,
       ) as [
         string,
         ...string[],
@@ -331,12 +330,21 @@ export function resolveTopicSpans(
       }
       return unit;
     });
+    const evidenceRefs = units
+      .filter((unit) => documentUnitContent(unit).length > 0)
+      .map((unit) => unit.self_ref);
+    if (evidenceRefs.length === 0) {
+      throw new Error(
+        `Topic span ${span.spanIndex} contains no evidence-bearing units`,
+      );
+    }
     expectedStartIndex = endIndex + 1;
     const pages = pageRange(units);
 
     return {
       ...span,
       refs,
+      evidenceRefs,
       units,
       ...pages,
     };
