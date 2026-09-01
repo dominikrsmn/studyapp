@@ -126,6 +126,7 @@ describe('ExtractSourceTopicsJob', () => {
   const prismaService = {
     source: { findUnique },
     $transaction: jest.fn(),
+    getPoolState: jest.fn().mockReturnValue({ total: 1, idle: 1, waiting: 0 }),
   };
   const config = analysisConfig();
   let job: ExtractSourceTopicsJob;
@@ -424,6 +425,32 @@ describe('ExtractSourceTopicsJob', () => {
 
     expect(transition).not.toHaveBeenCalled();
     expect(addMatchSourceTopics).not.toHaveBeenCalled();
+  });
+
+  it('logs pool state, Prisma details, and transaction timing on persistence failure', async () => {
+    const persistenceError = Object.assign(
+      new Error('Unable to start a transaction in the given time'),
+      {
+        name: 'PrismaClientKnownRequestError',
+        code: 'P2028',
+        clientVersion: '7.9.1',
+        meta: { reason: 'transaction start timeout' },
+      },
+    );
+    prismaService.$transaction.mockRejectedValue(persistenceError);
+
+    await expect(job.process(data)).rejects.toBe(persistenceError);
+
+    expect(jest.mocked(Logger.prototype.error).mock.calls).toEqual(
+      expect.arrayContaining([
+        [
+          expect.stringMatching(
+            /transactionWaitMs.*poolBefore.*poolAfter.*"code":"P2028".*transaction start timeout/,
+          ),
+          persistenceError.stack,
+        ],
+      ]),
+    );
   });
 
   it('skips deleted sources without calling the model or changing state', async () => {

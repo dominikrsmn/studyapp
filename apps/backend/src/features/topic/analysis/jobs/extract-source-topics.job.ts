@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import {
   type DoclingDocument,
   isDocling,
@@ -174,87 +175,151 @@ export class ExtractSourceTopicsJob {
     topics: ExtractedTopic[],
     spanCount: number,
   ): Promise<void> {
-    await this.prismaService.$transaction(async (transaction) => {
-      const persistedTopics: Array<{
-        id: string;
-        topic: ExtractedTopic;
-      }> = [];
+    const requestedAt = performance.now();
+    let startedAt: number | undefined;
+    const poolBefore = this.prismaService.getPoolState();
 
-      for (const topic of topics) {
-        const sourceTopic = await transaction.sourceTopic.upsert({
-          where: {
-            sourceId_spanIndex: {
+    try {
+      await this.prismaService.$transaction(async (transaction) => {
+        startedAt = performance.now();
+        const persistedTopics: Array<{
+          id: string;
+          topic: ExtractedTopic;
+        }> = [];
+
+        for (const topic of topics) {
+          const sourceTopic = await transaction.sourceTopic.upsert({
+            where: {
+              sourceId_spanIndex: {
+                sourceId,
+                spanIndex: topic.spanIndex,
+              },
+            },
+            create: {
               sourceId,
               spanIndex: topic.spanIndex,
+              title: topic.title,
+              description: topic.description,
+              detectionConfidence: topic.detectionConfidence,
+              startRef: topic.startRef,
+              endRef: topic.endRef,
+              pageStart: topic.pageStart,
+              pageEnd: topic.pageEnd,
             },
-          },
-          create: {
-            sourceId,
-            spanIndex: topic.spanIndex,
-            title: topic.title,
-            description: topic.description,
-            detectionConfidence: topic.detectionConfidence,
-            startRef: topic.startRef,
-            endRef: topic.endRef,
-            pageStart: topic.pageStart,
-            pageEnd: topic.pageEnd,
-          },
-          update: {
-            title: topic.title,
-            description: topic.description,
-            detectionConfidence: topic.detectionConfidence,
-            canonicalizationConfidence: null,
-            topicId: null,
-            startRef: topic.startRef,
-            endRef: topic.endRef,
-            pageStart: topic.pageStart,
-            pageEnd: topic.pageEnd,
-          },
-          select: { id: true },
+            update: {
+              title: topic.title,
+              description: topic.description,
+              detectionConfidence: topic.detectionConfidence,
+              canonicalizationConfidence: null,
+              topicId: null,
+              startRef: topic.startRef,
+              endRef: topic.endRef,
+              pageStart: topic.pageStart,
+              pageEnd: topic.pageEnd,
+            },
+            select: { id: true },
+          });
+
+          persistedTopics.push({ id: sourceTopic.id, topic });
+        }
+
+        const sourceTopicIds = persistedTopics.map(({ id }) => id);
+        await transaction.topicEvidence.deleteMany({
+          where: { sourceTopicId: { in: sourceTopicIds } },
         });
 
-        persistedTopics.push({ id: sourceTopic.id, topic });
-      }
-
-      const sourceTopicIds = persistedTopics.map(({ id }) => id);
-      await transaction.topicEvidence.deleteMany({
-        where: { sourceTopicId: { in: sourceTopicIds } },
-      });
-
-      const evidenceRows = persistedTopics.flatMap(({ id, topic }) =>
-        topic.evidence.map((evidence) => ({
-          id: randomUUID(),
-          sourceTopicId: id,
-          content: evidence.description,
-          spans: evidence.spans,
-        })),
-      );
-
-      await transaction.topicEvidence.createMany({
-        data: evidenceRows.map(({ id, sourceTopicId, content }) => ({
-          id,
-          sourceTopicId,
-          content,
-        })),
-      });
-
-      await transaction.topicEvidenceSpan.createMany({
-        data: evidenceRows.flatMap(({ id, spans }) =>
-          spans.map((span) => ({
+        const evidenceRows = persistedTopics.flatMap(({ id, topic }) =>
+          topic.evidence.map((evidence) => ({
             id: randomUUID(),
-            topicEvidenceId: id,
-            ...span,
+            sourceTopicId: id,
+            content: evidence.description,
+            spans: evidence.spans,
           })),
-        ),
-      });
+        );
 
-      await transaction.sourceTopic.deleteMany({
-        where: {
-          sourceId,
-          spanIndex: { gte: spanCount },
-        },
+        await transaction.topicEvidence.createMany({
+          data: evidenceRows.map(({ id, sourceTopicId, content }) => ({
+            id,
+            sourceTopicId,
+            content,
+          })),
+        });
+
+        await transaction.topicEvidenceSpan.createMany({
+          data: evidenceRows.flatMap(({ id, spans }) =>
+            spans.map((span) => ({
+              id: randomUUID(),
+              topicEvidenceId: id,
+              ...span,
+            })),
+          ),
+        });
+
+        await transaction.sourceTopic.deleteMany({
+          where: {
+            sourceId,
+            spanIndex: { gte: spanCount },
+          },
+        });
       });
-    });
+    } catch (error) {
+      const failedAt = performance.now();
+      this.logger.error(
+        `Failed to persist topics for source "${sourceId}": ${JSON.stringify({
+          transactionWaitMs: Math.round((startedAt ?? failedAt) - requestedAt),
+          transactionDurationMs:
+            startedAt === undefined ? null : Math.round(failedAt - startedAt),
+          poolBefore,
+          poolAfter: this.prismaService.getPoolState(),
+          prisma: prismaErrorDetails(error),
+        })}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
+    }
+
+    const completedAt = performance.now();
+    this.logger.debug(
+      `Persisted topics for source "${sourceId}": ${JSON.stringify({
+        transactionWaitMs: Math.round((startedAt ?? completedAt) - requestedAt),
+        transactionDurationMs:
+          startedAt === undefined ? null : Math.round(completedAt - startedAt),
+        poolBefore,
+        poolAfter: this.prismaService.getPoolState(),
+      })}`,
+    );
+  }
+}
+
+function prismaErrorDetails(error: unknown): {
+  name: string | null;
+  code: string | null;
+  clientVersion: string | null;
+  meta: unknown;
+} {
+  const value =
+    typeof error === 'object' && error !== null
+      ? (error as Record<string, unknown>)
+      : {};
+
+  return {
+    name: error instanceof Error ? error.name : null,
+    code: typeof value.code === 'string' ? value.code : null,
+    clientVersion:
+      typeof value.clientVersion === 'string' ? value.clientVersion : null,
+    meta: safeDiagnosticValue(value.meta),
+  };
+}
+
+function safeDiagnosticValue(value: unknown): unknown {
+  if (value === undefined) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return '[unserializable]';
   }
 }
 
