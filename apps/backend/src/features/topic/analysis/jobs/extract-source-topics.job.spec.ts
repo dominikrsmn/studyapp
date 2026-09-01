@@ -405,6 +405,18 @@ describe('ExtractSourceTopicsJob', () => {
     );
   });
 
+  it('does not mark a retryable failure as failed before the final attempt', async () => {
+    const persistenceError = new Error('database temporarily unavailable');
+    prismaService.$transaction.mockRejectedValue(persistenceError);
+
+    await expect(
+      job.process(data, { isFinalAttempt: false }),
+    ).rejects.toBe(persistenceError);
+
+    expect(transition).not.toHaveBeenCalled();
+    expect(addMatchSourceTopics).not.toHaveBeenCalled();
+  });
+
   it('skips deleted sources without calling the model or changing state', async () => {
     findUnique.mockResolvedValue(null);
 

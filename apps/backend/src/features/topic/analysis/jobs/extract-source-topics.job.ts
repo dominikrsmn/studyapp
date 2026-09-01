@@ -58,6 +58,10 @@ interface ExtractedTopic extends TopicSpan {
   pageEnd: number | null;
 }
 
+interface JobAttemptContext {
+  isFinalAttempt: boolean;
+}
+
 @Injectable()
 export class ExtractSourceTopicsJob {
   private readonly logger = new Logger(ExtractSourceTopicsJob.name);
@@ -72,7 +76,10 @@ export class ExtractSourceTopicsJob {
     private readonly config: ConfigType<typeof analysisConfig>,
   ) {}
 
-  async process({ sourceId, spans }: ExtractSourceTopics): Promise<void> {
+  async process(
+    { sourceId, spans }: ExtractSourceTopics,
+    { isFinalAttempt }: JobAttemptContext = { isFinalAttempt: true },
+  ): Promise<void> {
     try {
       const source = await this.prismaService.source.findUnique({
         where: { id: sourceId },
@@ -131,21 +138,23 @@ export class ExtractSourceTopicsJob {
         error instanceof Error ? error.stack : undefined,
       );
 
-      await this.sourceProcessingStageService
-        .transition(
-          sourceId,
-          SourceProcessingStageType.TOPIC_ANALYSIS,
-          ProcessingState.FAILED,
-          { error },
-        )
-        .catch((stageUpdateError: unknown) => {
-          this.logger.error(
-            `Failed to record topic analysis failure for source "${sourceId}"`,
-            stageUpdateError instanceof Error
-              ? stageUpdateError.stack
-              : undefined,
-          );
-        });
+      if (isFinalAttempt) {
+        await this.sourceProcessingStageService
+          .transition(
+            sourceId,
+            SourceProcessingStageType.TOPIC_ANALYSIS,
+            ProcessingState.FAILED,
+            { error },
+          )
+          .catch((stageUpdateError: unknown) => {
+            this.logger.error(
+              `Failed to record topic analysis failure for source "${sourceId}"`,
+              stageUpdateError instanceof Error
+                ? stageUpdateError.stack
+                : undefined,
+            );
+          });
+      }
 
       throw error;
     }

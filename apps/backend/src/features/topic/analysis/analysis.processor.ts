@@ -54,6 +54,10 @@ export class AnalysisProcessor extends WorkerHost {
       case this.config.queue.jobs.extract_source_topics:
         return this.extractSourceTopicsJob.process(
           job.data as ExtractSourceTopics,
+          {
+            isFinalAttempt:
+              job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
+          },
         );
       case this.config.queue.jobs.match_source_topics:
         return this.matchSourceTopicsJob.process(job.data as MatchSourceTopics);
