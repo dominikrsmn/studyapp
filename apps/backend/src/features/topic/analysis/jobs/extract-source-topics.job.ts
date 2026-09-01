@@ -7,6 +7,7 @@ import {
   type NodeItem,
 } from '@docling/docling-core';
 import { zodTextFormat } from 'openai/helpers/zod';
+import { UnrecoverableError } from 'bullmq';
 import { z } from 'zod';
 import {
   ProcessingState,
@@ -62,6 +63,8 @@ interface JobAttemptContext {
   isFinalAttempt: boolean;
 }
 
+class DeterministicSourceTopicExtractionError extends UnrecoverableError {}
+
 @Injectable()
 export class ExtractSourceTopicsJob {
   private readonly logger = new Logger(ExtractSourceTopicsJob.name);
@@ -95,7 +98,9 @@ export class ExtractSourceTopicsJob {
       const storedDocument =
         await this.fileStorageService.readDoclingDocument(sourceId);
       if (storedDocument === null) {
-        throw new Error('Source has no converted Docling document');
+        throw new DeterministicSourceTopicExtractionError(
+          'Source has no converted Docling document',
+        );
       }
 
       const document = parseStoredAnalysisDocument(storedDocument);
@@ -133,18 +138,22 @@ export class ExtractSourceTopicsJob {
       await this.persistTopics(sourceId, topics, resolvedSpans.length);
       await this.analysisQueue.addMatchSourceTopics(sourceId);
     } catch (error) {
+      const jobError =
+        error instanceof z.ZodError
+          ? new DeterministicSourceTopicExtractionError(error.message)
+          : error;
       this.logger.error(
-        `Error extracting source topics for source "${sourceId}": ${error}`,
-        error instanceof Error ? error.stack : undefined,
+        `Error extracting source topics for source "${sourceId}": ${jobError}`,
+        jobError instanceof Error ? jobError.stack : undefined,
       );
 
-      if (isFinalAttempt) {
+      if (isFinalAttempt || jobError instanceof UnrecoverableError) {
         await this.sourceProcessingStageService
           .transition(
             sourceId,
             SourceProcessingStageType.TOPIC_ANALYSIS,
             ProcessingState.FAILED,
-            { error },
+            { error: jobError },
           )
           .catch((stageUpdateError: unknown) => {
             this.logger.error(
@@ -156,7 +165,7 @@ export class ExtractSourceTopicsJob {
           });
       }
 
-      throw error;
+      throw jobError;
     }
   }
 
@@ -302,13 +311,19 @@ export function resolveTopicSpans(
 ): ResolvedTopicSpan[] {
   const orderedRefs = deriveOrderedDocumentUnitRefs(document);
   if (orderedRefs.length === 0) {
-    throw new Error('Source document contains no analysis units');
+    throw new DeterministicSourceTopicExtractionError(
+      'Source document contains no analysis units',
+    );
   }
   if (new Set(orderedRefs).size !== orderedRefs.length) {
-    throw new Error('Source document contains duplicate unit references');
+    throw new DeterministicSourceTopicExtractionError(
+      'Source document contains duplicate unit references',
+    );
   }
   if (spans.length === 0) {
-    throw new Error('Source topic extraction requires at least one span');
+    throw new DeterministicSourceTopicExtractionError(
+      'Source topic extraction requires at least one span',
+    );
   }
 
   const indexesByRef = new Map(orderedRefs.map((ref, index) => [ref, index]));
@@ -317,25 +332,31 @@ export function resolveTopicSpans(
 
   const resolved = spans.map((span, index) => {
     if (span.spanIndex !== index) {
-      throw new Error('Topic spans must have contiguous ordered span indexes');
+      throw new DeterministicSourceTopicExtractionError(
+        'Topic spans must have contiguous ordered span indexes',
+      );
     }
 
     const startIndex = indexesByRef.get(span.startRef);
     const endIndex = indexesByRef.get(span.endRef);
     if (startIndex === undefined || endIndex === undefined) {
-      throw new Error(
+      throw new DeterministicSourceTopicExtractionError(
         `Topic span ${span.spanIndex} references an unknown unit`,
       );
     }
     if (startIndex !== expectedStartIndex || endIndex < startIndex) {
-      throw new Error('Topic spans must be contiguous and in document order');
+      throw new DeterministicSourceTopicExtractionError(
+        'Topic spans must be contiguous and in document order',
+      );
     }
 
     const refs = orderedRefs.slice(startIndex, endIndex + 1);
     const units = refs.map((ref) => {
       const unit = unitsByRef.get(ref);
       if (!unit) {
-        throw new Error(`Document unit reference "${ref}" does not exist`);
+        throw new DeterministicSourceTopicExtractionError(
+          `Document unit reference "${ref}" does not exist`,
+        );
       }
       return unit;
     });
@@ -343,7 +364,7 @@ export function resolveTopicSpans(
       .filter((unit) => documentUnitContent(unit).length > 0)
       .map((unit) => unit.self_ref);
     if (evidenceRefs.length === 0) {
-      throw new Error(
+      throw new DeterministicSourceTopicExtractionError(
         `Topic span ${span.spanIndex} contains no evidence-bearing units`,
       );
     }
@@ -360,7 +381,9 @@ export function resolveTopicSpans(
   });
 
   if (expectedStartIndex !== orderedRefs.length) {
-    throw new Error('Topic spans must cover the complete source document');
+    throw new DeterministicSourceTopicExtractionError(
+      'Topic spans must cover the complete source document',
+    );
   }
 
   return resolved;
@@ -382,7 +405,7 @@ function groundExtractedTopics(
   return sourceSpans.map((sourceSpan, index) => {
     const modelTopic = modelTopics[index];
     if (!modelTopic || modelTopic.spanIndex !== sourceSpan.spanIndex) {
-      throw new Error(
+      throw new DeterministicSourceTopicExtractionError(
         'Source topic extraction model must return every span once in order',
       );
     }
@@ -390,7 +413,9 @@ function groundExtractedTopics(
     const title = modelTopic.title.trim();
     const description = modelTopic.description.trim();
     if (!title || !description) {
-      throw new Error('Source topic title and description cannot be blank');
+      throw new DeterministicSourceTopicExtractionError(
+        'Source topic title and description cannot be blank',
+      );
     }
 
     const refIndexes = new Map(
@@ -399,7 +424,9 @@ function groundExtractedTopics(
     const evidence = modelTopic.evidence.map((item) => {
       const evidenceDescription = item.description.trim();
       if (!evidenceDescription) {
-        throw new Error('Topic evidence description cannot be blank');
+        throw new DeterministicSourceTopicExtractionError(
+          'Topic evidence description cannot be blank',
+        );
       }
 
       let previousEndIndex = -1;
@@ -407,12 +434,12 @@ function groundExtractedTopics(
         const startIndex = refIndexes.get(startRef);
         const endIndex = refIndexes.get(endRef);
         if (startIndex === undefined || endIndex === undefined) {
-          throw new Error(
+          throw new DeterministicSourceTopicExtractionError(
             `Evidence for topic span ${sourceSpan.spanIndex} references a unit outside the topic`,
           );
         }
         if (endIndex < startIndex || startIndex <= previousEndIndex) {
-          throw new Error(
+          throw new DeterministicSourceTopicExtractionError(
             'Evidence spans must be non-overlapping and in document order',
           );
         }
@@ -424,7 +451,7 @@ function groundExtractedTopics(
           .filter((unitContent) => unitContent.length > 0)
           .join('\n\n');
         if (!content) {
-          throw new Error(
+          throw new DeterministicSourceTopicExtractionError(
             'Selected evidence span contains no canonical content; evidence refs are never expanded automatically',
           );
         }

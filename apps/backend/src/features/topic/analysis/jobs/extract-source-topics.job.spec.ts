@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { UnrecoverableError } from 'bullmq';
 import {
   ProcessingState,
   SourceProcessingStageType,
@@ -353,9 +354,7 @@ describe('ExtractSourceTopicsJob', () => {
             evidence: [
               {
                 description: 'The source explains relaxation.',
-                spans: [
-                  { startRef: 'empty-picture', endRef: 'empty-picture' },
-                ],
+                spans: [{ startRef: 'empty-picture', endRef: 'empty-picture' }],
               },
             ],
           },
@@ -379,15 +378,25 @@ describe('ExtractSourceTopicsJob', () => {
   });
 
   it('validates complete contiguous segmentation before calling the model', async () => {
-    await expect(
-      job.process({
+    const result = job.process(
+      {
         sourceId,
         spans: [{ spanIndex: 0, startRef: 'r1', endRef: 'r4' }],
-      }),
-    ).rejects.toThrow('contiguous and in document order');
+      },
+      { isFinalAttempt: false },
+    );
+
+    await expect(result).rejects.toBeInstanceOf(UnrecoverableError);
+    await expect(result).rejects.toThrow('contiguous and in document order');
 
     expect(parse).not.toHaveBeenCalled();
     expect(prismaService.$transaction).not.toHaveBeenCalled();
+    expect(transition).toHaveBeenCalledWith(
+      sourceId,
+      SourceProcessingStageType.TOPIC_ANALYSIS,
+      ProcessingState.FAILED,
+      { error: expect.any(UnrecoverableError) },
+    );
   });
 
   it('does not enqueue matching when persistence fails', async () => {
@@ -409,9 +418,9 @@ describe('ExtractSourceTopicsJob', () => {
     const persistenceError = new Error('database temporarily unavailable');
     prismaService.$transaction.mockRejectedValue(persistenceError);
 
-    await expect(
-      job.process(data, { isFinalAttempt: false }),
-    ).rejects.toBe(persistenceError);
+    await expect(job.process(data, { isFinalAttempt: false })).rejects.toBe(
+      persistenceError,
+    );
 
     expect(transition).not.toHaveBeenCalled();
     expect(addMatchSourceTopics).not.toHaveBeenCalled();
