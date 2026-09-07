@@ -80,7 +80,7 @@
       "executor": "nx:run-commands",
       "cache": true,
       "inputs": [
-        "{projectRoot}/prisma/schema.prisma",
+        "{projectRoot}/prisma/**/*.prisma",
         "{projectRoot}/prisma.config.ts",
         "{workspaceRoot}/package.json",
         "{workspaceRoot}/pnpm-lock.yaml",
@@ -92,7 +92,7 @@
         }
       ],
       "outputs": [
-        "{projectRoot}/src/database/generated"
+        "{projectRoot}/src/infrastructure/database/generated"
       ],
       "options": {
         "command": "prisma generate --config apps/backend/prisma.config.ts"
