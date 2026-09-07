@@ -94,7 +94,7 @@ describe('SourceService', () => {
     expect(fileStorageService.deleteMany).toHaveBeenCalledWith(['file-key']);
   });
 
-  it('invalidates module content when deleting a source without canonical topics', async () => {
+  it('does not invalidate module content when deleting a source without canonical topics', async () => {
     sourceDelegate.findFirst.mockResolvedValue({
       ...sourceRecord([]),
       storageKey: null,
@@ -103,13 +103,11 @@ describe('SourceService', () => {
 
     await service.remove('user-id', 'module-id', 'source-id');
 
-    expect(moduleDelegate.updateMany).toHaveBeenCalledWith({
-      where: { sources: { some: { id: 'source-id' } } },
-      data: { contentRevision: { increment: 1 } },
+    expect(moduleDelegate.updateMany).not.toHaveBeenCalled();
+    expect(sourceDelegate.delete).toHaveBeenCalledWith({
+      where: { id: 'source-id' },
+      select: expect.any(Object),
     });
-    expect(moduleDelegate.updateMany.mock.invocationCallOrder[0]).toBeLessThan(
-      sourceDelegate.delete.mock.invocationCallOrder[0],
-    );
   });
 
   it('does not delete the source or file if invalidation fails', async () => {

@@ -3,7 +3,7 @@ import type { Prisma } from '../../infrastructure/database/generated/client';
 export async function invalidateSourceTopics(
   transaction: Prisma.TransactionClient,
   sourceId: string,
-): Promise<number> {
+): Promise<void> {
   const changed = await transaction.topic.updateMany({
     where: { sourceTopics: { some: { sourceId } } },
     data: {
@@ -18,5 +18,4 @@ export async function invalidateSourceTopics(
       data: { contentRevision: { increment: 1 } },
     });
   }
-  return changed.count;
 }

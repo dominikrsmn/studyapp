@@ -12,7 +12,7 @@ model Source {
   chunks       SourceChunk[]
   sourceTopics SourceTopic[]
 
-  exercises Exercise[]
+  //exercises Exercise[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
