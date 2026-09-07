@@ -17,3 +17,8 @@ export * from './semester/create-semester.schema';
 export * from './user/user.schema';
 
 export * from './util/date-only';
+
+export * from './assessment/observation.schema';
+export * from './learning-graph/user-topic-state.schema';
+export * from './learning-graph/learning-graph.schema';
+export * from './practice/practice-session.schema';

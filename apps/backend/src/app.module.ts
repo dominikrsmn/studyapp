@@ -1,3 +1,6 @@
+import { LearningGraphModule } from './features/learning-graph/learning-graph.module';
+import { AssessmentModule } from './features/assessment/assessment.module';
+import { PracticeModule } from './features/practice/practice.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Env, envSchema } from './infrastructure/config/env.schema';
@@ -40,6 +43,9 @@ import { embeddingConfig } from './infrastructure/config/embedding.config';
     UserModule,
     AiModule,
     TopicModule,
+    LearningGraphModule,
+    AssessmentModule,
+    PracticeModule,
   ],
 })
 export class AppModule {}
