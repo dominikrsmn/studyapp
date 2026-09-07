@@ -1,3 +1,4 @@
+import { invalidateSourceTopics } from '../../content-revision';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
@@ -180,88 +181,92 @@ export class ExtractSourceTopicsJob {
     const poolBefore = this.prismaService.getPoolState();
 
     try {
-      await this.prismaService.$transaction(async (transaction) => {
-        startedAt = performance.now();
-        const persistedTopics: Array<{
-          id: string;
-          topic: ExtractedTopic;
-        }> = [];
+      await this.prismaService.$transaction(
+        async (transaction) => {
+          startedAt = performance.now();
+          await invalidateSourceTopics(transaction, sourceId);
+          const persistedTopics: Array<{
+            id: string;
+            topic: ExtractedTopic;
+          }> = [];
 
-        for (const topic of topics) {
-          const sourceTopic = await transaction.sourceTopic.upsert({
-            where: {
-              sourceId_spanIndex: {
+          for (const topic of topics) {
+            const sourceTopic = await transaction.sourceTopic.upsert({
+              where: {
+                sourceId_spanIndex: {
+                  sourceId,
+                  spanIndex: topic.spanIndex,
+                },
+              },
+              create: {
                 sourceId,
                 spanIndex: topic.spanIndex,
+                title: topic.title,
+                description: topic.description,
+                detectionConfidence: topic.detectionConfidence,
+                startRef: topic.startRef,
+                endRef: topic.endRef,
+                pageStart: topic.pageStart,
+                pageEnd: topic.pageEnd,
               },
-            },
-            create: {
-              sourceId,
-              spanIndex: topic.spanIndex,
-              title: topic.title,
-              description: topic.description,
-              detectionConfidence: topic.detectionConfidence,
-              startRef: topic.startRef,
-              endRef: topic.endRef,
-              pageStart: topic.pageStart,
-              pageEnd: topic.pageEnd,
-            },
-            update: {
-              title: topic.title,
-              description: topic.description,
-              detectionConfidence: topic.detectionConfidence,
-              canonicalizationConfidence: null,
-              topicId: null,
-              startRef: topic.startRef,
-              endRef: topic.endRef,
-              pageStart: topic.pageStart,
-              pageEnd: topic.pageEnd,
-            },
-            select: { id: true },
+              update: {
+                title: topic.title,
+                description: topic.description,
+                detectionConfidence: topic.detectionConfidence,
+                canonicalizationConfidence: null,
+                topicId: null,
+                startRef: topic.startRef,
+                endRef: topic.endRef,
+                pageStart: topic.pageStart,
+                pageEnd: topic.pageEnd,
+              },
+              select: { id: true },
+            });
+
+            persistedTopics.push({ id: sourceTopic.id, topic });
+          }
+
+          const sourceTopicIds = persistedTopics.map(({ id }) => id);
+          await transaction.topicEvidence.deleteMany({
+            where: { sourceTopicId: { in: sourceTopicIds } },
           });
 
-          persistedTopics.push({ id: sourceTopic.id, topic });
-        }
-
-        const sourceTopicIds = persistedTopics.map(({ id }) => id);
-        await transaction.topicEvidence.deleteMany({
-          where: { sourceTopicId: { in: sourceTopicIds } },
-        });
-
-        const evidenceRows = persistedTopics.flatMap(({ id, topic }) =>
-          topic.evidence.map((evidence) => ({
-            id: randomUUID(),
-            sourceTopicId: id,
-            content: evidence.description,
-            spans: evidence.spans,
-          })),
-        );
-
-        await transaction.topicEvidence.createMany({
-          data: evidenceRows.map(({ id, sourceTopicId, content }) => ({
-            id,
-            sourceTopicId,
-            content,
-          })),
-        });
-
-        await transaction.topicEvidenceSpan.createMany({
-          data: evidenceRows.flatMap(({ id, spans }) =>
-            spans.map((span) => ({
+          const evidenceRows = persistedTopics.flatMap(({ id, topic }) =>
+            topic.evidence.map((evidence) => ({
               id: randomUUID(),
-              topicEvidenceId: id,
-              ...span,
+              sourceTopicId: id,
+              content: evidence.description,
+              spans: evidence.spans,
             })),
-          ),
-        });
+          );
 
-        await transaction.sourceTopic.deleteMany({
-          where: {
-            sourceId,
-            spanIndex: { gte: spanCount },
-          },
-        });
-      });
+          await transaction.topicEvidence.createMany({
+            data: evidenceRows.map(({ id, sourceTopicId, content }) => ({
+              id,
+              sourceTopicId,
+              content,
+            })),
+          });
+
+          await transaction.topicEvidenceSpan.createMany({
+            data: evidenceRows.flatMap(({ id, spans }) =>
+              spans.map((span) => ({
+                id: randomUUID(),
+                topicEvidenceId: id,
+                ...span,
+              })),
+            ),
+          });
+
+          await transaction.sourceTopic.deleteMany({
+            where: {
+              sourceId,
+              spanIndex: { gte: spanCount },
+            },
+          });
+        },
+        { isolationLevel: 'Serializable' },
+      );
     } catch (error) {
       const failedAt = performance.now();
       this.logger.error(

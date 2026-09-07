@@ -61,23 +61,37 @@ export class ModuleService {
     id: string,
     updateModuleRequest: UpdateModule,
   ): Promise<ModuleDto> {
-    await this.findOne(semesterId, id);
+    return this.prisma.$transaction(
+      async (transaction) => {
+        const current = await transaction.module.findFirst({
+          where: { id, semesterId },
+        });
+        if (!current) {
+          throw new NotFoundException(`Module with id "${id}" was not found`);
+        }
+        const { examDate, ...data } = updateModuleRequest;
+        const contentChanged =
+          (data.name !== undefined && data.name !== current.name) ||
+          (data.description !== undefined &&
+            data.description !== current.description);
 
-    const { examDate, ...data } = updateModuleRequest;
-
-    return this.toDto(
-      await this.prisma.module.update({
-        where: { id },
-        data: {
-          ...data,
-          examDate:
-            examDate === undefined
-              ? undefined
-              : examDate === null
-                ? null
-                : dateOnly.toPrisma(examDate),
-        },
-      }),
+        return this.toDto(
+          await transaction.module.update({
+            where: { id },
+            data: {
+              ...data,
+              ...(contentChanged ? { contentRevision: { increment: 1 } } : {}),
+              examDate:
+                examDate === undefined
+                  ? undefined
+                  : examDate === null
+                    ? null
+                    : dateOnly.toPrisma(examDate),
+            },
+          }),
+        );
+      },
+      { isolationLevel: 'Serializable' },
     );
   }
 
@@ -99,6 +113,7 @@ export class ModuleService {
   private toDto(module: Module): ModuleDto {
     return {
       id: module.id,
+      contentRevision: module.contentRevision,
       name: module.name,
       description: module.description,
       icon: module.icon,

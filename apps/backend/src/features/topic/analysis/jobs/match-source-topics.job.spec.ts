@@ -142,6 +142,7 @@ describe('MatchSourceTopicsJob', () => {
   const topicUpdate = jest.fn();
   const sourceTopicUpdate = jest.fn();
   const transaction = {
+    module: { update: jest.fn() },
     topic: { create: topicCreate, update: topicUpdate },
     sourceTopic: { update: sourceTopicUpdate },
   };
@@ -237,11 +238,19 @@ describe('MatchSourceTopicsJob', () => {
     });
     expect(topicUpdate).toHaveBeenCalledWith({
       where: { id: 'topic-mst' },
-      data: { contentRevision: { increment: 1 } },
+      data: {
+        contentRevision: { increment: 1 },
+        summary: null,
+        summaryRevision: null,
+      },
     });
     expect(topicUpdate).toHaveBeenCalledWith({
       where: { id: 'topic-logistics' },
-      data: { contentRevision: { increment: 1 } },
+      data: {
+        contentRevision: { increment: 1 },
+        summary: null,
+        summaryRevision: null,
+      },
     });
     expect(topicUpdate).toHaveBeenCalledWith({
       where: { id: 'topic-sgd' },
@@ -250,26 +259,28 @@ describe('MatchSourceTopicsJob', () => {
         description:
           'Gradient-based optimization using estimates from sampled examples or mini-batches.',
         contentRevision: { increment: 1 },
+        summary: null,
+        summaryRevision: null,
       },
     });
 
     expect(sourceTopicUpdate).toHaveBeenCalledTimes(5);
     expect(sourceTopicUpdate).toHaveBeenCalledWith({
-      where: { id: 'source-topic-0' },
+      where: { id: 'source-topic-0', topicId: null },
       data: {
         topicId: 'created-dijkstra',
         canonicalizationConfidence: 0.95,
       },
     });
     expect(sourceTopicUpdate).toHaveBeenCalledWith({
-      where: { id: 'source-topic-2' },
+      where: { id: 'source-topic-2', topicId: null },
       data: {
         topicId: 'created-dijkstra',
         canonicalizationConfidence: 0.93,
       },
     });
     expect(sourceTopicUpdate).toHaveBeenCalledWith({
-      where: { id: 'source-topic-3' },
+      where: { id: 'source-topic-3', topicId: null },
       data: {
         topicId: 'topic-logistics',
         canonicalizationConfidence: 0.9,

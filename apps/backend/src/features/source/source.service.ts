@@ -1,3 +1,4 @@
+import { invalidateSourceTopics } from '../topic/content-revision';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SourceDto } from '@study/contracts';
 import type { Prisma } from '../../infrastructure/database/generated/client';
@@ -122,10 +123,16 @@ export class SourceService {
     if (!source) {
       throw new NotFoundException(`Source with id "${id}" was not found`);
     }
-    const deletedSource = await this.prisma.source.delete({
-      where: { id },
-      select: sourceSelect,
-    });
+    const deletedSource = await this.prisma.$transaction(
+      async (transaction) => {
+        await invalidateSourceTopics(transaction, id);
+        return transaction.source.delete({
+          where: { id },
+          select: sourceSelect,
+        });
+      },
+      { isolationLevel: 'Serializable' },
+    );
     if (source.storageKey) {
       await this.fileStorageService.deleteMany([source.storageKey]);
     }

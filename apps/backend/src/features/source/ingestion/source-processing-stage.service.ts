@@ -47,19 +47,46 @@ export class SourceProcessingStageService {
     state: ProcessingState,
     options: TransitionOptions = {},
   ): Promise<SourceProcessingStage> {
-    const client = options.transaction ?? this.prismaService;
     const data = this.transitionData(state, options.error);
 
-    const processingStage = await client.sourceProcessingStage.upsert({
-      where: { sourceId_stage: { sourceId, stage } },
-      create: { sourceId, stage, ...data },
-      update: data,
-      include: {
-        source: {
-          select: { moduleId: true },
+    const persist = async (client: Prisma.TransactionClient) => {
+      const previous =
+        stage === SourceProcessingStageType.TOPIC_ANALYSIS
+          ? await client.sourceProcessingStage.findUnique({
+              where: { sourceId_stage: { sourceId, stage } },
+              select: { state: true },
+            })
+          : null;
+      const processingStage = await client.sourceProcessingStage.upsert({
+        where: { sourceId_stage: { sourceId, stage } },
+        create: { sourceId, stage, ...data },
+        update: data,
+        include: {
+          source: {
+            select: { moduleId: true },
+          },
         },
-      },
-    });
+      });
+
+      if (
+        stage === SourceProcessingStageType.TOPIC_ANALYSIS &&
+        (previous?.state === ProcessingState.COMPLETED) !==
+          (state === ProcessingState.COMPLETED)
+      ) {
+        await client.module.update({
+          where: { id: processingStage.source.moduleId },
+          data: { contentRevision: { increment: 1 } },
+        });
+      }
+      return processingStage;
+    };
+    const processingStage = options.transaction
+      ? await persist(options.transaction)
+      : stage === SourceProcessingStageType.TOPIC_ANALYSIS
+        ? await this.prismaService.$transaction(persist, {
+            isolationLevel: 'Serializable',
+          })
+        : await persist(this.prismaService);
 
     const event: SourceStateChangedEvent = sourceStateChangedEventSchema.parse({
       sourceId,

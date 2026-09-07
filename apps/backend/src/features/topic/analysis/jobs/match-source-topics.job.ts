@@ -248,68 +248,77 @@ export class MatchSourceTopicsJob {
     );
     const assignmentsByKey = groupAssignmentsByCanonicalKey(result.assignments);
 
-    await this.prismaService.$transaction(async (transaction) => {
-      const topicIdsByCanonicalKey = new Map<string, string>();
+    await this.prismaService.$transaction(
+      async (transaction) => {
+        await transaction.module.update({
+          where: { id: moduleId },
+          data: { contentRevision: { increment: 1 } },
+        });
+        const topicIdsByCanonicalKey = new Map<string, string>();
 
-      for (const canonicalTopic of result.canonicalTopics) {
-        const assignments = assignmentsByKey.get(canonicalTopic.canonicalKey);
-        if (!assignments) {
-          throw new Error('Canonical topic has no source-topic assignments');
-        }
+        for (const canonicalTopic of result.canonicalTopics) {
+          const assignments = assignmentsByKey.get(canonicalTopic.canonicalKey);
+          if (!assignments) {
+            throw new Error('Canonical topic has no source-topic assignments');
+          }
 
-        if (canonicalTopic.existingTopicId === null) {
-          const topic = await transaction.topic.create({
-            data: {
-              moduleId,
-              title: canonicalTopic.title.trim(),
-              description: canonicalTopic.description.trim(),
-              state: TopicState.SUGGESTED,
-            },
-            select: { id: true },
-          });
-          topicIdsByCanonicalKey.set(canonicalTopic.canonicalKey, topic.id);
-          continue;
-        }
-
-        const candidate = candidatesById.get(canonicalTopic.existingTopicId);
-        if (!candidate) {
-          throw new Error('Matching result references an unknown topic');
-        }
-
-        const refinements =
-          candidate.state === TopicState.SUGGESTED
-            ? {
+          if (canonicalTopic.existingTopicId === null) {
+            const topic = await transaction.topic.create({
+              data: {
+                moduleId,
                 title: canonicalTopic.title.trim(),
                 description: canonicalTopic.description.trim(),
-              }
-            : {};
-        await transaction.topic.update({
-          where: { id: candidate.id },
-          data: {
-            ...refinements,
-            contentRevision: { increment: assignments.length },
-          },
-        });
-        topicIdsByCanonicalKey.set(canonicalTopic.canonicalKey, candidate.id);
-      }
+                state: TopicState.SUGGESTED,
+              },
+              select: { id: true },
+            });
+            topicIdsByCanonicalKey.set(canonicalTopic.canonicalKey, topic.id);
+            continue;
+          }
 
-      for (const assignment of result.assignments) {
-        const topicId = topicIdsByCanonicalKey.get(assignment.canonicalKey);
-        if (!topicId) {
-          throw new Error(
-            'Matching result references an unknown canonical key',
-          );
+          const candidate = candidatesById.get(canonicalTopic.existingTopicId);
+          if (!candidate) {
+            throw new Error('Matching result references an unknown topic');
+          }
+
+          const refinements =
+            candidate.state === TopicState.SUGGESTED
+              ? {
+                  title: canonicalTopic.title.trim(),
+                  description: canonicalTopic.description.trim(),
+                }
+              : {};
+          await transaction.topic.update({
+            where: { id: candidate.id },
+            data: {
+              ...refinements,
+              contentRevision: { increment: 1 },
+              summary: null,
+              summaryRevision: null,
+            },
+          });
+          topicIdsByCanonicalKey.set(canonicalTopic.canonicalKey, candidate.id);
         }
 
-        await transaction.sourceTopic.update({
-          where: { id: assignment.sourceTopicId },
-          data: {
-            topicId,
-            canonicalizationConfidence: assignment.confidence,
-          },
-        });
-      }
-    });
+        for (const assignment of result.assignments) {
+          const topicId = topicIdsByCanonicalKey.get(assignment.canonicalKey);
+          if (!topicId) {
+            throw new Error(
+              'Matching result references an unknown canonical key',
+            );
+          }
+
+          await transaction.sourceTopic.update({
+            where: { id: assignment.sourceTopicId, topicId: null },
+            data: {
+              topicId,
+              canonicalizationConfidence: assignment.confidence,
+            },
+          });
+        }
+      },
+      { isolationLevel: 'Serializable' },
+    );
   }
 }
 

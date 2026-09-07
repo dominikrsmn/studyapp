@@ -40,6 +40,8 @@ describe('TopicService', () => {
         title: 'Integral Calculus',
         description: 'Techniques for evaluating integrals.',
         summary: 'A concise topic summary.',
+        contentRevision: 2,
+        summaryRevision: 2,
         sourceTopics: [
           {
             id: 'source-topic-id',
@@ -59,6 +61,8 @@ describe('TopicService', () => {
         title: 'Integral Calculus',
         description: 'Techniques for evaluating integrals.',
         summary: 'A concise topic summary.',
+        contentRevision: 2,
+        summaryRevision: 2,
         sourceTopics: [
           {
             id: 'source-topic-id',
@@ -92,6 +96,22 @@ describe('TopicService', () => {
         },
       }),
     );
+  });
+
+  it('hides a summary generated for an earlier revision', async () => {
+    moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
+    topicDelegate.findMany.mockResolvedValue([
+      {
+        id: 'topic-id',
+        contentRevision: 3,
+        summaryRevision: 2,
+        summary: 'Outdated',
+        sourceTopics: [],
+      },
+    ]);
+    const topics = await service.findAll('semester-id', 'module-id');
+    expect(topics[0].summary).toBeNull();
+    expect(topics[0].contentRevision).toBe(3);
   });
 
   it('rejects access to modules outside the active semester', async () => {

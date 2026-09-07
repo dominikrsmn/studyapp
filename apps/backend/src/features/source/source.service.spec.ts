@@ -16,7 +16,9 @@ jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
 describe('SourceService', () => {
   const moduleDelegate = {
     findFirst: jest.fn(),
+    updateMany: jest.fn(),
   };
+  const topicDelegate = { updateMany: jest.fn() };
   const sourceDelegate = {
     create: jest.fn(),
     findUnique: jest.fn(),
@@ -40,10 +42,17 @@ describe('SourceService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    topicDelegate.updateMany.mockResolvedValue({ count: 0 });
     service = new SourceService(
       {
         module: moduleDelegate,
         source: sourceDelegate,
+        $transaction: (operation: (tx: unknown) => unknown) =>
+          operation({
+            source: sourceDelegate,
+            topic: topicDelegate,
+            module: moduleDelegate,
+          }),
       } as unknown as PrismaService,
       fileStorageService as unknown as FileStorageService,
       ingestionQueue as unknown as IngestionQueue,
@@ -68,6 +77,54 @@ describe('SourceService', () => {
     sourceProcessingStageService.initialize.mockResolvedValue(
       initialProcessingStages(),
     );
+  });
+
+  it('revises surviving topics and their module before cascading source deletion', async () => {
+    sourceDelegate.findFirst.mockResolvedValue({
+      ...sourceRecord([]),
+      storageKey: 'file-key',
+    });
+    sourceDelegate.delete.mockResolvedValue(sourceRecord([]));
+    topicDelegate.updateMany.mockResolvedValue({ count: 2 });
+    await service.remove('user-id', 'module-id', 'source-id');
+    expect(topicDelegate.updateMany.mock.invocationCallOrder[0]).toBeLessThan(
+      sourceDelegate.delete.mock.invocationCallOrder[0],
+    );
+    expect(moduleDelegate.updateMany).toHaveBeenCalledTimes(1);
+    expect(fileStorageService.deleteMany).toHaveBeenCalledWith(['file-key']);
+  });
+
+  it('invalidates module content when deleting a source without canonical topics', async () => {
+    sourceDelegate.findFirst.mockResolvedValue({
+      ...sourceRecord([]),
+      storageKey: null,
+    });
+    sourceDelegate.delete.mockResolvedValue(sourceRecord([]));
+
+    await service.remove('user-id', 'module-id', 'source-id');
+
+    expect(moduleDelegate.updateMany).toHaveBeenCalledWith({
+      where: { sources: { some: { id: 'source-id' } } },
+      data: { contentRevision: { increment: 1 } },
+    });
+    expect(moduleDelegate.updateMany.mock.invocationCallOrder[0]).toBeLessThan(
+      sourceDelegate.delete.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not delete the source or file if invalidation fails', async () => {
+    sourceDelegate.findFirst.mockResolvedValue({
+      ...sourceRecord([]),
+      storageKey: 'file-key',
+    });
+    topicDelegate.updateMany.mockRejectedValueOnce(
+      new Error('Transaction failed'),
+    );
+    await expect(
+      service.remove('user-id', 'module-id', 'source-id'),
+    ).rejects.toThrow('Transaction failed');
+    expect(sourceDelegate.delete).not.toHaveBeenCalled();
+    expect(fileStorageService.deleteMany).not.toHaveBeenCalled();
   });
 
   it('enqueues the uploaded source for document parsing', async () => {

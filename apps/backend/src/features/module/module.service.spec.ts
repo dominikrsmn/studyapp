@@ -17,7 +17,7 @@ describe('ModuleService', () => {
     findMany: jest.fn(),
   };
   const fileStorageService = {
-    deleteAll: jest.fn(),
+    deleteMany: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -34,7 +34,7 @@ describe('ModuleService', () => {
 
     service = testingModule.get(ModuleService);
     jest.clearAllMocks();
-    fileStorageService.deleteAll.mockResolvedValue(undefined);
+    fileStorageService.deleteMany.mockResolvedValue(undefined);
   });
 
   it('cleans up all source files after deleting a module', async () => {
@@ -58,12 +58,60 @@ describe('ModuleService', () => {
       where: { moduleId: 'module-id' },
       select: { storageKey: true },
     });
-    expect(fileStorageService.deleteAll).toHaveBeenCalledWith([
+    expect(fileStorageService.deleteMany).toHaveBeenCalledWith([
       'first-key',
       'second-key',
     ]);
     expect(moduleDelegate.delete.mock.invocationCallOrder[0]).toBeLessThan(
-      fileStorageService.deleteAll.mock.invocationCallOrder[0],
+      fileStorageService.deleteMany.mock.invocationCallOrder[0],
     );
   });
+});
+
+describe('Module content revisions', () => {
+  const current = {
+    id: 'module-id',
+    name: 'Algorithms',
+    description: null,
+    icon: 'book',
+    examDate: null,
+    contentRevision: 4,
+  };
+  const module = { findFirst: jest.fn(), update: jest.fn() };
+  const prisma = {
+    $transaction: (operation: (tx: unknown) => unknown) =>
+      operation({ module }),
+  };
+  const service = new ModuleService(
+    prisma as unknown as PrismaService,
+    {} as FileStorageService,
+  );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    module.findFirst.mockResolvedValue(current);
+    module.update.mockResolvedValue(current);
+  });
+
+  it.each([{ name: 'Graph algorithms' }, { description: 'Graph theory' }])(
+    'revises changed module context: %j',
+    async (request) => {
+      await service.update('semester-id', 'module-id', request);
+      expect(module.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ contentRevision: { increment: 1 } }),
+        }),
+      );
+    },
+  );
+
+  it.each([{ name: 'Algorithms' }, { icon: 'star' }, { examDate: null }])(
+    'preserves content revision for unchanged context or presentation: %j',
+    async (request) => {
+      await service.update('semester-id', 'module-id', request);
+      expect(module.update.mock.calls[0][0].data).not.toHaveProperty(
+        'contentRevision',
+      );
+    },
+  );
 });

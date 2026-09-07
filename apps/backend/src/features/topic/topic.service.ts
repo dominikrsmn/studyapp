@@ -33,7 +33,7 @@ export class TopicService {
       throw new NotFoundException(`Module with id "${moduleId}" was not found`);
     }
 
-    return this.prisma.topic.findMany({
+    const topics = await this.prisma.topic.findMany({
       where: {
         moduleId,
         state: { not: TopicState.REJECTED },
@@ -45,6 +45,8 @@ export class TopicService {
         title: true,
         description: true,
         summary: true,
+        contentRevision: true,
+        summaryRevision: true,
         sourceTopics: {
           where: { source: completedTopicAnalysis },
           orderBy: [{ source: { createdAt: 'desc' } }, { spanIndex: 'asc' }],
@@ -59,5 +61,10 @@ export class TopicService {
         },
       },
     });
+    return topics.map((topic) => ({
+      ...topic,
+      summary:
+        topic.summaryRevision === topic.contentRevision ? topic.summary : null,
+    }));
   }
 }

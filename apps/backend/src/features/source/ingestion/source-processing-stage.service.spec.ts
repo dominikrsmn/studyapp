@@ -14,14 +14,20 @@ describe('SourceProcessingStageService', () => {
   const sourceId = 'f43ff589-36b0-4f0f-b0cf-9cc1101b1952';
   const moduleId = 'f74a46b6-2d6d-4542-a9b8-37a8eef82d8c';
   const stage = SourceProcessingStageType.RAG_INDEXING;
-  const sourceProcessingStage = { upsert: jest.fn() };
-  const prismaService = { sourceProcessingStage };
+  const sourceProcessingStage = { upsert: jest.fn(), findUnique: jest.fn() };
+  const prismaService = {
+    sourceProcessingStage,
+    module: { update: jest.fn() },
+    $transaction: (operation: (tx: unknown) => unknown) =>
+      operation(prismaService),
+  };
   const sourceEventService = { stateChanges: jest.fn() };
 
   let service: SourceProcessingStageService;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    sourceProcessingStage.findUnique.mockResolvedValue(null);
     sourceProcessingStage.upsert.mockResolvedValue({
       id: 'stage-id',
       errorMessage: null,
@@ -32,6 +38,27 @@ describe('SourceProcessingStageService', () => {
       sourceEventService as unknown as SourceEventService,
     );
   });
+
+  it.each([
+    [ProcessingState.PROCESSING, ProcessingState.COMPLETED, true],
+    [ProcessingState.COMPLETED, ProcessingState.PROCESSING, true],
+    [ProcessingState.COMPLETED, ProcessingState.FAILED, true],
+    [ProcessingState.COMPLETED, ProcessingState.COMPLETED, false],
+    [ProcessingState.QUEUED, ProcessingState.PROCESSING, false],
+  ])(
+    'revises module availability for %s to %s only when it changes',
+    async (previous, next, changed) => {
+      sourceProcessingStage.findUnique.mockResolvedValue({ state: previous });
+      await service.transition(
+        sourceId,
+        SourceProcessingStageType.TOPIC_ANALYSIS,
+        next,
+      );
+      expect(prismaService.module.update).toHaveBeenCalledTimes(
+        changed ? 1 : 0,
+      );
+    },
+  );
 
   it('initializes every processing stage as not started', async () => {
     await service.initialize(sourceId);

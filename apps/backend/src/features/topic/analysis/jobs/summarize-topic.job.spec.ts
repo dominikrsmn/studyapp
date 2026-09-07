@@ -73,6 +73,25 @@ describe('SummarizeTopicJob', () => {
     });
   });
 
+  it('reschedules when evidence changes during generation instead of publishing stale text', async () => {
+    updateMany.mockResolvedValueOnce({ count: 0 });
+    findUnique
+      .mockResolvedValueOnce({
+        title: 'Mutual Exclusion',
+        description: 'Shared resources',
+        state: TopicState.CONFIRMED,
+        contentRevision: 3,
+        summaryRevision: 2,
+        sourceTopics: [{ evidence: [{ content: 'Original evidence' }] }],
+      })
+      .mockResolvedValueOnce({
+        state: TopicState.CONFIRMED,
+        contentRevision: 4,
+      });
+    await job.process({ topicId, contentRevision: 3 });
+    expect(addSummarizeTopic).toHaveBeenCalledWith(topicId, 4);
+  });
+
   it('supersedes a stale queued revision without calling the model', async () => {
     await job.process({ topicId, contentRevision: 2 });
 

@@ -11,6 +11,8 @@ describe('OverviewTabComponent', () => {
       id: 'e627260b-4a01-4abd-b021-3f4b3fbbb6f7',
       title: 'Integral Calculus',
       description: 'Techniques for evaluating integrals.',
+      contentRevision: 1,
+      summaryRevision: 1,
       summary: 'How integral techniques are selected and applied.',
       sourceTopics: [
         {

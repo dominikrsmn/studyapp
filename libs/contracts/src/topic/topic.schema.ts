@@ -13,6 +13,8 @@ export const sourceTopicOverviewSchema = z.object({
 });
 
 export const topicOverviewSchema = z.object({
+  contentRevision: z.number().int().positive(),
+  summaryRevision: z.number().int().positive().nullable(),
   id: z.uuid(),
   title: z.string(),
   description: z.string(),

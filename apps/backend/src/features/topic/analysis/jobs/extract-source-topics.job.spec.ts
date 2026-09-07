@@ -122,7 +122,13 @@ describe('ExtractSourceTopicsJob', () => {
   const topicEvidenceSpan = {
     createMany: jest.fn(),
   };
-  const transaction = { sourceTopic, topicEvidence, topicEvidenceSpan };
+  const transaction = {
+    sourceTopic,
+    topicEvidence,
+    topicEvidenceSpan,
+    topic: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    module: { updateMany: jest.fn() },
+  };
   const prismaService = {
     source: { findUnique },
     $transaction: jest.fn(),
@@ -197,6 +203,25 @@ describe('ExtractSourceTopicsJob', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it('invalidates previous topics before replacing or trimming source occurrences', async () => {
+    transaction.topic.updateMany.mockResolvedValueOnce({ count: 2 });
+    await job.process(data);
+    expect(
+      transaction.topic.updateMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(sourceTopic.upsert.mock.invocationCallOrder[0]);
+    expect(
+      transaction.topic.updateMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(sourceTopic.deleteMany.mock.invocationCallOrder[0]);
+    expect(transaction.module.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not invalidate module content before evidence is canonical', async () => {
+    await job.process(data);
+
+    expect(transaction.topic.updateMany).toHaveBeenCalledTimes(1);
+    expect(transaction.module.updateMany).not.toHaveBeenCalled();
   });
 
   it('extracts, deterministically grounds, persists, and chains final spans', async () => {
