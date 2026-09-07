@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { AuthenticatedRequest } from '../../auth/authenticated-request';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SemanticSearchController } from './semantic-search.controller';
 import { SemanticSearchService } from './semantic-search.service';
 

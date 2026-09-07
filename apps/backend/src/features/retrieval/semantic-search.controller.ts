@@ -12,8 +12,8 @@ import {
   type SemanticSearchResult,
 } from '@study/contracts';
 import { z } from 'zod';
-import { RequireActiveSemester } from '../../auth/active-semester.decorator';
-import type { AuthenticatedRequest } from '../../auth/authenticated-request';
+import { RequireActiveSemester } from '../auth/active-semester.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { SemanticSearchService } from './semantic-search.service';
 
 @RequireActiveSemester()

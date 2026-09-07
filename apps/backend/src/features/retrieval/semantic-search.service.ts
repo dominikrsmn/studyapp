@@ -1,17 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { SemanticSearchResult } from '@study/contracts';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { EmbeddingService } from '../../../infrastructure/embedding/embedding.service';
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { EmbeddingService } from '../../infrastructure/embedding/embedding.service';
 import { ConfigType } from '@nestjs/config';
-import { aiConfig } from '../ai.config';
+import { retrievalConfig } from './retrieval.config';
 
 @Injectable()
 export class SemanticSearchService {
   constructor(
     private readonly embeddingService: EmbeddingService,
     private readonly prismaService: PrismaService,
-    @Inject(aiConfig.KEY)
-    private readonly config: ConfigType<typeof aiConfig>,
+    @Inject(retrievalConfig.KEY)
+    private readonly config: ConfigType<typeof retrievalConfig>,
   ) {}
 
   async search(

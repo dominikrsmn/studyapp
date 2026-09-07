@@ -1,9 +1,9 @@
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { EmbeddingService } from '../../../infrastructure/embedding/embedding.service';
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
+import { EmbeddingService } from '../../infrastructure/embedding/embedding.service';
 import { SemanticSearchService } from './semantic-search.service';
-import { aiConfig } from '../ai.config';
+import { retrievalConfig } from './retrieval.config';
 
-jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
 
@@ -17,7 +17,7 @@ describe('SemanticSearchService', () => {
     service = new SemanticSearchService(
       embeddingService as unknown as EmbeddingService,
       prismaService as unknown as PrismaService,
-      aiConfig(),
+      retrievalConfig(),
     );
   });
 
