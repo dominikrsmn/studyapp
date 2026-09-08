@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { FileStorageService } from '../../../infrastructure/filestorage/filestorage.service';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
+import { SourceProcessingStageService } from '../../source-ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { createTestDoclingDocument } from '../analysis-document.fixture';
 import { parseAnalysisDocument } from '../analysis-document.schema';
@@ -26,7 +26,7 @@ jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
 jest.mock('../../../infrastructure/open-ai/open-ai.service', () => ({
   OpenAiService: class OpenAiService {},
 }));
-jest.mock('../../source/ingestion/source-processing-stage.service', () => ({
+jest.mock('../../source-ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},
 }));
 

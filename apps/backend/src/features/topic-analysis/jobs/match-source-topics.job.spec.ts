@@ -6,7 +6,7 @@ import {
 } from '../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
-import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
+import { SourceProcessingStageService } from '../../source-ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { AnalysisQueue } from '../analysis.queue';
 import {
@@ -21,7 +21,7 @@ jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
 jest.mock('../../../infrastructure/open-ai/open-ai.service', () => ({
   OpenAiService: class OpenAiService {},
 }));
-jest.mock('../../source/ingestion/source-processing-stage.service', () => ({
+jest.mock('../../source-ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},
 }));
 

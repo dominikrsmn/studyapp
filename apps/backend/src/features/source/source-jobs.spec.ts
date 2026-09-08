@@ -8,8 +8,8 @@ jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
 jest.mock('../../infrastructure/filestorage/filestorage.service', () => ({
   FileStorageService: class {},
 }));
-jest.mock('./ingestion/ingestion.queue', () => ({ IngestionQueue: class {} }));
-jest.mock('./ingestion/source-processing-stage.service', () => ({
+jest.mock('../source-ingestion/ingestion.queue', () => ({ IngestionQueue: class {} }));
+jest.mock('../source-ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class {},
 }));
 

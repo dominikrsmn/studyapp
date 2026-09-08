@@ -3,12 +3,12 @@ import {
   ProcessingState,
   SourceProcessingStageType,
 } from '../../infrastructure/database/generated/enums';
-import type { SourceProcessingStageService } from '../source/ingestion/source-processing-stage.service';
+import type { SourceProcessingStageService } from '../source-ingestion/source-processing-stage.service';
 import { analysisConfig } from './analysis.config';
 import { AnalysisQueue } from './analysis.queue';
 import { AnalysisJobData } from './analysis.types';
 
-jest.mock('../source/ingestion/source-processing-stage.service', () => ({
+jest.mock('../source-ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},
 }));
 
