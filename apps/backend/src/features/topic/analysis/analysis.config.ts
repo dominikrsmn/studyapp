@@ -3,27 +3,27 @@ import { registerAs } from '@nestjs/config';
 export const analysisConfig = registerAs('topicAnalysis', () => ({
   flowProducer: { name: 'topic-analysis-flow' },
   boundaryDetection: {
-    model: 'gpt-5.6-sol',
+    model: 'gpt-5.6-luna',
     reasoningEffort: 'medium' as const,
     windowSize: 70,
     windowOverlap: 20,
   },
   boundaryMerging: {
-    model: 'gpt-5.6-sol',
+    model: 'gpt-5.6-luna',
     reasoningEffort: 'medium' as const,
     contextRadius: 4,
     shortSpanReviewThreshold: 8,
   },
   sourceTopicExtraction: {
-    model: 'gpt-5.6-sol',
+    model: 'gpt-5.6-luna',
     reasoningEffort: 'medium' as const,
   },
   sourceTopicMatching: {
-    model: 'gpt-5.6-sol',
+    model: 'gpt-5.6-luna',
     reasoningEffort: 'medium' as const,
   },
   topicSummaryGeneration: {
-    model: 'gpt-5.6-sol',
+    model: 'gpt-5.6-terra',
     reasoningEffort: 'medium' as const,
   },
   queue: {
