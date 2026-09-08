@@ -5,9 +5,9 @@ import { FlowProducer, Queue } from 'bullmq';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
+} from '../../infrastructure/database/generated/enums';
 import { analysisConfig } from './analysis.config';
-import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
+import { SourceProcessingStageService } from '../source/ingestion/source-processing-stage.service';
 import {
   AnalysisJobData,
   AnalysisUnit,

@@ -15,7 +15,7 @@ import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
 import { EmbedRagChunksJob } from './jobs/embed-rag-chunks.job';
 import { FinalizeIngestionJob } from './jobs/finalize-ingestion.job';
 import { SourceModule } from '../source.module';
-import { AnalysisModule } from '../../topic/analysis/analysis.module';
+import { AnalysisModule } from '../../topic-analysis/analysis.module';
 
 @Module({
   imports: [

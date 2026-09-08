@@ -6,11 +6,11 @@ import { z } from 'zod';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
-import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
-import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
-import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
+} from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../infrastructure/filestorage/filestorage.service';
+import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { parseStoredAnalysisDocument } from '../analysis-document.schema';
 import { AnalysisQueue } from '../analysis.queue';

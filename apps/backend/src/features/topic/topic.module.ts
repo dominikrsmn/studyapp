@@ -3,7 +3,7 @@ import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module
 import { TopicService } from './topic.service';
 
 import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
-import { AnalysisModule } from './analysis/analysis.module';
+import { AnalysisModule } from '../topic-analysis/analysis.module';
 import { TopicController } from './topic.controller';
 
 @Module({

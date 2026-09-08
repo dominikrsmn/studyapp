@@ -1,4 +1,4 @@
-import { JobHistoryService } from '../../../infrastructure/open-ai/job-history.service';
+import { JobHistoryService } from '../../infrastructure/open-ai/job-history.service';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { analysisConfig } from './analysis.config';
 import { Inject, Logger } from '@nestjs/common';

@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { NodeItem } from '@docling/docling-core';
-import type { Prisma } from '../../../../infrastructure/database/generated/client';
+import type { Prisma } from '../../../infrastructure/database/generated/client';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
-import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
-import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
+} from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../infrastructure/filestorage/filestorage.service';
+import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
 import {
   parseAnalysisDocument,
   parseStoredAnalysisDocument,

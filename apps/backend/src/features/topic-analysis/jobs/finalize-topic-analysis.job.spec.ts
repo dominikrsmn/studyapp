@@ -3,20 +3,20 @@ import {
   ProcessingState,
   SourceProcessingStageType,
   TopicState,
-} from '../../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
-import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
-import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
+} from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../infrastructure/filestorage/filestorage.service';
+import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
 import { createTestDoclingDocument } from '../analysis-document.fixture';
 import {
   FinalizeTopicAnalysisJob,
   validateFinalTopicAnalysis,
 } from './finalize-topic-analysis.job';
 
-jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../../../source/ingestion/source-processing-stage.service', () => ({
+jest.mock('../../source/ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},
 }));
 jest.mock('../analysis.queue', () => ({

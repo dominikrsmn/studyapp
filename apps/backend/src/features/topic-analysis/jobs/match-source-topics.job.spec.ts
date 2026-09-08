@@ -3,10 +3,10 @@ import {
   ProcessingState,
   SourceProcessingStageType,
   TopicState,
-} from '../../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
-import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
-import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
+} from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { AnalysisQueue } from '../analysis.queue';
 import {
@@ -15,13 +15,13 @@ import {
   validateMatchingResult,
 } from './match-source-topics.job';
 
-jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../../../../infrastructure/open-ai/open-ai.service', () => ({
+jest.mock('../../../infrastructure/open-ai/open-ai.service', () => ({
   OpenAiService: class OpenAiService {},
 }));
-jest.mock('../../../source/ingestion/source-processing-stage.service', () => ({
+jest.mock('../../source/ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},
 }));
 

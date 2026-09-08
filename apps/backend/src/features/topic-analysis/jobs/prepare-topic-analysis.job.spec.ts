@@ -3,10 +3,10 @@ import { ZodError } from 'zod';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
-import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
-import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
+} from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../infrastructure/filestorage/filestorage.service';
+import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { createTestDoclingDocument } from '../analysis-document.fixture';
 import { AnalysisQueue } from '../analysis.queue';
@@ -17,10 +17,10 @@ import {
   PrepareTopicAnalysisJob,
 } from './prepare-topic-analysis.job';
 
-jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../../../source/ingestion/source-processing-stage.service', () => ({
+jest.mock('../../source/ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},
 }));
 jest.mock('../analysis.queue', () => ({

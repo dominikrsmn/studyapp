@@ -6,10 +6,10 @@ import {
   ProcessingState,
   SourceProcessingStageType,
   TopicState,
-} from '../../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
-import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
-import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
+} from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { MatchSourceTopics } from '../analysis.types';
 import { AnalysisQueue } from '../analysis.queue';

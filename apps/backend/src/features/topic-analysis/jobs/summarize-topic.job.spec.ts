@@ -1,14 +1,14 @@
-import { TopicState } from '../../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
-import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
+import { TopicState } from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 import { analysisConfig } from '../analysis.config';
 import { AnalysisQueue } from '../analysis.queue';
 import { SummarizeTopicJob } from './summarize-topic.job';
 
-jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../../../../infrastructure/open-ai/open-ai.service', () => ({
+jest.mock('../../../infrastructure/open-ai/open-ai.service', () => ({
   OpenAiService: class OpenAiService {},
 }));
 jest.mock('../analysis.queue', () => ({

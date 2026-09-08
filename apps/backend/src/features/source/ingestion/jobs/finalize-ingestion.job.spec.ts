@@ -5,14 +5,14 @@ import {
 } from '../../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
 import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
-import { AnalysisQueue } from '../../../topic/analysis/analysis.queue';
+import { AnalysisQueue } from '../../../topic-analysis/analysis.queue';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 import { FinalizeIngestionJob } from './finalize-ingestion.job';
 
 jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../../../topic/analysis/analysis.queue', () => ({
+jest.mock('../../../topic-analysis/analysis.queue', () => ({
   AnalysisQueue: class AnalysisQueue {},
 }));
 

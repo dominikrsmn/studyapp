@@ -3,11 +3,11 @@ import { UnrecoverableError } from 'bullmq';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../../infrastructure/database/prisma/prisma.service';
-import { FileStorageService } from '../../../../infrastructure/filestorage/filestorage.service';
-import { OpenAiService } from '../../../../infrastructure/open-ai/open-ai.service';
-import { SourceProcessingStageService } from '../../../source/ingestion/source-processing-stage.service';
+} from '../../../infrastructure/database/generated/enums';
+import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
+import { FileStorageService } from '../../../infrastructure/filestorage/filestorage.service';
+import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+import { SourceProcessingStageService } from '../../source/ingestion/source-processing-stage.service';
 import { analysisConfig } from '../analysis.config';
 import { createTestDoclingDocument } from '../analysis-document.fixture';
 import { parseAnalysisDocument } from '../analysis-document.schema';
@@ -19,13 +19,13 @@ import {
   sourceTopicExtractionPrompt,
 } from './extract-source-topics.job';
 
-jest.mock('../../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../../../../infrastructure/open-ai/open-ai.service', () => ({
+jest.mock('../../../infrastructure/open-ai/open-ai.service', () => ({
   OpenAiService: class OpenAiService {},
 }));
-jest.mock('../../../source/ingestion/source-processing-stage.service', () => ({
+jest.mock('../../source/ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class SourceProcessingStageService {},
 }));
 jest.mock('@docling/docling-core', () => ({
