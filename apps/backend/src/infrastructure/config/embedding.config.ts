@@ -5,4 +5,12 @@ export const embeddingConfig = registerAs('embedding', () => ({
   dimensions: 1536,
   encodingFormat: 'float' as const,
   batchSize: 64,
+  queue: {
+    name: 'embedding',
+    concurrency: 10,
+    jobs: {
+      create_topic_embeddings: 'create-topic-embeddings',
+      create_evidence_embeddings: 'create-evidence-embeddings',
+    },
+  },
 }));
