@@ -1,13 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
-import { embeddingConfig } from '../../../infrastructure/config/embedding.config';
+import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '../../../infrastructure/database/generated/client';
 import {
   ProcessingState,
   SourceProcessingStageType,
 } from '../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+import { EmbeddingService } from '../../../infrastructure/embedding/embedding.service';
 import { EmbedRagChunksJobData } from '../ingestion.types';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 
@@ -26,10 +24,8 @@ export class EmbedRagChunksJob {
 
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly openAiService: OpenAiService,
+    private readonly embeddingService: EmbeddingService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
-    @Inject(embeddingConfig.KEY)
-    private readonly embedding: ConfigType<typeof embeddingConfig>,
   ) {}
 
   async process({ sourceId, chunkIds }: EmbedRagChunksJobData): Promise<void> {
@@ -68,12 +64,9 @@ export class EmbedRagChunksJob {
       );
 
       if (chunks.length > 0) {
-        const response = await this.openAiService.client.embeddings.create({
-          model: this.embedding.model,
-          encoding_format: this.embedding.encodingFormat,
-          input: chunks.map((chunk) => this.embeddingInput(source.name, chunk)),
-        });
-        const vectors = this.vectorsInInputOrder(response.data, chunks.length);
+        const vectors = await this.embeddingService.embedTexts(
+          chunks.map((chunk) => this.embeddingInput(source.name, chunk)),
+        );
         const embeddingRows = chunks.map((chunk, index) => {
           const vector = `[${vectors[index].join(',')}]`;
 
@@ -147,38 +140,5 @@ export class EmbedRagChunksJob {
     }
 
     return `Pages: ${pageStart}-${pageEnd}`;
-  }
-
-  private vectorsInInputOrder(
-    data: { index: number; embedding: number[] }[],
-    expectedCount: number,
-  ): number[][] {
-    if (data.length !== expectedCount) {
-      throw new Error(
-        `Embedding API returned ${data.length} vectors for ${expectedCount} chunks`,
-      );
-    }
-
-    const vectors: Array<number[] | undefined> = Array(expectedCount);
-    for (const result of data) {
-      if (
-        !Number.isInteger(result.index) ||
-        result.index < 0 ||
-        result.index >= expectedCount ||
-        vectors[result.index] !== undefined ||
-        result.embedding.length === 0 ||
-        result.embedding.some((value) => !Number.isFinite(value))
-      ) {
-        throw new Error('Embedding API returned invalid vector data');
-      }
-
-      vectors[result.index] = result.embedding;
-    }
-
-    if (vectors.some((vector) => vector === undefined)) {
-      throw new Error('Embedding API returned incomplete vector data');
-    }
-
-    return vectors as number[][];
   }
 }

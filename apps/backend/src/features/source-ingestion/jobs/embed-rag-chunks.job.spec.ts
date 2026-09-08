@@ -1,11 +1,10 @@
 import { Logger } from '@nestjs/common';
-import { embeddingConfig } from '../../../infrastructure/config/embedding.config';
 import {
   ProcessingState,
   SourceProcessingStageType,
 } from '../../../infrastructure/database/generated/enums';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
+import { EmbeddingService } from '../../../infrastructure/embedding/embedding.service';
 import { SourceProcessingStageService } from '../source-processing-stage.service';
 import { EmbedRagChunksJob } from './embed-rag-chunks.job';
 
@@ -95,10 +94,8 @@ describe('EmbedRagChunksJob', () => {
     $queryRaw: queryRaw,
     $executeRaw: executeRaw,
   };
-  const createEmbeddings = jest.fn();
-  const openAiService = {
-    client: { embeddings: { create: createEmbeddings } },
-  };
+  const embedTexts = jest.fn();
+  const embeddingService = { embedTexts };
   const sourceProcessingStageService = { transition: jest.fn() };
 
   let job: EmbedRagChunksJob;
@@ -110,21 +107,18 @@ describe('EmbedRagChunksJob', () => {
     sourceDelegate.findUnique.mockResolvedValue(source);
     queryRaw.mockResolvedValue(chunks);
     executeRaw.mockResolvedValue(1);
-    createEmbeddings.mockResolvedValue({
-      data: [
-        { index: 1, embedding: [0.3, 0.4] },
-        { index: 0, embedding: [0.1, 0.2] },
-      ],
-    });
+    embedTexts.mockResolvedValue([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
     sourceProcessingStageService.transition.mockResolvedValue({
       id: 'stage-id',
     });
 
     job = new EmbedRagChunksJob(
       prismaService as unknown as PrismaService,
-      openAiService as unknown as OpenAiService,
+      embeddingService as unknown as EmbeddingService,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
-      embeddingConfig(),
     );
   });
 
@@ -150,23 +144,19 @@ describe('EmbedRagChunksJob', () => {
     expect(query.sql).toContain('chunk."id" IN (?,?)');
     expect(query.sql).toContain('chunk."embedding" IS NULL');
     expect(query.values).toEqual([sourceId, 'chunk-1', 'chunk-2']);
-    expect(createEmbeddings).toHaveBeenCalledTimes(1);
-    expect(createEmbeddings).toHaveBeenCalledWith({
-      model: 'text-embedding-3-small',
-      encoding_format: 'float',
-      input: [
-        'Source: Linear Algebra Notes\n' +
-          'Section: Vector spaces > Bases\n' +
-          'Pages: 10-11\n\n' +
-          'A basis spans the vector space.',
-        'Source: Linear Algebra Notes\n' +
-          'Page: 12\n\n' +
-          'The vectors must also be linearly independent.',
-      ],
-    });
+    expect(embedTexts).toHaveBeenCalledTimes(1);
+    expect(embedTexts).toHaveBeenCalledWith([
+      'Source: Linear Algebra Notes\n' +
+        'Section: Vector spaces > Bases\n' +
+        'Pages: 10-11\n\n' +
+        'A basis spans the vector space.',
+      'Source: Linear Algebra Notes\n' +
+        'Page: 12\n\n' +
+        'The vectors must also be linearly independent.',
+    ]);
   });
 
-  it('persists response vectors by API index in one atomic statement', async () => {
+  it('persists ordered service vectors in one atomic statement', async () => {
     await job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] });
 
     expect(executeRaw).toHaveBeenCalledTimes(1);
@@ -193,7 +183,7 @@ describe('EmbedRagChunksJob', () => {
 
     await job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] });
 
-    expect(createEmbeddings).not.toHaveBeenCalled();
+    expect(embedTexts).not.toHaveBeenCalled();
     expect(executeRaw).not.toHaveBeenCalled();
   });
 
@@ -202,17 +192,15 @@ describe('EmbedRagChunksJob', () => {
     queryRaw.mockResolvedValueOnce([]);
     await job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] });
 
-    expect(createEmbeddings).toHaveBeenCalledTimes(1);
+    expect(embedTexts).toHaveBeenCalledTimes(1);
     expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 
   it('does not persist partial API results and records the failure', async () => {
     const responseError = new Error(
-      'Embedding API returned 1 vectors for 2 chunks',
+      'Embedding API returned 1 vectors for 2 texts',
     );
-    createEmbeddings.mockResolvedValue({
-      data: [{ index: 0, embedding: [0.1, 0.2] }],
-    });
+    embedTexts.mockRejectedValueOnce(responseError);
 
     await expect(
       job.process({ sourceId, chunkIds: ['chunk-1', 'chunk-2'] }),
@@ -233,7 +221,7 @@ describe('EmbedRagChunksJob', () => {
     await job.process({ sourceId, chunkIds: ['chunk-1'] });
 
     expect(queryRaw).not.toHaveBeenCalled();
-    expect(createEmbeddings).not.toHaveBeenCalled();
+    expect(embedTexts).not.toHaveBeenCalled();
     expect(executeRaw).not.toHaveBeenCalled();
   });
 });

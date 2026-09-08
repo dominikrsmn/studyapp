@@ -41,10 +41,7 @@ describe('SemanticSearchService', () => {
     await expect(
       service.search('exam topics', 'module-id', 'user-id'),
     ).resolves.toEqual([{ ...rows[0], citationLabel: 'S1' }]);
-    expect(embeddingService.embedQuery).toHaveBeenCalledWith(
-      'exam topics',
-      'user-id',
-    );
+    expect(embeddingService.embedQuery).toHaveBeenCalledWith('exam topics');
     expect(prismaService.$queryRaw).toHaveBeenCalledTimes(1);
   });
 

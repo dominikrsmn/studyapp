@@ -20,7 +20,7 @@ export class SemanticSearchService {
     userId: string,
     topK = this.config.semanticSearchResultLimit,
   ): Promise<SemanticSearchResult[]> {
-    const embedding = await this.embeddingService.embedQuery(query, userId);
+    const embedding = await this.embeddingService.embedQuery(query);
     const vector = `[${embedding.join(',')}]`;
 
     const rows = await this.prismaService.$queryRaw<
