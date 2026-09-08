@@ -1,3 +1,4 @@
+import { jobCostContext } from './job-cost-context';
 import { ConfigService } from '@nestjs/config';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
@@ -34,6 +35,18 @@ describe('OpenAiService cost persistence', () => {
       },
     ],
   };
+
+  it('associates each recorded request with its current job', async () => {
+    jest
+      .spyOn(service.client.responses, 'create')
+      .mockResolvedValue(response as never);
+    await jobCostContext.run('execution-id', () =>
+      service.createResponse({ model: 'gpt-5.6-luna' }),
+    );
+    expect(save).toHaveBeenCalledWith({
+      data: { costUsd: '0.00000800', jobId: 'execution-id' },
+    });
+  });
 
   it('stores only the amount and returns the original response', async () => {
     jest

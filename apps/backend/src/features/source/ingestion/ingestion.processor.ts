@@ -1,3 +1,4 @@
+import { JobHistoryService } from '../../../infrastructure/open-ai/job-history.service';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { ingestionConfig } from './ingestion.config';
@@ -20,6 +21,7 @@ export class IngestionProcessor extends WorkerHost {
   private readonly logger = new Logger(IngestionProcessor.name);
 
   constructor(
+    private readonly jobHistory: JobHistoryService,
     @Inject(ingestionConfig.KEY)
     private readonly config: ConfigType<typeof ingestionConfig>,
     private readonly parseDocumentJob: ParseDocumentJob,
@@ -31,6 +33,10 @@ export class IngestionProcessor extends WorkerHost {
   }
 
   process(job: Job<IngestionJobData>): Promise<void> {
+    return this.jobHistory.run(job, () => this.processJob(job));
+  }
+
+  private processJob(job: Job<IngestionJobData>): Promise<void> {
     this.logger.log(`Processing ${job.name} job: ${job.id}`);
     switch (job.name) {
       case this.config.queue.jobs.parse_document:

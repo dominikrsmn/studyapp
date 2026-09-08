@@ -5,6 +5,7 @@ import { parseResponse } from 'openai/lib/ResponsesParser';
 import type { ResponseCreateParamsNonStreaming } from 'openai/resources/responses/responses';
 import { Env } from '../config/env.schema';
 import { PrismaService } from '../database/prisma/prisma.service';
+import { jobCostContext } from './job-cost-context';
 import { calculateResponseCost } from './response-cost';
 
 @Injectable()
@@ -23,7 +24,12 @@ export class OpenAiService {
   async createResponse(body: ResponseCreateParamsNonStreaming) {
     const response = await this.client.responses.create(body);
     await this.prisma.aiRequestCost.create({
-      data: { costUsd: calculateResponseCost(response) },
+      data: {
+        costUsd: calculateResponseCost(response),
+        ...(jobCostContext.getStore()
+          ? { jobId: jobCostContext.getStore() }
+          : {}),
+      },
     });
     return response;
   }

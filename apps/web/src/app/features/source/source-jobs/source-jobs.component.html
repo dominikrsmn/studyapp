@@ -1,0 +1,96 @@
+<div class="space-y-5">
+  <div class="flex items-center justify-between gap-4">
+    <div>
+      <p class="text-xs font-bold uppercase tracking-widest text-sage-500">
+        Recorded AI costs (USD)
+      </p>
+      <p class="mt-1 text-2xl font-bold tabular-nums text-sage-950">
+        @if (data()?.recordedCostUsd; as total) {
+          ${{ total }}
+        } @else {
+          —
+        }
+      </p>
+    </div>
+    <button z-button zType="outline" [zDisabled]="loading()" (click)="load()">
+      Refresh
+    </button>
+  </div>
+  <p class="text-sm text-sage-600">
+    Only recorded costs are included. Older jobs and requests without cost data
+    are not counted as $0. Embedding costs are not currently recorded.
+  </p>
+  @if (error()) {
+    <p role="alert" class="text-sm text-destructive">
+      Jobs could not be loaded. Please try refreshing.
+    </p>
+  }
+  @if (loading()) {
+    <div role="status" class="flex items-center gap-2 text-sm text-sage-600">
+      <z-spinner /> Loading jobs…
+    </div>
+  }
+  @if (data(); as overview) {
+    <div class="max-h-[50vh] overflow-auto rounded-xl border border-sage-200">
+      <table class="w-full text-left text-sm">
+        <thead class="sticky top-0 bg-sage-50 text-sage-600">
+          <tr>
+            <th scope="col" class="p-3">Job</th>
+            <th scope="col" class="p-3">Status</th>
+            <th scope="col" class="p-3 text-right">AI cost (USD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (job of overview.jobs; track job.id) {
+            <tr class="border-t border-sage-100">
+              <td class="p-3">
+                <p class="font-medium text-sage-950">{{ label(job.name) }}</p>
+                <p class="mt-1 text-xs text-sage-500">
+                  Attempt {{ job.attempt }} ·
+                  {{ job.startedAt | date: 'medium' }}
+                </p>
+                @if (job.shared) {
+                  <p class="mt-1 text-xs text-sage-500">
+                    Shared topic job · full cost across its sources
+                  </p>
+                }
+              </td>
+              <td
+                class="p-3 capitalize"
+                [class.text-destructive]="job.state === 'FAILED'"
+              >
+                {{ stateLabel(job.state) }}
+              </td>
+              <td class="p-3 text-right tabular-nums whitespace-nowrap">
+                @if (job.costUsd !== null) {
+                  ${{ job.costUsd }}
+                } @else {
+                  <span class="text-sage-500">Not recorded</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3" class="p-4 text-sage-600">
+                No detailed job history is available for this source.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <details class="text-sm text-sage-600" [open]="overview.jobs.length === 0">
+      <summary class="cursor-pointer font-medium">Processing overview</summary>
+      <p class="my-3 text-xs">
+        These phases are retained for older sources too. Individual historical
+        jobs and their costs cannot be reconstructed.
+      </p>
+      @for (stage of overview.processingStages; track stage.stage) {
+        <div class="flex justify-between gap-4 py-1">
+          <span>{{ label(stage.stage) }}</span
+          ><span class="capitalize">{{ stateLabel(stage.state) }}</span>
+        </div>
+      }
+    </details>
+  }
+</div>

@@ -1,4 +1,23 @@
 model AiRequestCost {
-  id      String  @id @default(uuid())
-  costUsd Decimal @db.Decimal(20, 12)
+  id      String     @id @default(uuid())
+  costUsd Decimal    @db.Decimal(20, 12)
+  jobId   String?
+  job     SourceJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([jobId])
+}
+
+model SourceJob {
+  id         String          @id @default(uuid())
+  sourceIds  String[]
+  name       String
+  queue      String
+  jobId      String
+  attempt    Int
+  state      String
+  startedAt  DateTime        @default(now())
+  finishedAt DateTime?
+  costs      AiRequestCost[]
+
+  @@index([sourceIds], type: Gin)
 }

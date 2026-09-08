@@ -1,3 +1,5 @@
+import { ZardDialogService } from '../../../../shared/components/dialog';
+import { SourceJobsComponent } from '../../../source/source-jobs/source-jobs.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -114,6 +116,8 @@ export default class SourcesTabComponent {
   private readonly alertDialogService = inject(ZardAlertDialogService);
   private readonly semanticSearchApi = inject(SemanticSearchApiService);
 
+  private readonly dialogService = inject(ZardDialogService);
+
   protected readonly sources = this.sourcesService.sources;
   protected readonly isLoading = signal(true);
   protected readonly isUploading = signal(false);
@@ -201,6 +205,19 @@ export default class SourcesTabComponent {
             'The source could not be uploaded. Please try again.',
           ),
       });
+  }
+
+  protected openJobs(source: SourceDto, popover: ZardPopoverDirective): void {
+    popover.hide();
+    this.dialogService.create({
+      zTitle: 'Jobs & AI costs',
+      zDescription: source.name,
+      zContent: SourceJobsComponent,
+      zData: source,
+      zWidth: 'min(48rem, calc(100vw - 2rem))',
+      zCancelText: null,
+      zOkText: 'Close',
+    });
   }
 
   protected confirmDelete(

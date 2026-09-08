@@ -1,6 +1,7 @@
+import { Decimal } from '@prisma/client/runtime/client';
 import { invalidateSourceTopics } from '../topic/content-revision';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { SourceDto } from '@study/contracts';
+import { SourceDto, SourceJobsDto } from '@study/contracts';
 import type { Prisma } from '../../infrastructure/database/generated/client';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
@@ -34,6 +35,47 @@ export class SourceService {
     private readonly sourceIngestionQueue: IngestionQueue,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
   ) {}
+
+  async getJobs(
+    userId: string,
+    moduleId: string,
+    sourceId: string,
+  ): Promise<SourceJobsDto> {
+    const source = await this.prisma.source.findFirst({
+      where: { id: sourceId, moduleId, module: { semester: { userId } } },
+      select: sourceSelect,
+    });
+    if (!source) throw new NotFoundException('Source was not found');
+    const executions = await this.prisma.sourceJob.findMany({
+      where: { sourceIds: { has: sourceId } },
+      orderBy: { startedAt: 'asc' },
+      include: { costs: { select: { costUsd: true } } },
+    });
+    const jobs = executions.map((job) => ({
+      id: job.id,
+      name: job.name,
+      attempt: job.attempt,
+      state: job.state,
+      startedAt: job.startedAt.toISOString(),
+      finishedAt: job.finishedAt?.toISOString() ?? null,
+      costUsd: job.costs.length
+        ? job.costs
+            .reduce((sum, cost) => sum.plus(cost.costUsd), new Decimal(0))
+            .toFixed(8)
+        : null,
+      shared: job.sourceIds.length > 1,
+    }));
+    const recorded = jobs.filter((job) => job.costUsd !== null);
+    return {
+      jobs,
+      recordedCostUsd: recorded.length
+        ? recorded
+            .reduce((sum, job) => sum.plus(job.costUsd!), new Decimal(0))
+            .toFixed(8)
+        : null,
+      processingStages: source.processingStages,
+    };
+  }
 
   async uploadSource(
     userId: string,

@@ -59,6 +59,15 @@ export class SourcesController {
     return this.sourceService.remove(request.userId, moduleId, id);
   }
 
+  @Get(':id/jobs')
+  getJobs(
+    @Req() request: AuthenticatedRequest,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.sourceService.getJobs(request.userId, moduleId, id);
+  }
+
   @Get()
   findAll(
     @Req() request: AuthenticatedRequest,

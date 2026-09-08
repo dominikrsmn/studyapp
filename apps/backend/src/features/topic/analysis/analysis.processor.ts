@@ -1,3 +1,4 @@
+import { JobHistoryService } from '../../../infrastructure/open-ai/job-history.service';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { analysisConfig } from './analysis.config';
 import { Inject, Logger } from '@nestjs/common';
@@ -27,6 +28,7 @@ export class AnalysisProcessor extends WorkerHost {
   private readonly logger = new Logger(AnalysisProcessor.name);
 
   constructor(
+    private readonly jobHistory: JobHistoryService,
     @Inject(analysisConfig.KEY)
     private readonly config: ConfigType<typeof analysisConfig>,
     private readonly prepareTopicAnalysisJob: PrepareTopicAnalysisJob,
@@ -41,6 +43,12 @@ export class AnalysisProcessor extends WorkerHost {
   }
 
   process(job: Job<AnalysisJobData>): Promise<void | BoundaryDetectionResult> {
+    return this.jobHistory.run(job, () => this.processJob(job));
+  }
+
+  private processJob(
+    job: Job<AnalysisJobData>,
+  ): Promise<void | BoundaryDetectionResult> {
     this.logger.log(`Processing ${job.name} job: ${job.id}`);
     switch (job.name) {
       case this.config.queue.jobs.prepare_topic_analysis:
@@ -55,8 +63,7 @@ export class AnalysisProcessor extends WorkerHost {
         return this.extractSourceTopicsJob.process(
           job.data as ExtractSourceTopics,
           {
-            isFinalAttempt:
-              job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
+            isFinalAttempt: job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
           },
         );
       case this.config.queue.jobs.match_source_topics:

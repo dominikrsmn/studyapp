@@ -1,12 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { CreateSource, SourceDto } from '@study/contracts';
+import { CreateSource, SourceDto, SourceJobsDto } from '@study/contracts';
 import { Observable } from 'rxjs';
 
 @Service()
 export class SourceApiService {
   private readonly http = inject(HttpClient);
+
+  getJobs(moduleId: string, id: string): Observable<SourceJobsDto> {
+    return this.http.get<SourceJobsDto>(`${this.getUrl(moduleId)}/${id}/jobs`);
+  }
 
   findAll(moduleId: string): Observable<SourceDto[]> {
     return this.http.get<SourceDto[]>(this.getUrl(moduleId));

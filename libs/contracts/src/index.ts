@@ -22,3 +22,4 @@ export * from './assessment/observation.schema';
 export * from './learning-graph/user-topic-state.schema';
 export * from './learning-graph/learning-graph.schema';
 export * from './practice/practice-session.schema';
+export * from './source/source-jobs.schema';

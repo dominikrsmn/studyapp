@@ -58,7 +58,9 @@
             @if (result.pageStart !== null) {
               <p>
                 page {{ result.pageStart }}
-                @if (result.pageEnd !== null && result.pageEnd !== result.pageStart) {
+                @if (
+                  result.pageEnd !== null && result.pageEnd !== result.pageStart
+                ) {
                   - {{ result.pageEnd }}
                 }
               </p>
@@ -115,17 +117,17 @@
     <div class="overflow-x-auto">
       <table z-table zSize="comfortable" class="min-w-2xl">
         <thead z-table-header class="bg-sage-50/70">
-        <tr
-          z-table-row
-          class="hover:bg-transparent font-bold text-xs uppercase tracking-widest text-sage-600 space-x-8"
-        >
-          <th z-table-head class="h-14 px-8!">Document</th>
-          <th z-table-head class="h-14 w-44 px-8!">Type</th>
-          <th z-table-head class="h-14 w-48 px-8!">Status</th>
-          <th z-table-head class="h-14 w-20 px-8!">
-            <span class="sr-only">Actions</span>
-          </th>
-        </tr>
+          <tr
+            z-table-row
+            class="hover:bg-transparent font-bold text-xs uppercase tracking-widest text-sage-600 space-x-8"
+          >
+            <th z-table-head class="h-14 px-8!">Document</th>
+            <th z-table-head class="h-14 w-44 px-8!">Type</th>
+            <th z-table-head class="h-14 w-48 px-8!">Status</th>
+            <th z-table-head class="h-14 w-20 px-8!">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
         </thead>
         <tbody z-table-body>
           @if (isLoading()) {
@@ -257,7 +259,17 @@
                   </button>
 
                   <ng-template #actionsMenu>
-                    <z-popover class="w-40 p-1.5">
+                    <z-popover class="w-48 p-1.5">
+                      <button
+                        z-button
+                        type="button"
+                        zType="ghost"
+                        class="w-full justify-start"
+                        (click)="openJobs(source, actions)"
+                      >
+                        <span appIcon="list" data-icon="inline-start"></span>
+                        Jobs &amp; AI costs
+                      </button>
                       <button
                         z-button
                         type="button"
