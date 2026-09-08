@@ -108,7 +108,7 @@ export class ExtractSourceTopicsJob {
       const document = parseStoredAnalysisDocument(storedDocument);
       const resolvedSpans = resolveTopicSpans(document, spans);
       const responseSchema = sourceTopicExtractionSchema(resolvedSpans);
-      const response = await this.openAiService.client.responses.parse({
+      const response = await this.openAiService.parseResponse({
         model: this.config.sourceTopicExtraction.model,
         reasoning: {
           effort: this.config.sourceTopicExtraction.reasoningEffort,

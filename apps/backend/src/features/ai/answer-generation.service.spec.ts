@@ -1,3 +1,6 @@
+jest.mock('../../infrastructure/open-ai/open-ai.service', () => ({
+  OpenAiService: class {},
+}));
 import { OpenAiService } from '../../infrastructure/open-ai/open-ai.service';
 import { AnswerGenerationService } from './answer-generation.service';
 import { aiConfig } from './ai.config';
@@ -5,7 +8,7 @@ import { aiConfig } from './ai.config';
 describe('AnswerGenerationService', () => {
   const create = jest.fn();
   const openAiService = {
-    client: { responses: { create } },
+    createResponse: create,
   } as unknown as OpenAiService;
   let service: AnswerGenerationService;
 

@@ -46,7 +46,7 @@ describe('SummarizeTopicJob', () => {
       {
         topic: { findUnique, updateMany },
       } as unknown as PrismaService,
-      { client: { responses: { parse } } } as unknown as OpenAiService,
+      { parseResponse: parse } as unknown as OpenAiService,
       { addSummarizeTopic } as unknown as AnalysisQueue,
       config,
     );

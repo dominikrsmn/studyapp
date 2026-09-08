@@ -16,7 +16,7 @@ export class AnswerGenerationService {
     chunks: SemanticSearchResult[],
     userId: string,
   ): Promise<string> {
-    const response = await this.openAiService.client.responses.create({
+    const response = await this.openAiService.createResponse({
       model: this.config.answerModel,
       reasoning: {
         effort: this.config.reasoningEffort,

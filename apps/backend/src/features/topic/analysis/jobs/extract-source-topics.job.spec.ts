@@ -194,7 +194,7 @@ describe('ExtractSourceTopicsJob', () => {
     job = new ExtractSourceTopicsJob(
       prismaService as unknown as PrismaService,
       { readDoclingDocument } as unknown as FileStorageService,
-      { client: { responses: { parse } } } as unknown as OpenAiService,
+      { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
       { addMatchSourceTopics } as unknown as AnalysisQueue,
       config,

@@ -128,7 +128,7 @@ export class MergeBoundariesJob {
           ({ afterRef }) => afterRef,
         ) as [string, ...string[]];
         const responseSchema = boundaryAdjudicationSchema(eligibleAfterRefs);
-        const response = await this.openAiService.client.responses.parse({
+        const response = await this.openAiService.parseResponse({
           model: this.config.boundaryMerging.model,
           reasoning: {
             effort: this.config.boundaryMerging.reasoningEffort,

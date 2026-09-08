@@ -1,0 +1,4 @@
+model AiRequestCost {
+  id      String  @id @default(uuid())
+  costUsd Decimal @db.Decimal(20, 12)
+}

@@ -179,7 +179,7 @@ describe('MatchSourceTopicsJob', () => {
 
     job = new MatchSourceTopicsJob(
       prismaService as unknown as PrismaService,
-      { client: { responses: { parse } } } as unknown as OpenAiService,
+      { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
       { addFinalizeTopicAnalysis } as unknown as AnalysisQueue,
       config,

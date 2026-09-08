@@ -84,7 +84,7 @@ describe('DetectBoundariesJob', () => {
     job = new DetectBoundariesJob(
       { source: { findUnique } } as unknown as PrismaService,
       { readDoclingDocument } as unknown as FileStorageService,
-      { client: { responses: { parse } } } as unknown as OpenAiService,
+      { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
       config,
     );

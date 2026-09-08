@@ -77,7 +77,7 @@ export class DetectBoundariesJob {
         ...string[],
       ];
       const responseSchema = boundaryDetectionSchema(eligibleAfterRefs);
-      const response = await this.openAiService.client.responses.parse({
+      const response = await this.openAiService.parseResponse({
         model: this.config.boundaryDetection.model,
         reasoning: {
           effort: this.config.boundaryDetection.reasoningEffort,

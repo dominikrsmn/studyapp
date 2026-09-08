@@ -162,7 +162,7 @@ export class MatchSourceTopicsJob {
       // TODO: Use two decision passes. The first should use very little evidence;
       // when it is uncertain, retrieve the top-k evidence by semantic closeness
       // for a second, evidence-rich pass.
-      const response = await this.openAiService.client.responses.parse({
+      const response = await this.openAiService.parseResponse({
         model: this.config.sourceTopicMatching.model,
         reasoning: {
           effort: this.config.sourceTopicMatching.reasoningEffort,

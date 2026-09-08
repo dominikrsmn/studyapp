@@ -74,7 +74,7 @@ export class SummarizeTopicJob {
       throw new Error(`Cannot summarize ungrounded topic "${topicId}"`);
     }
 
-    const response = await this.openAiService.client.responses.parse({
+    const response = await this.openAiService.parseResponse({
       model: this.config.topicSummaryGeneration.model,
       reasoning: {
         effort: this.config.topicSummaryGeneration.reasoningEffort,

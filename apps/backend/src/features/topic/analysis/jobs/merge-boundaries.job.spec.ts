@@ -95,7 +95,7 @@ describe('MergeBoundariesJob', () => {
     mergeJob = new MergeBoundariesJob(
       { source: { findUnique } } as unknown as PrismaService,
       { readDoclingDocument } as unknown as FileStorageService,
-      { client: { responses: { parse } } } as unknown as OpenAiService,
+      { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
       { addExtractSourceTopics } as unknown as AnalysisQueue,
       config,
