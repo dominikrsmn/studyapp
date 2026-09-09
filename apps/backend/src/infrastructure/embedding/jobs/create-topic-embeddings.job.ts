@@ -20,7 +20,8 @@ export class CreateTopicEmbeddingsJob {
       where: {
         id: data.graphId,
         moduleId: data.moduleId,
-        graphVersion: data.graphVersion,
+        module: { graphVersion: data.graphVersion },
+        version: data.graphVersion,
       },
     });
     if (!graph) {

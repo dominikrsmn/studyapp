@@ -1,7 +1,7 @@
 export interface GraphBuildJobData {
-  buildId: string;
+  graphId: string;
   moduleId: string;
-  expectedModuleRevision: number;
+  graphVersion: number;
 }
 
 export interface DispatchCandidateBatchesJobData extends GraphBuildJobData {}
