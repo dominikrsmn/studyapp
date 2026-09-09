@@ -1,14 +1,10 @@
-export interface EmbeddingBuildJobData {
-  buildId: string;
-  moduleId: string;
-  expectedModuleRevision: number;
-}
+import { GraphBuildJobData } from '../../features/learning-graph/graph-build.types';
 
-export interface CreateTopicEmbeddingsJobData extends EmbeddingBuildJobData {
+export interface CreateTopicEmbeddingsJobData extends GraphBuildJobData {
   topicIds: string[];
 }
 
-export interface CreateEvidenceEmbeddingsJobData extends EmbeddingBuildJobData {
+export interface CreateEvidenceEmbeddingsJobData extends GraphBuildJobData {
   topicEvidenceIds: string[];
 }
 
