@@ -6,7 +6,7 @@ import {
 } from '../../database/generated/enums';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { EmbeddingService } from '../embedding.service';
-import { CreateRagEmbeddingsJobData } from '../../../features/source-ingestion/ingestion.types';
+import { CreateRagEmbeddingsJobData } from '../embedding.types';
 import { SourceProcessingStageService } from '../../../features/source-ingestion/source-processing-stage.service';
 
 type EmbeddingChunk = {

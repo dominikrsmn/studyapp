@@ -12,7 +12,6 @@ import { ParseDocumentJob } from './jobs/parse-document.job';
 import { DoclingModule } from '../../infrastructure/docling/docling.module';
 import { SourceProcessingStageService } from './source-processing-stage.service';
 import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
-import { CreateRagEmbeddingsJob } from '../../infrastructure/embedding/jobs/create-rag-embeddings.job';
 import { FinalizeIngestionJob } from './jobs/finalize-ingestion.job';
 import { SourceModule } from '../source/source.module';
 import { AnalysisModule } from '../topic-analysis/analysis.module';
@@ -30,7 +29,7 @@ import { AnalysisModule } from '../topic-analysis/analysis.module';
     FileStorageModule,
     PrismaModule,
     OpenAiModule,
-    EmbeddingModule,
+    forwardRef(() => EmbeddingModule),
     DoclingModule,
     forwardRef(() => AnalysisModule),
     forwardRef(() => SourceModule), // TODO: probably move source events into own module to avoid circular dependency (also in source module)
@@ -41,7 +40,6 @@ import { AnalysisModule } from '../topic-analysis/analysis.module';
     Logger,
     ParseDocumentJob,
     BuildRagChunksJob,
-    CreateRagEmbeddingsJob,
     FinalizeIngestionJob,
     SourceProcessingStageService,
   ],

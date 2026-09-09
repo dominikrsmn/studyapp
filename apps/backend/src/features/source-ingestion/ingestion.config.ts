@@ -17,7 +17,6 @@ export const ingestionConfig = registerAs('ingestion', () => ({
     jobs: {
       parse_document: 'parse-document',
       build_rag_chunks: 'build-rag-chunks',
-      create_rag_embeddings: 'create-rag-embeddings',
       finalize_ingestion: 'finalize-ingestion',
     },
     defaultJobOptions: {

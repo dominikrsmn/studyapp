@@ -1,4 +1,5 @@
 import { FlowProducer, Queue } from 'bullmq';
+import { embeddingConfig } from '../../infrastructure/config/embedding.config';
 import { ingestionConfig } from './ingestion.config';
 import { IngestionQueue } from './ingestion.queue';
 import { IngestionJobData } from './ingestion.types';
@@ -18,6 +19,7 @@ describe('IngestionQueue', () => {
   const flowProducer = { add: jest.fn() };
   const sourceProcessingStageService = { transition: jest.fn() };
   const config = ingestionConfig();
+  const embeddingQueue = embeddingConfig().queue;
   const ingestionQueue = new IngestionQueue(
     queue as unknown as Queue<IngestionJobData>,
     flowProducer as unknown as FlowProducer,
@@ -88,20 +90,20 @@ describe('IngestionQueue', () => {
         },
         children: [
           {
-            name: config.queue.jobs.create_rag_embeddings,
-            queueName: config.queue.name,
+            name: embeddingQueue.jobs.create_rag_embeddings,
+            queueName: embeddingQueue.name,
             data: { sourceId, chunkIds: ['chunk-0', 'chunk-1'] },
             opts: {
-              jobId: `${config.queue.jobs.create_rag_embeddings}/${sourceId}/0`,
+              jobId: `${embeddingQueue.jobs.create_rag_embeddings}/${sourceId}/0`,
               failParentOnFailure: true,
             },
           },
           {
-            name: config.queue.jobs.create_rag_embeddings,
-            queueName: config.queue.name,
+            name: embeddingQueue.jobs.create_rag_embeddings,
+            queueName: embeddingQueue.name,
             data: { sourceId, chunkIds: ['chunk-2'] },
             opts: {
-              jobId: `${config.queue.jobs.create_rag_embeddings}/${sourceId}/1`,
+              jobId: `${embeddingQueue.jobs.create_rag_embeddings}/${sourceId}/1`,
               failParentOnFailure: true,
             },
           },
@@ -109,6 +111,9 @@ describe('IngestionQueue', () => {
       },
       {
         queuesOptions: {
+          [embeddingQueue.name]: {
+            defaultJobOptions: config.queue.defaultJobOptions,
+          },
           [config.queue.name]: {
             defaultJobOptions: config.queue.defaultJobOptions,
           },

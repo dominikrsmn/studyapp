@@ -8,5 +8,12 @@ export interface CreateEvidenceEmbeddingsJobData extends GraphBuildJobData {
   topicEvidenceIds: string[];
 }
 
+export interface CreateRagEmbeddingsJobData {
+  sourceId: string;
+  chunkIds: string[];
+}
+
 export type EmbeddingJobData =
-  CreateTopicEmbeddingsJobData | CreateEvidenceEmbeddingsJobData;
+  | CreateTopicEmbeddingsJobData
+  | CreateEvidenceEmbeddingsJobData
+  | CreateRagEmbeddingsJobData;

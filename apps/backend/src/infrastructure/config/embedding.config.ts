@@ -9,6 +9,7 @@ export const embeddingConfig = registerAs('embedding', () => ({
     name: 'embedding',
     concurrency: 10,
     jobs: {
+      create_rag_embeddings: 'create-rag-embeddings',
       create_topic_embeddings: 'create-topic-embeddings',
       create_evidence_embeddings: 'create-evidence-embeddings',
     },

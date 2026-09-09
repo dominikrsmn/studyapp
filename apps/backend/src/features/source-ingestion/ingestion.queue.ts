@@ -6,10 +6,11 @@ import {
   ProcessingState,
   SourceProcessingStageType,
 } from '../../infrastructure/database/generated/enums';
+import { embeddingConfig } from '../../infrastructure/config/embedding.config';
+import type { CreateRagEmbeddingsJobData } from '../../infrastructure/embedding/embedding.types';
 import { ingestionConfig } from './ingestion.config';
 import {
   BuildRagChunksJobData,
-  CreateRagEmbeddingsJobData,
   FinalizeIngestionJobData,
   IngestionJobData,
   ParseDocumentJobData,
@@ -73,6 +74,8 @@ export class IngestionQueue {
       throw new Error('Cannot enqueue empty RAG embedding batches');
     }
 
+    const embeddingQueue = embeddingConfig().queue;
+
     await this.flowProducer.add(
       {
         name: this.config.queue.jobs.finalize_ingestion,
@@ -82,17 +85,20 @@ export class IngestionQueue {
           jobId: `${this.config.queue.jobs.finalize_ingestion}/${sourceId}`,
         },
         children: chunkIdBatches.map((chunkIds, batchIndex) => ({
-          name: this.config.queue.jobs.create_rag_embeddings,
-          queueName: this.config.queue.name,
+          name: embeddingQueue.jobs.create_rag_embeddings,
+          queueName: embeddingQueue.name,
           data: { sourceId, chunkIds } satisfies CreateRagEmbeddingsJobData,
           opts: {
-            jobId: `${this.config.queue.jobs.create_rag_embeddings}/${sourceId}/${batchIndex}`,
+            jobId: `${embeddingQueue.jobs.create_rag_embeddings}/${sourceId}/${batchIndex}`,
             failParentOnFailure: true,
           },
         })),
       },
       {
         queuesOptions: {
+          [embeddingQueue.name]: {
+            defaultJobOptions: this.config.queue.defaultJobOptions,
+          },
           [this.config.queue.name]: {
             defaultJobOptions: this.config.queue.defaultJobOptions,
           },

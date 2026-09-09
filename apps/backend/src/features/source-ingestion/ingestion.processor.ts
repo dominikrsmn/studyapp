@@ -4,7 +4,6 @@ import { Job } from 'bullmq';
 import { ingestionConfig } from './ingestion.config';
 import {
   BuildRagChunksJobData,
-  CreateRagEmbeddingsJobData,
   FinalizeIngestionJobData,
   IngestionJobData,
   ParseDocumentJobData,
@@ -13,7 +12,6 @@ import { Inject, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { ParseDocumentJob } from './jobs/parse-document.job';
 import { BuildRagChunksJob } from './jobs/build-rag-chunks.job';
-import { CreateRagEmbeddingsJob } from '../../infrastructure/embedding/jobs/create-rag-embeddings.job';
 import { FinalizeIngestionJob } from './jobs/finalize-ingestion.job';
 
 @Processor(ingestionConfig().queue.name, {})
@@ -26,7 +24,6 @@ export class IngestionProcessor extends WorkerHost {
     private readonly config: ConfigType<typeof ingestionConfig>,
     private readonly parseDocumentJob: ParseDocumentJob,
     private readonly buildRagChunksJob: BuildRagChunksJob,
-    private readonly createRagEmbeddingsJob: CreateRagEmbeddingsJob,
     private readonly finalizeIngestionJob: FinalizeIngestionJob,
   ) {
     super();
@@ -44,10 +41,6 @@ export class IngestionProcessor extends WorkerHost {
       case this.config.queue.jobs.build_rag_chunks:
         return this.buildRagChunksJob.process(
           job.data as BuildRagChunksJobData,
-        );
-      case this.config.queue.jobs.create_rag_embeddings:
-        return this.createRagEmbeddingsJob.process(
-          job.data as CreateRagEmbeddingsJobData,
         );
       case this.config.queue.jobs.finalize_ingestion:
         return this.finalizeIngestionJob.process(

@@ -1,4 +1,7 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
+import { IngestionModule } from '../../features/source-ingestion/ingestion.module';
+import { PrismaModule } from '../database/prisma/prisma.module';
+import { CreateRagEmbeddingsJob } from './jobs/create-rag-embeddings.job';
 import { EmbeddingService } from './embedding.service';
 import { ConfigModule } from '@nestjs/config';
 import { embeddingConfig } from '../config/embedding.config';
@@ -14,6 +17,8 @@ import { CreateEvidenceEmbeddingsJob } from './jobs/create-evidence-embeddings.j
   imports: [
     ConfigModule.forFeature(embeddingConfig),
     OpenAiModule,
+    PrismaModule,
+    forwardRef(() => IngestionModule),
     BullModule.registerQueue({ name: embeddingConfig().queue.name }),
   ],
   providers: [
@@ -21,6 +26,7 @@ import { CreateEvidenceEmbeddingsJob } from './jobs/create-evidence-embeddings.j
     EmbeddingQueue,
     EmbeddingProcessor,
     EmbeddingBatchingService,
+    CreateRagEmbeddingsJob,
     CreateTopicEmbeddingsJob,
     CreateEvidenceEmbeddingsJob,
   ],
