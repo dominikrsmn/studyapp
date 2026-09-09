@@ -15,7 +15,12 @@ model Topic {
   sourceTopics SourceTopic[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
+
+  prerequisites Topic[] @relation("TopicDependencies")
+  requiredBy    Topic[] @relation("TopicDependencies")
+
+  embedding Unsupported("vector")?
 
   @@index([moduleId])
 }
@@ -30,6 +35,8 @@ model TopicEvidence {
   sourceTopic   SourceTopic @relation(fields: [sourceTopicId], references: [id], onDelete: Cascade)
 
   spans TopicEvidenceSpan[]
+
+  embedding Unsupported("vector")?
 
   createdAt DateTime @default(now())
 

@@ -21,12 +21,24 @@ model Module {
   updatedAt   DateTime  @updatedAt
   examDate    DateTime?
   semesterId  String
-  // exercises   Exercise[]
   semester    Semester  @relation(fields: [semesterId], references: [id], onDelete: Cascade)
   sources     Source[]
   topics      Topic[]
 
-  contentRevision Int @default(1)
+  graphVersion Int @default(1)
+  learningGraphs LearningGraph[]
 
   @@index([semesterId])
+}
+
+model LearningGraph {
+  id String @id @default(uuid())
+  moduleId String
+  module Module @relation(fields: [moduleId], references: [id])
+  version Int @default(1)
+  status ProcessingState
+
+  createdAt DateTime @default(now())
+  finishedAt DateTime?
+  errorMessage String?
 }

@@ -104,11 +104,3 @@ enum SourceProcessingStageType {
   RAG_INDEXING
   TOPIC_ANALYSIS
 }
-
-enum ProcessingState {
-  NOT_STARTED
-  QUEUED
-  PROCESSING
-  COMPLETED
-  FAILED
-}

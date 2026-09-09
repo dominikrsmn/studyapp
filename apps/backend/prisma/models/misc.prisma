@@ -1,0 +1,7 @@
+enum ProcessingState {
+  NOT_STARTED
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
