@@ -9,7 +9,7 @@ import {
 import { ingestionConfig } from './ingestion.config';
 import {
   BuildRagChunksJobData,
-  EmbedRagChunksJobData,
+  CreateRagEmbeddingsJobData,
   FinalizeIngestionJobData,
   IngestionJobData,
   ParseDocumentJobData,
@@ -82,11 +82,11 @@ export class IngestionQueue {
           jobId: `${this.config.queue.jobs.finalize_ingestion}/${sourceId}`,
         },
         children: chunkIdBatches.map((chunkIds, batchIndex) => ({
-          name: this.config.queue.jobs.embed_rag_chunks,
+          name: this.config.queue.jobs.create_rag_embeddings,
           queueName: this.config.queue.name,
-          data: { sourceId, chunkIds } satisfies EmbedRagChunksJobData,
+          data: { sourceId, chunkIds } satisfies CreateRagEmbeddingsJobData,
           opts: {
-            jobId: `${this.config.queue.jobs.embed_rag_chunks}/${sourceId}/${batchIndex}`,
+            jobId: `${this.config.queue.jobs.create_rag_embeddings}/${sourceId}/${batchIndex}`,
             failParentOnFailure: true,
           },
         })),

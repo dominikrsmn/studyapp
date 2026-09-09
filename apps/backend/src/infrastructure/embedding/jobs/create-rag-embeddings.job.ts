@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '../../../infrastructure/database/generated/client';
+import { Prisma } from '../../database/generated/client';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { EmbeddingService } from '../../../infrastructure/embedding/embedding.service';
-import { EmbedRagChunksJobData } from '../ingestion.types';
-import { SourceProcessingStageService } from '../source-processing-stage.service';
+} from '../../database/generated/enums';
+import { PrismaService } from '../../database/prisma/prisma.service';
+import { EmbeddingService } from '../embedding.service';
+import { CreateRagEmbeddingsJobData } from '../../../features/source-ingestion/ingestion.types';
+import { SourceProcessingStageService } from '../../../features/source-ingestion/source-processing-stage.service';
 
 type EmbeddingChunk = {
   id: string;
@@ -19,8 +19,8 @@ type EmbeddingChunk = {
 };
 
 @Injectable()
-export class EmbedRagChunksJob {
-  private readonly logger = new Logger(EmbedRagChunksJob.name);
+export class CreateRagEmbeddingsJob {
+  private readonly logger = new Logger(CreateRagEmbeddingsJob.name);
 
   constructor(
     private readonly prismaService: PrismaService,
@@ -28,7 +28,7 @@ export class EmbedRagChunksJob {
     private readonly sourceProcessingStageService: SourceProcessingStageService,
   ) {}
 
-  async process({ sourceId, chunkIds }: EmbedRagChunksJobData): Promise<void> {
+  async process({ sourceId, chunkIds }: CreateRagEmbeddingsJobData): Promise<void> {
     const requestedChunkIds = [...new Set(chunkIds)];
     if (requestedChunkIds.length === 0) {
       throw new Error('Cannot embed an empty RAG chunk batch');
@@ -41,7 +41,7 @@ export class EmbedRagChunksJob {
 
     if (!source) {
       this.logger.warn(
-        `Skipping embed-rag-chunks job because source "${sourceId}" no longer exists`,
+        `Skipping create-rag-embeddings job because source "${sourceId}" no longer exists`,
       );
       return;
     }

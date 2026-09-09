@@ -1,7 +1,7 @@
 export type IngestionJobData =
   | ParseDocumentJobData
   | BuildRagChunksJobData
-  | EmbedRagChunksJobData
+  | CreateRagEmbeddingsJobData
   | FinalizeIngestionJobData;
 
 export interface ParseDocumentJobData {
@@ -12,7 +12,7 @@ export interface BuildRagChunksJobData {
   sourceId: string;
 }
 
-export interface EmbedRagChunksJobData {
+export interface CreateRagEmbeddingsJobData {
   sourceId: string;
   chunkIds: string[];
 }

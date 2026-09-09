@@ -2,16 +2,16 @@ import { Logger } from '@nestjs/common';
 import {
   ProcessingState,
   SourceProcessingStageType,
-} from '../../../infrastructure/database/generated/enums';
-import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
-import { EmbeddingService } from '../../../infrastructure/embedding/embedding.service';
-import { SourceProcessingStageService } from '../source-processing-stage.service';
-import { EmbedRagChunksJob } from './embed-rag-chunks.job';
+} from '../../database/generated/enums';
+import { PrismaService } from '../../database/prisma/prisma.service';
+import { EmbeddingService } from '../embedding.service';
+import { SourceProcessingStageService } from '../../../features/source-ingestion/source-processing-stage.service';
+import { CreateRagEmbeddingsJob } from './create-rag-embeddings.job';
 
-jest.mock('../../../infrastructure/database/prisma/prisma.service', () => ({
+jest.mock('../../database/prisma/prisma.service', () => ({
   PrismaService: class PrismaService {},
 }));
-jest.mock('../../../infrastructure/database/generated/client', () => ({
+jest.mock('../../database/generated/client', () => ({
   Prisma: {
     join: (values: unknown[]) => {
       const sql: string[] = [];
@@ -65,7 +65,7 @@ jest.mock('../../../infrastructure/database/generated/client', () => ({
   },
 }));
 
-describe('EmbedRagChunksJob', () => {
+describe('CreateRagEmbeddingsJob', () => {
   const sourceId = 'source-id';
   const source = { name: 'Linear Algebra Notes' };
   const chunks = [
@@ -98,7 +98,7 @@ describe('EmbedRagChunksJob', () => {
   const embeddingService = { embedTexts };
   const sourceProcessingStageService = { transition: jest.fn() };
 
-  let job: EmbedRagChunksJob;
+  let job: CreateRagEmbeddingsJob;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -115,7 +115,7 @@ describe('EmbedRagChunksJob', () => {
       id: 'stage-id',
     });
 
-    job = new EmbedRagChunksJob(
+    job = new CreateRagEmbeddingsJob(
       prismaService as unknown as PrismaService,
       embeddingService as unknown as EmbeddingService,
       sourceProcessingStageService as unknown as SourceProcessingStageService,

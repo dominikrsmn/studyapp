@@ -88,20 +88,20 @@ describe('IngestionQueue', () => {
         },
         children: [
           {
-            name: config.queue.jobs.embed_rag_chunks,
+            name: config.queue.jobs.create_rag_embeddings,
             queueName: config.queue.name,
             data: { sourceId, chunkIds: ['chunk-0', 'chunk-1'] },
             opts: {
-              jobId: `${config.queue.jobs.embed_rag_chunks}/${sourceId}/0`,
+              jobId: `${config.queue.jobs.create_rag_embeddings}/${sourceId}/0`,
               failParentOnFailure: true,
             },
           },
           {
-            name: config.queue.jobs.embed_rag_chunks,
+            name: config.queue.jobs.create_rag_embeddings,
             queueName: config.queue.name,
             data: { sourceId, chunkIds: ['chunk-2'] },
             opts: {
-              jobId: `${config.queue.jobs.embed_rag_chunks}/${sourceId}/1`,
+              jobId: `${config.queue.jobs.create_rag_embeddings}/${sourceId}/1`,
               failParentOnFailure: true,
             },
           },
