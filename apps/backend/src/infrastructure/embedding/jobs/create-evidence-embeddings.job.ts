@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { CreateEvidenceEmbeddingsJobData } from '../embedding.types';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { EmbeddingService } from '../embedding.service';
-import { EmbeddingBatchingService } from '../embedding-batching.service';
 import { Prisma, TopicEvidence } from '../../database/generated/client';
 
 @Injectable()
@@ -12,7 +11,6 @@ export class CreateEvidenceEmbeddingsJob {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly embeddingService: EmbeddingService,
-    private readonly embeddingBatchingService: EmbeddingBatchingService,
   ) {}
 
   async process(data: CreateEvidenceEmbeddingsJobData): Promise<void> {
@@ -32,7 +30,7 @@ export class CreateEvidenceEmbeddingsJob {
       });
       if (!graph) {
         this.logger.warn(
-          `Skipping create-evidence-embeddings job because graph "${data.buildId}" no longer exists or its module revision changed`,
+          `Skipping create-evidence-embeddings job because graph "${data.graphId}" no longer exists or its module revision changed`,
         );
         return;
       }
@@ -53,32 +51,34 @@ export class CreateEvidenceEmbeddingsJob {
         `,
       );
 
-      for (const batch of this.embeddingBatchingService.batch(evidence)) {
-        const vectors = await this.embeddingService.embedTexts(
-          batch.map((item) => item.content),
-        );
-        const embeddingRows = batch.map((item, index) => {
-          const vector = `[${vectors[index].join(',')}]`;
-          return Prisma.sql`(${item.id}::text, ${vector}::vector)`;
-        });
-
-        await this.prismaService.$executeRaw(
-          Prisma.sql`
-            UPDATE "TopicEvidence" AS evidence
-            SET "embedding" = incoming."embedding"
-            FROM (
-              VALUES ${Prisma.join(embeddingRows)}
-            ) AS incoming("id", "embedding"),
-            "SourceTopic" AS source_topic,
-            "Source" AS source
-            WHERE evidence."id" = incoming."id"
-              AND source_topic."id" = evidence."sourceTopicId"
-              AND source."id" = source_topic."sourceId"
-              AND source."moduleId" = ${data.moduleId}
-              AND evidence."embedding" IS NULL
-          `,
-        );
+      if (evidence.length === 0) {
+        return;
       }
+
+      const vectors = await this.embeddingService.embedTexts(
+        evidence.map((item) => item.content),
+      );
+      const embeddingRows = evidence.map((item, index) => {
+        const vector = `[${vectors[index].join(',')}]`;
+        return Prisma.sql`(${item.id}::text, ${vector}::vector)`;
+      });
+
+      await this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "TopicEvidence" AS evidence
+          SET "embedding" = incoming."embedding"
+          FROM (
+            VALUES ${Prisma.join(embeddingRows)}
+          ) AS incoming("id", "embedding"),
+          "SourceTopic" AS source_topic,
+          "Source" AS source
+          WHERE evidence."id" = incoming."id"
+            AND source_topic."id" = evidence."sourceTopicId"
+            AND source."id" = source_topic."sourceId"
+            AND source."moduleId" = ${data.moduleId}
+            AND evidence."embedding" IS NULL
+        `,
+      );
     } catch (error) {
       this.logger.error(
         `Error embedding evidence for module "${data.moduleId}": ${error}`,

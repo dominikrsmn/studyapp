@@ -1,3 +1,4 @@
+import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
@@ -16,6 +17,7 @@ import { DetectCyclesJob } from './jobs/detect-cycles.job';
   imports: [
     ConfigModule.forFeature(graphBuildConfig),
     EmbeddingModule,
+    PrismaModule,
     BullModule.registerQueue({ name: graphBuildConfig().queue.name }),
     BullModule.registerFlowProducer({
       name: graphBuildConfig().flowProducer.name,

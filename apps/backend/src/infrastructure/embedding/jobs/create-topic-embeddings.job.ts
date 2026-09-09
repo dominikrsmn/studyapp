@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { CreateTopicEmbeddingsJobData } from '../embedding.types';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { EmbeddingService } from '../embedding.service';
-import { EmbeddingBatchingService } from '../embedding-batching.service';
 import { Prisma, Topic } from '../../database/generated/client';
 
 @Injectable()
@@ -12,7 +11,6 @@ export class CreateTopicEmbeddingsJob {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly embeddingService: EmbeddingService,
-    private readonly embeddingBatchingService: EmbeddingBatchingService,
   ) {}
 
   async process(data: CreateTopicEmbeddingsJobData): Promise<void> {
@@ -49,28 +47,30 @@ export class CreateTopicEmbeddingsJob {
             AND topic."embedding" IS NULL
         `,
       );
-      for (const batch of this.embeddingBatchingService.batch(topics)) {
-        const vectors = await this.embeddingService.embedTexts(
-          batch.map((topic) => `${topic.title}: ${topic.description}`),
-        );
-        const embeddingRows = batch.map((topic, index) => {
-          const vector = `[${vectors[index].join(',')}]`;
-          return Prisma.sql`(${topic.id}::text, ${vector}::vector)`;
-        });
-
-        await this.prismaService.$executeRaw(
-          Prisma.sql`
-            UPDATE "Topic" AS topic
-            SET "embedding" = incoming."embedding"
-            FROM (
-              VALUES ${Prisma.join(embeddingRows)}
-            ) AS incoming("id", "embedding")
-            WHERE topic."id" = incoming."id"
-              AND topic."moduleId" = ${data.moduleId}
-              AND topic."embedding" IS NULL
-            `,
-        );
+      if (topics.length === 0) {
+        return;
       }
+
+      const vectors = await this.embeddingService.embedTexts(
+        topics.map((topic) => `${topic.title}: ${topic.description}`),
+      );
+      const embeddingRows = topics.map((topic, index) => {
+        const vector = `[${vectors[index].join(',')}]`;
+        return Prisma.sql`(${topic.id}::text, ${vector}::vector)`;
+      });
+
+      await this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "Topic" AS topic
+          SET "embedding" = incoming."embedding"
+          FROM (
+            VALUES ${Prisma.join(embeddingRows)}
+          ) AS incoming("id", "embedding")
+          WHERE topic."id" = incoming."id"
+            AND topic."moduleId" = ${data.moduleId}
+            AND topic."embedding" IS NULL
+        `,
+      );
     } catch (error) {
       this.logger.error(
         `Error embedding topics for module "${data.moduleId}": ${error}`,
