@@ -36,7 +36,7 @@ export class FindCandidatesJob {
       distances
         .sort((a, b) => a - b)
         .slice(0, k)
-        .reduce((sum, val) => sum + val, 0) / distances.length || 0
+        .reduce((sum, val) => sum + val, 0) / k || 0
     );
   }
 }
