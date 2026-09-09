@@ -16,9 +16,14 @@ export interface GetPrerequisitesJobResult {
   prerequisites: { topicId: string; justification: string }[];
 }
 
+export interface GraphDependency {
+  topicId: string;
+  dependsOnTopicId: string;
+}
+
 export interface GraphProposal {
   topicIds: string[];
-  dependencies: { topicId: string; dependsOnTopicId: string }[];
+  dependencies: GraphDependency[];
 }
 
 export type RefineGraphJobData = GraphBuildJobData;

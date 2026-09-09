@@ -6,6 +6,7 @@ import type {
   DispatchCandidatesJobData,
   GetPrerequisitesJobData,
   GetPrerequisitesJobResult,
+  GraphProposal,
   RefineGraphJobData,
   DetectCyclesJobData,
 } from './graph-build.types';
@@ -27,7 +28,9 @@ export class GraphBuildProcessor extends WorkerHost {
     super();
   }
 
-  process(job: Job<GraphJobData>): Promise<void | GetPrerequisitesJobResult> {
+  process(
+    job: Job<GraphJobData>,
+  ): Promise<void | GetPrerequisitesJobResult | GraphProposal> {
     const { jobs } = graphBuildConfig().queue;
     switch (job.name) {
       case jobs.dispatch_candidates:
@@ -41,7 +44,7 @@ export class GraphBuildProcessor extends WorkerHost {
       case jobs.refine_graph:
         return this.refineGraphJob.process(job.data as RefineGraphJobData);
       case jobs.detect_cycles:
-        return this.detectCyclesJob.process(job.data as DetectCyclesJobData);
+        return this.detectCyclesJob.process(job as Job<DetectCyclesJobData>);
       default:
         throw new Error('Unknown job name: ' + job.name);
     }
