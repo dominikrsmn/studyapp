@@ -1,9 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
+import { embeddingConfig } from '../config/embedding.config';
 
 @Injectable()
 export class EmbeddingBatchingService {
-  // TODO: Split embedding inputs using the configured API batch size.
-  batchTopicIds(_topicIds: string[]): void {}
+  constructor(
+    @Inject(embeddingConfig.KEY)
+    private readonly config: ConfigType<typeof embeddingConfig>,
+  ) {}
 
-  batchEvidenceIds(_topicEvidenceIds: string[]): void {}
+  batch<T>(items: readonly T[]): T[][] {
+    const batches: T[][] = [];
+    for (let offset = 0; offset < items.length; offset += this.config.batchSize) {
+      batches.push(items.slice(offset, offset + this.config.batchSize));
+    }
+    return batches;
+  }
 }

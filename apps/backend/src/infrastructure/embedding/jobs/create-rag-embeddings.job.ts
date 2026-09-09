@@ -6,6 +6,7 @@ import {
 } from '../../database/generated/enums';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { EmbeddingService } from '../embedding.service';
+import { EmbeddingBatchingService } from '../embedding-batching.service';
 import { CreateRagEmbeddingsJobData } from '../../../features/source-ingestion/ingestion.types';
 import { SourceProcessingStageService } from '../../../features/source-ingestion/source-processing-stage.service';
 
@@ -25,6 +26,7 @@ export class CreateRagEmbeddingsJob {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly embeddingService: EmbeddingService,
+    private readonly embeddingBatchingService: EmbeddingBatchingService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
   ) {}
 
@@ -63,11 +65,11 @@ export class CreateRagEmbeddingsJob {
         `,
       );
 
-      if (chunks.length > 0) {
+      for (const batch of this.embeddingBatchingService.batch(chunks)) {
         const vectors = await this.embeddingService.embedTexts(
-          chunks.map((chunk) => this.embeddingInput(source.name, chunk)),
+          batch.map((chunk) => this.embeddingInput(source.name, chunk)),
         );
-        const embeddingRows = chunks.map((chunk, index) => {
+        const embeddingRows = batch.map((chunk, index) => {
           const vector = `[${vectors[index].join(',')}]`;
 
           return Prisma.sql`(${chunk.id}::text, ${vector}::vector)`;

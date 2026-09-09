@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import type { ChunkedDocumentResultItem } from '@docling/docling-client';
-import { embeddingConfig } from '../../../infrastructure/config/embedding.config';
+import { EmbeddingBatchingService } from '../../../infrastructure/embedding/embedding-batching.service';
 import {
   ProcessingState,
   SourceProcessingStageType,
@@ -37,8 +37,7 @@ export class BuildRagChunksJob {
     private readonly sourceProcessingStageService: SourceProcessingStageService,
     @Inject(ingestionConfig.KEY)
     private readonly config: ConfigType<typeof ingestionConfig>,
-    @Inject(embeddingConfig.KEY)
-    private readonly embedding: ConfigType<typeof embeddingConfig>,
+    private readonly embeddingBatchingService: EmbeddingBatchingService,
   ) {}
 
   async process({ sourceId }: BuildRagChunksJobData): Promise<void> {
@@ -136,16 +135,7 @@ export class BuildRagChunksJob {
         .sort((left, right) => left.chunkIndex - right.chunkIndex)
         .map(({ id }) => id);
 
-      const chunkIdBatches: string[][] = [];
-      for (
-        let offset = 0;
-        offset < chunkIds.length;
-        offset += this.embedding.batchSize
-      ) {
-        chunkIdBatches.push(
-          chunkIds.slice(offset, offset + this.embedding.batchSize),
-        );
-      }
+      const chunkIdBatches = this.embeddingBatchingService.batch(chunkIds);
 
       await this.ingestionQueue.addRagEmbeddingFlow(sourceId, chunkIdBatches);
     } catch (error) {

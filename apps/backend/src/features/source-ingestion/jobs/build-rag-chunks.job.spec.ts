@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { embeddingConfig } from '../../../infrastructure/config/embedding.config';
+import { EmbeddingBatchingService } from '../../../infrastructure/embedding/embedding-batching.service';
 import {
   ProcessingState,
   SourceProcessingStageType,
@@ -112,7 +113,7 @@ describe('BuildRagChunksJob', () => {
       ingestionQueue as unknown as IngestionQueue,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
       config,
-      embedding,
+      new EmbeddingBatchingService(embedding),
     );
   });
 
