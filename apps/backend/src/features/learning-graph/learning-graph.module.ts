@@ -7,8 +7,8 @@ import { graphBuildConfig } from './graph-build.config';
 import { GraphBuildQueue } from './graph-build.queue';
 import { GraphBuildProcessor } from './graph-build.processor';
 import { DispatchCandidatesJob } from './jobs/dispatch-candidates.job';
-import { FindCandidatesJob } from './jobs/find-candidates.job';
-import { CreateGraphJob } from './jobs/create-graph.job';
+import { GetPrerequisitesJob } from './jobs/get-prerequisites.job';
+import { LearningGraphService } from './learning-graph.service';
 import { RefineGraphJob } from './jobs/refine-graph.job';
 import { DetectCyclesJob } from './jobs/detect-cycles.job';
 
@@ -26,11 +26,11 @@ import { DetectCyclesJob } from './jobs/detect-cycles.job';
     GraphBuildQueue,
     GraphBuildProcessor,
     DispatchCandidatesJob,
-    FindCandidatesJob,
-    CreateGraphJob,
+    GetPrerequisitesJob,
+    LearningGraphService,
     RefineGraphJob,
     DetectCyclesJob,
   ],
-  exports: [GraphBuildQueue],
+  exports: [GraphBuildQueue, LearningGraphService],
 })
 export class LearningGraphModule {}

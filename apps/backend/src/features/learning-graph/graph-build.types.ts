@@ -6,19 +6,14 @@ export interface GraphBuildJobData {
 
 export type DispatchCandidatesJobData = GraphBuildJobData;
 
-export interface FindCandidatesJobData extends GraphBuildJobData {
-  topicId: string;
-  embedding: number[];
-  evidence: {
-    id: string;
-    topicId: string;
-    embedding: number[];
-  }[];
-}
-
-export interface CreateGraphJobData extends GraphBuildJobData {
+export interface GetPrerequisitesJobData extends GraphBuildJobData {
   topicId: string;
   candidateTopicIds: string[];
+}
+
+export interface GetPrerequisitesJobResult {
+  topicId: string;
+  candidates: { topicId: string; score: number }[];
 }
 
 export interface GraphProposal {
@@ -26,15 +21,12 @@ export interface GraphProposal {
   dependencies: { topicId: string; dependsOnTopicId: string }[];
 }
 
-export interface RefineGraphJobData extends GraphBuildJobData {}
+export type RefineGraphJobData = GraphBuildJobData;
 
-export interface DetectCyclesJobData extends GraphBuildJobData {
-  graph: GraphProposal;
-}
+export type DetectCyclesJobData = GraphBuildJobData;
 
 export type GraphJobData =
   | DispatchCandidatesJobData
-  | FindCandidatesJobData
-  | CreateGraphJobData
+  | GetPrerequisitesJobData
   | RefineGraphJobData
   | DetectCyclesJobData;

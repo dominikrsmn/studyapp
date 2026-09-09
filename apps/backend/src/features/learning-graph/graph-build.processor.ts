@@ -4,14 +4,13 @@ import { graphBuildConfig } from './graph-build.config';
 import type {
   GraphJobData,
   DispatchCandidatesJobData,
-  FindCandidatesJobData,
-  CreateGraphJobData,
+  GetPrerequisitesJobData,
+  GetPrerequisitesJobResult,
   RefineGraphJobData,
   DetectCyclesJobData,
 } from './graph-build.types';
 import { DispatchCandidatesJob } from './jobs/dispatch-candidates.job';
-import { FindCandidatesJob } from './jobs/find-candidates.job';
-import { CreateGraphJob } from './jobs/create-graph.job';
+import { GetPrerequisitesJob } from './jobs/get-prerequisites.job';
 import { RefineGraphJob } from './jobs/refine-graph.job';
 import { DetectCyclesJob } from './jobs/detect-cycles.job';
 
@@ -21,27 +20,24 @@ import { DetectCyclesJob } from './jobs/detect-cycles.job';
 export class GraphBuildProcessor extends WorkerHost {
   constructor(
     private readonly dispatchCandidatesJob: DispatchCandidatesJob,
-    private readonly findCandidatesJob: FindCandidatesJob,
-    private readonly createGraphJob: CreateGraphJob,
+    private readonly getPrerequisitesJob: GetPrerequisitesJob,
     private readonly refineGraphJob: RefineGraphJob,
     private readonly detectCyclesJob: DetectCyclesJob,
   ) {
     super();
   }
 
-  process(job: Job<GraphJobData>): Promise<void> {
+  process(job: Job<GraphJobData>): Promise<void | GetPrerequisitesJobResult> {
     const { jobs } = graphBuildConfig().queue;
     switch (job.name) {
       case jobs.dispatch_candidates:
         return this.dispatchCandidatesJob.process(
           job.data as DispatchCandidatesJobData,
         );
-      case jobs.find_candidates:
-        return this.findCandidatesJob.process(
-          job.data as FindCandidatesJobData,
+      case jobs.get_prerequisites:
+        return this.getPrerequisitesJob.process(
+          job.data as GetPrerequisitesJobData,
         );
-      case jobs.create_graph:
-        return this.createGraphJob.process(job.data as CreateGraphJobData);
       case jobs.refine_graph:
         return this.refineGraphJob.process(job.data as RefineGraphJobData);
       case jobs.detect_cycles:

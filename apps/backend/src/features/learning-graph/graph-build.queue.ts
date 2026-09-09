@@ -1,6 +1,6 @@
-import { InjectFlowProducer, InjectQueue } from '@nestjs/bullmq';
+import { InjectFlowProducer } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
-import { FlowProducer, Queue } from 'bullmq';
+import { FlowProducer } from 'bullmq';
 import { Prisma } from '../../infrastructure/database/generated/client';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { EmbeddingBatchingService } from '../../infrastructure/embedding/embedding-batching.service';
@@ -11,19 +11,13 @@ import type {
 } from '../../infrastructure/embedding/embedding.types';
 import { graphBuildConfig } from './graph-build.config';
 import type {
-  CreateGraphJobData,
-  DetectCyclesJobData,
-  FindCandidatesJobData,
   GraphBuildJobData,
-  GraphJobData,
-  RefineGraphJobData,
+  GetPrerequisitesJobData,
 } from './graph-build.types';
 
 @Injectable()
 export class GraphBuildQueue {
   constructor(
-    @InjectQueue(graphBuildConfig().queue.name)
-    private readonly queue: Queue<GraphJobData>,
     @InjectFlowProducer(graphBuildConfig().flowProducer.name)
     private readonly flowProducer: FlowProducer,
     private readonly prismaService: PrismaService,
@@ -90,23 +84,42 @@ export class GraphBuildQueue {
     });
   }
 
-  async addFindCandidates(inputs: FindCandidatesJobData[]): Promise<void> {
-    const { jobs } = graphBuildConfig().queue;
-    await this.queue.addBulk(
-      inputs.map((data) => ({
-        name: jobs.find_candidates,
-        data,
-        opts: {
-          jobId: `${jobs.find_candidates}/${data.graphId}/${data.graphVersion}/${data.topicId}`,
-          removeOnComplete: false,
+  async addGraphFlow(
+    data: GraphBuildJobData,
+    topicIds: string[],
+  ): Promise<void> {
+    const { name: queueName, jobs } = graphBuildConfig().queue;
+    const buildId = `${data.graphId}/${data.graphVersion}`;
+
+    await this.flowProducer.add({
+      name: jobs.refine_graph,
+      queueName,
+      data,
+      opts: { jobId: `${jobs.refine_graph}/${buildId}` },
+      children: [
+        {
+          name: jobs.detect_cycles,
+          queueName,
+          data,
+          opts: {
+            jobId: `${jobs.detect_cycles}/${buildId}`,
+            failParentOnFailure: true,
+          },
+          children: topicIds.map((topicId) => ({
+            name: jobs.get_prerequisites,
+            queueName,
+            data: {
+              ...data,
+              topicId,
+              candidateTopicIds: topicIds.filter((id) => id !== topicId),
+            } satisfies GetPrerequisitesJobData,
+            opts: {
+              jobId: `${jobs.get_prerequisites}/${buildId}/${topicId}`,
+              failParentOnFailure: true,
+            },
+          })),
         },
-      })),
-    );
+      ],
+    });
   }
-
-  async addCreateGraph(_data: CreateGraphJobData): Promise<void> {}
-
-  async addRefineGraph(_data: RefineGraphJobData): Promise<void> {}
-
-  async addDetectCycles(_data: DetectCyclesJobData): Promise<void> {}
 }

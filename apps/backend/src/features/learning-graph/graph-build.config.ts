@@ -8,8 +8,7 @@ export const graphBuildConfig = registerAs('graphBuild', () => ({
     concurrency: 1,
     jobs: {
       dispatch_candidates: 'dispatch-candidates',
-      find_candidates: 'find-candidates',
-      create_graph: 'create-graph',
+      get_prerequisites: 'get-prerequisites',
       refine_graph: 'refine-graph',
       detect_cycles: 'detect-cycles',
     },
