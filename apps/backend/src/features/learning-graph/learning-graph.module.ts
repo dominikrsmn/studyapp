@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { EmbeddingModule } from '../../infrastructure/embedding/embedding.module';
+import { OpenAiModule } from '../../infrastructure/open-ai/open-ai.module';
 import { graphBuildConfig } from './graph-build.config';
 import { GraphBuildQueue } from './graph-build.queue';
 import { GraphBuildProcessor } from './graph-build.processor';
@@ -16,6 +17,7 @@ import { DetectCyclesJob } from './jobs/detect-cycles.job';
   imports: [
     ConfigModule.forFeature(graphBuildConfig),
     EmbeddingModule,
+    OpenAiModule,
     PrismaModule,
     BullModule.registerQueue({ name: graphBuildConfig().queue.name }),
     BullModule.registerFlowProducer({

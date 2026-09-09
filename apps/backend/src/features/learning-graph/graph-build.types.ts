@@ -13,7 +13,7 @@ export interface GetPrerequisitesJobData extends GraphBuildJobData {
 
 export interface GetPrerequisitesJobResult {
   topicId: string;
-  candidates: { topicId: string; score: number }[];
+  prerequisites: { topicId: string; justification: string }[];
 }
 
 export interface GraphProposal {
