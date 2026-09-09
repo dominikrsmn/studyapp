@@ -58,11 +58,11 @@ export class GraphBuildQueue {
     );
 
     await this.flowProducer.add({
-      name: graphQueue.jobs.dispatch_candidate_batches,
+      name: graphQueue.jobs.dispatch_candidates,
       queueName: graphQueue.name,
       data,
       opts: {
-        jobId: `${graphQueue.jobs.dispatch_candidate_batches}/${buildId}`,
+        jobId: `${graphQueue.jobs.dispatch_candidates}/${buildId}`,
       },
       children: [
         ...topicBatches.map((topicIds, index) => ({
@@ -90,13 +90,19 @@ export class GraphBuildQueue {
     });
   }
 
-  // TODO: Create the candidate batches and their downstream dependency flow.
-  async addCandidateFlow(
-    _data: GraphBuildJobData,
-    _topicBatches: string[][],
-  ): Promise<void> {}
-
-  async addFindCandidates(_data: FindCandidatesJobData): Promise<void> {}
+  async addFindCandidates(inputs: FindCandidatesJobData[]): Promise<void> {
+    const { jobs } = graphBuildConfig().queue;
+    await this.queue.addBulk(
+      inputs.map((data) => ({
+        name: jobs.find_candidates,
+        data,
+        opts: {
+          jobId: `${jobs.find_candidates}/${data.graphId}/${data.graphVersion}/${data.topicId}`,
+          removeOnComplete: false,
+        },
+      })),
+    );
+  }
 
   async addCreateGraph(_data: CreateGraphJobData): Promise<void> {}
 

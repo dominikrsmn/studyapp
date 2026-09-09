@@ -4,10 +4,16 @@ export interface GraphBuildJobData {
   graphVersion: number;
 }
 
-export interface DispatchCandidateBatchesJobData extends GraphBuildJobData {}
+export type DispatchCandidatesJobData = GraphBuildJobData;
 
 export interface FindCandidatesJobData extends GraphBuildJobData {
-  topicIds: string[];
+  topicId: string;
+  embedding: number[];
+  evidence: {
+    id: string;
+    topicId: string;
+    embedding: number[];
+  }[];
 }
 
 export interface CreateGraphJobData extends GraphBuildJobData {
@@ -27,7 +33,7 @@ export interface DetectCyclesJobData extends GraphBuildJobData {
 }
 
 export type GraphJobData =
-  | DispatchCandidateBatchesJobData
+  | DispatchCandidatesJobData
   | FindCandidatesJobData
   | CreateGraphJobData
   | RefineGraphJobData
