@@ -8,12 +8,6 @@ import type {
 } from '../graph-build.types';
 import { OpenAiService } from '../../../infrastructure/open-ai/open-ai.service';
 
-enum VisitState {
-  VISITED,
-  UNVISITED,
-  VISITING,
-}
-
 @Injectable()
 export class DetectCyclesJob {
   constructor(
@@ -45,36 +39,75 @@ export class DetectCyclesJob {
         })),
       ),
     };
-    const visitStates = new Map<string, VisitState>(
-      rawGraph.topicIds.map((topicId) => [topicId, VisitState.UNVISITED]),
+    const cyclicComponents = this.findStronglyConnectedComponents(
+      rawGraph,
+    ).filter(
+      (component) =>
+        component.length > 1 ||
+        rawGraph.dependencies.some(
+          ({ topicId, dependsOnTopicId }) =>
+            topicId === component[0] && dependsOnTopicId === component[0],
+        ),
     );
+    if (cyclicComponents.length === 0) return rawGraph;
+
+    // Resolve cyclicComponents before returning the graph.
+    return rawGraph;
+  }
+
+  private findStronglyConnectedComponents(graph: GraphProposal): string[][] {
     const adjacencyList = new Map<string, Set<string>>(
-      rawGraph.topicIds.map((topicId) => [topicId, new Set<string>()]),
+      graph.topicIds.map((topicId) => [topicId, new Set<string>()]),
     );
-    for (const dependency of rawGraph.dependencies) {
+    for (const dependency of graph.dependencies) {
       adjacencyList.get(dependency.topicId)?.add(dependency.dependsOnTopicId);
     }
 
-    const path: string[] = [];
-    for (const topicId of rawGraph.topicIds) {
-      if (visitStates.get(topicId) == VisitState.UNVISITED) {
-        dfs(topicId);
-      }
-    }
+    let nextIndex = 0;
+    const indexes = new Map<string, number>();
+    const lowLinks = new Map<string, number>();
+    const stack: string[] = [];
+    const topicsOnStack = new Set<string>();
+    const components: string[][] = [];
 
-    function dfs(topicId: string) {
-      visitStates.set(topicId, VisitState.VISITING);
-      path.push(topicId);
-      const dependencies: Set<string> | undefined = adjacencyList.get(topicId)!;
-      for (const dependency of dependencies) {
-        if (visitStates.get(dependency) == VisitState.VISITING) {
-          // cycle detected
-        } else if (visitStates.get(dependency) == VisitState.UNVISITED) {
-          dfs(dependency);
+    function dfs(topicId: string): void {
+      const index = nextIndex++;
+      indexes.set(topicId, index);
+      lowLinks.set(topicId, index);
+      stack.push(topicId);
+      topicsOnStack.add(topicId);
+
+      for (const adjacentTopicId of adjacencyList.get(topicId)!) {
+        if (!indexes.has(adjacentTopicId)) {
+          dfs(adjacentTopicId);
+          lowLinks.set(
+            topicId,
+            Math.min(lowLinks.get(topicId)!, lowLinks.get(adjacentTopicId)!),
+          );
+        } else if (topicsOnStack.has(adjacentTopicId)) {
+          lowLinks.set(
+            topicId,
+            Math.min(lowLinks.get(topicId)!, indexes.get(adjacentTopicId)!),
+          );
         }
       }
-      visitStates.set(topicId, VisitState.VISITED);
-      path.pop();
+
+      if (lowLinks.get(topicId) !== index) return;
+
+      const component: string[] = [];
+      let componentTopicId: string;
+      do {
+        componentTopicId = stack.pop()!;
+        topicsOnStack.delete(componentTopicId);
+        component.push(componentTopicId);
+      } while (componentTopicId !== topicId);
+      components.push(component);
     }
+
+    for (const topicId of graph.topicIds) {
+      if (!indexes.has(topicId)) dfs(topicId);
+    }
+
+    return components;
   }
 }
