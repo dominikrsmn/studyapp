@@ -68,14 +68,14 @@ describe('ModuleService', () => {
   });
 });
 
-describe('Module content revisions', () => {
+describe('Module graph version', () => {
   const current = {
     id: 'module-id',
     name: 'Algorithms',
     description: null,
     icon: 'book',
     examDate: null,
-    contentRevision: 4,
+    graphVersion: 4,
   };
   const module = { findFirst: jest.fn(), update: jest.fn() };
   const prisma = {
@@ -93,25 +93,21 @@ describe('Module content revisions', () => {
     module.update.mockResolvedValue(current);
   });
 
-  it.each([{ name: 'Graph algorithms' }, { description: 'Graph theory' }])(
-    'revises changed module context: %j',
-    async (request) => {
-      await service.update('semester-id', 'module-id', request);
-      expect(module.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ contentRevision: { increment: 1 } }),
-        }),
-      );
-    },
-  );
-
-  it.each([{ name: 'Algorithms' }, { icon: 'star' }, { examDate: null }])(
-    'preserves content revision for unchanged context or presentation: %j',
-    async (request) => {
-      await service.update('semester-id', 'module-id', request);
-      expect(module.update.mock.calls[0][0].data).not.toHaveProperty(
-        'contentRevision',
-      );
-    },
-  );
+  it.each([
+    { name: 'Graph algorithms' },
+    { description: 'Graph theory' },
+    { name: 'Algorithms' },
+    { icon: 'star' },
+    { examDate: null },
+  ])('preserves graph version for module metadata: %j', async (request) => {
+    const result = await service.update('semester-id', 'module-id', request);
+    expect(module.update.mock.calls[0][0].data).not.toHaveProperty(
+      'graphVersion',
+    );
+    expect(module.update.mock.calls[0][0].data).not.toHaveProperty(
+      'contentRevision',
+    );
+    expect(result.graphVersion).toBe(4);
+    expect(result).not.toHaveProperty('contentRevision');
+  });
 });

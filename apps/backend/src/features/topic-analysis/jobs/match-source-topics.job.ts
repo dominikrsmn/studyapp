@@ -1,3 +1,4 @@
+import { LearningGraphService } from '../../learning-graph/learning-graph.service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { zodTextFormat } from 'openai/helpers/zod';
@@ -77,6 +78,7 @@ export class MatchSourceTopicsJob {
     private readonly prismaService: PrismaService,
     private readonly openAiService: OpenAiService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
+    private readonly learningGraphService: LearningGraphService,
     private readonly analysisQueue: AnalysisQueue,
     @Inject(analysisConfig.KEY)
     private readonly config: ConfigType<typeof analysisConfig>,
@@ -248,11 +250,12 @@ export class MatchSourceTopicsJob {
     );
     const assignmentsByKey = groupAssignmentsByCanonicalKey(result.assignments);
 
-    await this.prismaService.$transaction(
+    const module = await this.prismaService.$transaction(
       async (transaction) => {
-        await transaction.module.update({
+        const module = await transaction.module.update({
           where: { id: moduleId },
-          data: { contentRevision: { increment: 1 } },
+          data: { graphVersion: { increment: 1 } },
+          select: { graphVersion: true },
         });
         const topicIdsByCanonicalKey = new Map<string, string>();
 
@@ -269,6 +272,7 @@ export class MatchSourceTopicsJob {
                 title: canonicalTopic.title.trim(),
                 description: canonicalTopic.description.trim(),
                 state: TopicState.SUGGESTED,
+                updatedAt: new Date(),
               },
               select: { id: true },
             });
@@ -316,9 +320,11 @@ export class MatchSourceTopicsJob {
             },
           });
         }
+        return module;
       },
       { isolationLevel: 'Serializable' },
     );
+    await this.learningGraphService.regenerate(moduleId, module.graphVersion);
   }
 }
 

@@ -172,3 +172,7 @@ describe('ParseDocumentJob', () => {
     await expect(job.process({ sourceId })).rejects.toBe(conversionError);
   });
 });
+
+jest.mock('../../learning-graph/learning-graph.service', () => ({
+  LearningGraphService: class LearningGraphService {},
+}));

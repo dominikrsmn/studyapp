@@ -41,9 +41,25 @@ describe('SourceService', () => {
   };
 
   let service: SourceService;
+  let committed = false;
+  const regenerate = jest.fn();
+  const runTransaction = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
+    committed = false;
+    runTransaction.mockImplementation(async (operation) => {
+      const result = await operation({
+        source: sourceDelegate,
+        topic: topicDelegate,
+        module: moduleDelegate,
+      });
+      committed = true;
+      return result;
+    });
+    regenerate.mockImplementation(async () => {
+      expect(committed).toBe(true);
+    });
     topicDelegate.updateMany.mockResolvedValue({ count: 0 });
     sourceDelegate.findUniqueOrThrow.mockResolvedValue({
       moduleId: 'module-id',
@@ -53,17 +69,12 @@ describe('SourceService', () => {
       {
         module: moduleDelegate,
         source: sourceDelegate,
-        $transaction: (operation: (tx: unknown) => unknown) =>
-          operation({
-            source: sourceDelegate,
-            topic: topicDelegate,
-            module: moduleDelegate,
-          }),
+        $transaction: runTransaction,
       } as unknown as PrismaService,
       fileStorageService as unknown as FileStorageService,
       ingestionQueue as unknown as IngestionQueue,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
-      { regenerate: jest.fn() } as unknown as LearningGraphService,
+      { regenerate } as unknown as LearningGraphService,
     );
 
     moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
@@ -86,6 +97,22 @@ describe('SourceService', () => {
     );
   });
 
+  it('does not regenerate when source deletion fails to commit', async () => {
+    sourceDelegate.findFirst.mockResolvedValue(sourceRecord([]));
+    runTransaction.mockImplementationOnce(async (operation) => {
+      await operation({
+        source: sourceDelegate,
+        topic: topicDelegate,
+        module: moduleDelegate,
+      });
+      throw new Error('Commit failed');
+    });
+    await expect(
+      service.remove('user-id', 'module-id', 'source-id'),
+    ).rejects.toThrow('Commit failed');
+    expect(regenerate).not.toHaveBeenCalled();
+  });
+
   it('revises surviving topics and their module before cascading source deletion', async () => {
     sourceDelegate.findFirst.mockResolvedValue({
       ...sourceRecord([]),
@@ -98,10 +125,11 @@ describe('SourceService', () => {
       sourceDelegate.delete.mock.invocationCallOrder[0],
     );
     expect(moduleDelegate.update).toHaveBeenCalledTimes(1);
+    expect(regenerate).toHaveBeenCalledWith('module-id', 2);
     expect(fileStorageService.deleteMany).toHaveBeenCalledWith(['file-key']);
   });
 
-  it('does not invalidate module content when deleting a source without canonical topics', async () => {
+  it('advances graph inputs when deleting a source without canonical topics', async () => {
     sourceDelegate.findFirst.mockResolvedValue({
       ...sourceRecord([]),
       storageKey: null,
@@ -110,7 +138,8 @@ describe('SourceService', () => {
 
     await service.remove('user-id', 'module-id', 'source-id');
 
-    expect(moduleDelegate.update).not.toHaveBeenCalled();
+    expect(moduleDelegate.update).toHaveBeenCalledTimes(1);
+    expect(regenerate).toHaveBeenCalledWith('module-id', 2);
     expect(sourceDelegate.delete).toHaveBeenCalledWith({
       where: { id: 'source-id' },
       select: expect.any(Object),
@@ -279,3 +308,7 @@ function sourceRecord(
     processingStages,
   };
 }
+
+jest.mock('../learning-graph/learning-graph.service', () => ({
+  LearningGraphService: class LearningGraphService {},
+}));

@@ -16,11 +16,12 @@ describe('SourceProcessingStageService', () => {
   const moduleId = 'f74a46b6-2d6d-4542-a9b8-37a8eef82d8c';
   const stage = SourceProcessingStageType.RAG_INDEXING;
   const sourceProcessingStage = { upsert: jest.fn(), findUnique: jest.fn() };
+  let committed = false;
+  const regenerate = jest.fn();
   const prismaService = {
     sourceProcessingStage,
     module: { update: jest.fn() },
-    $transaction: (operation: (tx: unknown) => unknown) =>
-      operation(prismaService),
+    $transaction: jest.fn(),
   };
   const sourceEventService = { stateChanges: jest.fn() };
 
@@ -28,6 +29,15 @@ describe('SourceProcessingStageService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    committed = false;
+    prismaService.$transaction.mockImplementation(async (operation) => {
+      const result = await operation(prismaService);
+      committed = true;
+      return result;
+    });
+    regenerate.mockImplementation(async () => {
+      expect(committed).toBe(true);
+    });
     prismaService.module.update.mockResolvedValue({ graphVersion: 2 });
     sourceProcessingStage.findUnique.mockResolvedValue(null);
     sourceProcessingStage.upsert.mockResolvedValue({
@@ -38,7 +48,7 @@ describe('SourceProcessingStageService', () => {
     service = new SourceProcessingStageService(
       prismaService as unknown as PrismaService,
       sourceEventService as unknown as SourceEventService,
-      { regenerate: jest.fn() } as unknown as LearningGraphService,
+      { regenerate } as unknown as LearningGraphService,
     );
   });
 
@@ -60,8 +70,33 @@ describe('SourceProcessingStageService', () => {
       expect(prismaService.module.update).toHaveBeenCalledTimes(
         changed ? 1 : 0,
       );
+      expect(regenerate).toHaveBeenCalledTimes(changed ? 1 : 0);
+      if (changed) {
+        expect(prismaService.module.update).toHaveBeenCalledWith({
+          where: { id: moduleId },
+          data: { graphVersion: { increment: 1 } },
+          select: { graphVersion: true },
+        });
+        expect(regenerate).toHaveBeenCalledWith(moduleId, 2);
+      }
     },
   );
+
+  it('does not regenerate or publish a transition that fails to commit', async () => {
+    prismaService.$transaction.mockImplementationOnce(async (operation) => {
+      await operation(prismaService);
+      throw new Error('Commit failed');
+    });
+    await expect(
+      service.transition(
+        sourceId,
+        SourceProcessingStageType.TOPIC_ANALYSIS,
+        ProcessingState.COMPLETED,
+      ),
+    ).rejects.toThrow('Commit failed');
+    expect(regenerate).not.toHaveBeenCalled();
+    expect(sourceEventService.stateChanges).not.toHaveBeenCalled();
+  });
 
   it('initializes every processing stage as not started', async () => {
     await service.initialize(sourceId);
@@ -232,3 +267,7 @@ describe('SourceProcessingStageService', () => {
     },
   );
 });
+
+jest.mock('../learning-graph/learning-graph.service', () => ({
+  LearningGraphService: class LearningGraphService {},
+}));

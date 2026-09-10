@@ -138,6 +138,8 @@ describe('MatchSourceTopicsJob', () => {
   const findMany = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
+  const regenerate = jest.fn();
+  let committed = false;
   const addFinalizeTopicAnalysis = jest.fn();
   const topicCreate = jest.fn();
   const topicUpdate = jest.fn();
@@ -158,6 +160,10 @@ describe('MatchSourceTopicsJob', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    committed = false;
+    regenerate.mockImplementation(async () => {
+      expect(committed).toBe(true);
+    });
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
     findUnique.mockResolvedValue({
       name: 'Algorithms notes',
@@ -174,9 +180,11 @@ describe('MatchSourceTopicsJob', () => {
     topicUpdate.mockResolvedValue({});
     transaction.module.update.mockResolvedValue({ graphVersion: 2 });
     sourceTopicUpdate.mockResolvedValue({});
-    prismaService.$transaction.mockImplementation((operation) =>
-      operation(transaction),
-    );
+    prismaService.$transaction.mockImplementation(async (operation) => {
+      const result = await operation(transaction);
+      committed = true;
+      return result;
+    });
     transition.mockResolvedValue({});
     addFinalizeTopicAnalysis.mockResolvedValue(undefined);
 
@@ -184,10 +192,19 @@ describe('MatchSourceTopicsJob', () => {
       prismaService as unknown as PrismaService,
       { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
-      { regenerate: jest.fn() } as unknown as LearningGraphService,
+      { regenerate } as unknown as LearningGraphService,
       { addFinalizeTopicAnalysis } as unknown as AnalysisQueue,
       config,
     );
+  });
+
+  it('does not regenerate when the transaction fails to commit', async () => {
+    prismaService.$transaction.mockImplementationOnce(async (operation) => {
+      await operation(transaction);
+      throw new Error('Commit failed');
+    });
+    await expect(job.process({ sourceId })).rejects.toThrow('Commit failed');
+    expect(regenerate).not.toHaveBeenCalled();
   });
 
   afterEach(() => {
@@ -198,6 +215,13 @@ describe('MatchSourceTopicsJob', () => {
     await expect(job.process({ sourceId })).resolves.toBeUndefined();
 
     expect(addFinalizeTopicAnalysis).toHaveBeenCalledWith(sourceId);
+    expect(transaction.module.update).toHaveBeenCalledTimes(1);
+    expect(transaction.module.update).toHaveBeenCalledWith({
+      where: { id: 'module-id' },
+      data: { graphVersion: { increment: 1 } },
+      select: { graphVersion: true },
+    });
+    expect(regenerate).toHaveBeenCalledWith('module-id', 2);
 
     const request = parse.mock.calls[0][0];
     expect(request).toMatchObject({
@@ -237,6 +261,7 @@ describe('MatchSourceTopicsJob', () => {
         description:
           'Single-source shortest paths with non-negative edge weights.',
         state: TopicState.SUGGESTED,
+        updatedAt: expect.any(Date),
       },
       select: { id: true },
     });
@@ -446,3 +471,7 @@ function candidateTopic(
     ],
   };
 }
+
+jest.mock('../../learning-graph/learning-graph.service', () => ({
+  LearningGraphService: class LearningGraphService {},
+}));

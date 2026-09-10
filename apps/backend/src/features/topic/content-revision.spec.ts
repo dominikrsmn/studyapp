@@ -32,12 +32,12 @@ describe('invalidateSourceTopics', () => {
     });
   });
 
-  it('leaves revisions unchanged when the source has no canonical evidence', async () => {
+  it('advances graph inputs even when the source has no canonical evidence', async () => {
     transaction.topic.updateMany.mockResolvedValue({ count: 0 });
     await invalidateSourceTopics(
       transaction as unknown as Prisma.TransactionClient,
       'source-id',
     );
-    expect(transaction.module.update).not.toHaveBeenCalled();
+    expect(transaction.module.update).toHaveBeenCalledTimes(1);
   });
 });

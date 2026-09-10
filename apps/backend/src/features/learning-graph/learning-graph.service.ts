@@ -10,22 +10,38 @@ export class LearningGraphService {
     private readonly graphBuildQueue: GraphBuildQueue,
   ) {}
 
-  async regenerate(moduleId: string): Promise<GraphBuildJobData> {
-    const data = await this.prismaService.$transaction(async (transaction) => {
-      const module = await transaction.module.update({
-        where: { id: moduleId },
-        data: { graphVersion: { increment: 1 } },
-        select: { graphVersion: true },
-      });
-      const graph = await transaction.learningGraph.create({
-        data: { moduleId, version: module.graphVersion, status: 'QUEUED' },
-        select: { id: true },
-      });
+  async regenerate(
+    moduleId: string,
+    graphVersion: number,
+  ): Promise<GraphBuildJobData | null> {
+    const build = await this.prismaService.$transaction(async (transaction) => {
+      // Serialize requests for this version with input changes and publication.
+      const modules = await transaction.$queryRaw<
+        Array<{ id: string }>
+      >`SELECT "id" FROM "Module"
+          WHERE "id" = ${moduleId} AND "graphVersion" = ${graphVersion}
+          FOR UPDATE`;
+      if (modules.length === 0) return null;
 
-      return { graphId: graph.id, moduleId, graphVersion: module.graphVersion };
+      const existing = await transaction.learningGraph.findFirst({
+        where: { moduleId, version: graphVersion },
+        select: { id: true, status: true },
+      });
+      const graph =
+        existing ??
+        (await transaction.learningGraph.create({
+          data: { moduleId, version: graphVersion, status: 'QUEUED' },
+          select: { id: true, status: true },
+        }));
+      return {
+        data: { graphId: graph.id, moduleId, graphVersion },
+        queued: graph.status === 'QUEUED',
+      };
     });
 
-    await this.graphBuildQueue.addEmbeddingFlow(data);
-    return data;
+    if (!build) return null;
+    // The queue uses stable job IDs, so a failed enqueue can be retried.
+    if (build.queued) await this.graphBuildQueue.addEmbeddingFlow(build.data);
+    return build.data;
   }
 }

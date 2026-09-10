@@ -9,7 +9,9 @@ jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
 jest.mock('../../infrastructure/filestorage/filestorage.service', () => ({
   FileStorageService: class {},
 }));
-jest.mock('../source-ingestion/ingestion.queue', () => ({ IngestionQueue: class {} }));
+jest.mock('../source-ingestion/ingestion.queue', () => ({
+  IngestionQueue: class {},
+}));
 jest.mock('../source-ingestion/source-processing-stage.service', () => ({
   SourceProcessingStageService: class {},
 }));
@@ -88,3 +90,7 @@ describe('Source job overview', () => {
     expect(result.jobs[1]).toMatchObject({ costUsd: null, shared: true });
   });
 });
+
+jest.mock('../learning-graph/learning-graph.service', () => ({
+  LearningGraphService: class LearningGraphService {},
+}));

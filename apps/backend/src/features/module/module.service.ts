@@ -70,17 +70,12 @@ export class ModuleService {
           throw new NotFoundException(`Module with id "${id}" was not found`);
         }
         const { examDate, ...data } = updateModuleRequest;
-        const contentChanged =
-          (data.name !== undefined && data.name !== current.name) ||
-          (data.description !== undefined &&
-            data.description !== current.description);
 
         return this.toDto(
           await transaction.module.update({
             where: { id },
             data: {
               ...data,
-              ...(contentChanged ? { contentRevision: { increment: 1 } } : {}),
               examDate:
                 examDate === undefined
                   ? undefined
@@ -113,7 +108,7 @@ export class ModuleService {
   private toDto(module: Module): ModuleDto {
     return {
       id: module.id,
-      contentRevision: module.contentRevision,
+      graphVersion: module.graphVersion,
       name: module.name,
       description: module.description,
       icon: module.icon,

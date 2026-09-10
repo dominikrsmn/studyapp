@@ -178,12 +178,10 @@ export class SourceService {
       },
       { isolationLevel: 'Serializable' },
     );
-    if (graphBuild) {
-      await this.learningGraphService.regenerate(
-        moduleId,
-        graphBuild.graphVersion,
-      );
-    }
+    await this.learningGraphService.regenerate(
+      moduleId,
+      graphBuild.graphVersion,
+    );
     if (source.storageKey) {
       await this.fileStorageService.deleteMany([source.storageKey]);
     }

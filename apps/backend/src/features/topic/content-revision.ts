@@ -3,8 +3,8 @@ import type { Prisma } from '../../infrastructure/database/generated/client';
 export async function invalidateSourceTopics(
   transaction: Prisma.TransactionClient,
   sourceId: string,
-): Promise<void> {
-  const changed = await transaction.topic.updateMany({
+): Promise<{ moduleId: string; graphVersion: number }> {
+  await transaction.topic.updateMany({
     where: { sourceTopics: { some: { sourceId } } },
     data: {
       contentRevision: { increment: 1 },
@@ -12,10 +12,14 @@ export async function invalidateSourceTopics(
       summaryRevision: null,
     },
   });
-  if (changed.count > 0) {
-    await transaction.module.updateMany({
-      where: { sources: { some: { id: sourceId } } },
-      data: { contentRevision: { increment: 1 } },
-    });
-  }
+  const source = await transaction.source.findUniqueOrThrow({
+    where: { id: sourceId },
+    select: { moduleId: true },
+  });
+  const module = await transaction.module.update({
+    where: { id: source.moduleId },
+    data: { graphVersion: { increment: 1 } },
+    select: { graphVersion: true },
+  });
+  return { moduleId: source.moduleId, graphVersion: module.graphVersion };
 }

@@ -25,10 +25,11 @@ export class GraphBuildQueue {
   ) {}
 
   async addEmbeddingFlow(data: GraphBuildJobData): Promise<void> {
+    // Batch every input so retries retain the same job IDs and payloads as embeddings finish.
     const [topics, evidence] = await Promise.all([
       this.prismaService.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         SELECT "id" FROM "Topic"
-        WHERE "moduleId" = ${data.moduleId} AND "embedding" IS NULL
+        WHERE "moduleId" = ${data.moduleId}
         ORDER BY "id"
       `),
       this.prismaService.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -37,7 +38,6 @@ export class GraphBuildQueue {
           ON source_topic."id" = evidence."sourceTopicId"
         JOIN "Source" AS source ON source."id" = source_topic."sourceId"
         WHERE source."moduleId" = ${data.moduleId}
-          AND evidence."embedding" IS NULL
         ORDER BY evidence."id"
       `),
     ]);

@@ -111,6 +111,8 @@ describe('ExtractSourceTopicsJob', () => {
   const readDoclingDocument = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
+  const regenerate = jest.fn();
+  let committed = false;
   const addMatchSourceTopics = jest.fn();
   const sourceTopic = {
     upsert: jest.fn(),
@@ -143,6 +145,10 @@ describe('ExtractSourceTopicsJob', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    committed = false;
+    regenerate.mockImplementation(async () => {
+      expect(committed).toBe(true);
+    });
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
     findUnique.mockResolvedValue({ id: sourceId });
     readDoclingDocument.mockResolvedValue(
@@ -189,9 +195,11 @@ describe('ExtractSourceTopicsJob', () => {
     topicEvidence.deleteMany.mockResolvedValue({ count: 0 });
     topicEvidence.createMany.mockResolvedValue({ count: 2 });
     topicEvidenceSpan.createMany.mockResolvedValue({ count: 2 });
-    prismaService.$transaction.mockImplementation((operation) =>
-      operation(transaction),
-    );
+    prismaService.$transaction.mockImplementation(async (operation) => {
+      const result = await operation(transaction);
+      committed = true;
+      return result;
+    });
     transition.mockResolvedValue({ id: 'stage-id' });
     addMatchSourceTopics.mockResolvedValue(undefined);
 
@@ -200,10 +208,19 @@ describe('ExtractSourceTopicsJob', () => {
       { readDoclingDocument } as unknown as FileStorageService,
       { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
-      { regenerate: jest.fn() } as unknown as LearningGraphService,
+      { regenerate } as unknown as LearningGraphService,
       { addMatchSourceTopics } as unknown as AnalysisQueue,
       config,
     );
+  });
+
+  it('does not regenerate when the transaction fails to commit', async () => {
+    prismaService.$transaction.mockImplementationOnce(async (operation) => {
+      await operation(transaction);
+      throw new Error('Commit failed');
+    });
+    await expect(job.process(data)).rejects.toThrow('Commit failed');
+    expect(regenerate).not.toHaveBeenCalled();
   });
 
   afterEach(() => {
@@ -220,13 +237,15 @@ describe('ExtractSourceTopicsJob', () => {
       transaction.topic.updateMany.mock.invocationCallOrder[0],
     ).toBeLessThan(sourceTopic.deleteMany.mock.invocationCallOrder[0]);
     expect(transaction.module.update).toHaveBeenCalledTimes(1);
+    expect(regenerate).toHaveBeenCalledWith('module-id', 2);
   });
 
-  it('does not invalidate module content before evidence is canonical', async () => {
+  it('advances graph inputs before evidence is canonical', async () => {
     await job.process(data);
 
     expect(transaction.topic.updateMany).toHaveBeenCalledTimes(1);
-    expect(transaction.module.update).not.toHaveBeenCalled();
+    expect(transaction.module.update).toHaveBeenCalledTimes(1);
+    expect(regenerate).toHaveBeenCalledWith('module-id', 2);
   });
 
   it('extracts, deterministically grounds, persists, and chains final spans', async () => {
@@ -536,3 +555,7 @@ describe('source topic extraction helpers', () => {
     expect(prompt).toContain('A source heading is evidence');
   });
 });
+
+jest.mock('../../learning-graph/learning-graph.service', () => ({
+  LearningGraphService: class LearningGraphService {},
+}));

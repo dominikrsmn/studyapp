@@ -1,3 +1,4 @@
+import { LearningGraphService } from '../learning-graph/learning-graph.service';
 import { Injectable } from '@nestjs/common';
 import {
   type SourceStateChangedEvent,
@@ -31,6 +32,7 @@ export class SourceProcessingStageService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly sourceEventService: SourceEventService,
+    private readonly learningGraphService: LearningGraphService,
   ) {}
 
   async initialize(sourceId: string): Promise<SourceProcessingStage[]> {
@@ -41,6 +43,18 @@ export class SourceProcessingStageService {
     );
   }
 
+  async transition(
+    sourceId: string,
+    stage: SourceProcessingStageType,
+    state: ProcessingState,
+    options?: { error?: unknown; transaction?: never },
+  ): Promise<SourceProcessingStage>;
+  async transition(
+    sourceId: string,
+    stage: Exclude<SourceProcessingStageType, 'TOPIC_ANALYSIS'>,
+    state: ProcessingState,
+    options: TransitionOptions,
+  ): Promise<SourceProcessingStage>;
   async transition(
     sourceId: string,
     stage: SourceProcessingStageType,
@@ -68,25 +82,35 @@ export class SourceProcessingStageService {
         },
       });
 
+      let graphVersion: number | undefined;
       if (
         stage === SourceProcessingStageType.TOPIC_ANALYSIS &&
         (previous?.state === ProcessingState.COMPLETED) !==
           (state === ProcessingState.COMPLETED)
       ) {
-        await client.module.update({
+        const module = await client.module.update({
           where: { id: processingStage.source.moduleId },
-          data: { contentRevision: { increment: 1 } },
+          data: { graphVersion: { increment: 1 } },
+          select: { graphVersion: true },
         });
+        graphVersion = module.graphVersion;
       }
-      return processingStage;
+      return { processingStage, graphVersion };
     };
-    const processingStage = options.transaction
+    const { processingStage, graphVersion } = options.transaction
       ? await persist(options.transaction)
       : stage === SourceProcessingStageType.TOPIC_ANALYSIS
         ? await this.prismaService.$transaction(persist, {
             isolationLevel: 'Serializable',
           })
         : await persist(this.prismaService);
+
+    if (graphVersion !== undefined) {
+      await this.learningGraphService.regenerate(
+        processingStage.source.moduleId,
+        graphVersion,
+      );
+    }
 
     const event: SourceStateChangedEvent = sourceStateChangedEventSchema.parse({
       sourceId,

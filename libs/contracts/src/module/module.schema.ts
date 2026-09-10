@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { dateOnlySchema } from '../util/date-only';
 
 export const moduleSchema = z.object({
-  contentRevision: z.number().int().positive(),
+  graphVersion: z.number().int().positive(),
   id: z.uuid(),
   name: z.string(),
   icon: z.string(),

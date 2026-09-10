@@ -1,3 +1,4 @@
+import { LearningGraphService } from '../../learning-graph/learning-graph.service';
 import { invalidateSourceTopics } from '../../topic/content-revision';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
@@ -76,6 +77,7 @@ export class ExtractSourceTopicsJob {
     private readonly fileStorageService: FileStorageService,
     private readonly openAiService: OpenAiService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
+    private readonly learningGraphService: LearningGraphService,
     private readonly analysisQueue: AnalysisQueue,
     @Inject(analysisConfig.KEY)
     private readonly config: ConfigType<typeof analysisConfig>,
@@ -181,10 +183,13 @@ export class ExtractSourceTopicsJob {
     const poolBefore = this.prismaService.getPoolState();
 
     try {
-      await this.prismaService.$transaction(
+      const graphBuild = await this.prismaService.$transaction(
         async (transaction) => {
           startedAt = performance.now();
-          await invalidateSourceTopics(transaction, sourceId);
+          const graphBuild = await invalidateSourceTopics(
+            transaction,
+            sourceId,
+          );
           const persistedTopics: Array<{
             id: string;
             topic: ExtractedTopic;
@@ -264,8 +269,13 @@ export class ExtractSourceTopicsJob {
               spanIndex: { gte: spanCount },
             },
           });
+          return graphBuild;
         },
         { isolationLevel: 'Serializable' },
+      );
+      await this.learningGraphService.regenerate(
+        graphBuild.moduleId,
+        graphBuild.graphVersion,
       );
     } catch (error) {
       const failedAt = performance.now();

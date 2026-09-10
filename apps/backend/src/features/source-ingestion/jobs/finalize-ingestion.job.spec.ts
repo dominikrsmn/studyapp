@@ -144,3 +144,7 @@ describe('FinalizeIngestionJob', () => {
     expect(analysisQueue.addPrepareTopicAnalysis).not.toHaveBeenCalled();
   });
 });
+
+jest.mock('../../learning-graph/learning-graph.service', () => ({
+  LearningGraphService: class LearningGraphService {},
+}));

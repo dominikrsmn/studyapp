@@ -264,3 +264,7 @@ describe('BuildRagChunksJob', () => {
     expect(ingestionQueue.addRagEmbeddingFlow).not.toHaveBeenCalled();
   });
 });
+
+jest.mock('../../learning-graph/learning-graph.service', () => ({
+  LearningGraphService: class LearningGraphService {},
+}));
