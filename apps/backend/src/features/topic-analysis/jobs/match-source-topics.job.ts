@@ -285,13 +285,26 @@ export class MatchSourceTopicsJob {
             throw new Error('Matching result references an unknown topic');
           }
 
-          const refinements =
-            candidate.state === TopicState.SUGGESTED
-              ? {
-                  title: canonicalTopic.title.trim(),
-                  description: canonicalTopic.description.trim(),
-                }
-              : {};
+          const normalizedTitle = canonicalTopic.title.trim();
+          const normalizedDescription = canonicalTopic.description.trim();
+          const isSuggested = candidate.state === TopicState.SUGGESTED;
+          const refinements = isSuggested
+            ? {
+                title: normalizedTitle,
+                description: normalizedDescription,
+              }
+            : {};
+          if (isSuggested) {
+            await transaction.$executeRaw`
+              UPDATE "Topic"
+              SET "embedding" = NULL
+              WHERE "id" = ${candidate.id}
+                AND (
+                  "title" IS DISTINCT FROM ${normalizedTitle}
+                  OR "description" IS DISTINCT FROM ${normalizedDescription}
+                )
+            `;
+          }
           await transaction.topic.update({
             where: { id: candidate.id },
             data: {

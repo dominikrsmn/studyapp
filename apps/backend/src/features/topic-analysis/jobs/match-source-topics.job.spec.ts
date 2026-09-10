@@ -140,6 +140,7 @@ describe('MatchSourceTopicsJob', () => {
   const transition = jest.fn();
   const regenerate = jest.fn();
   let committed = false;
+  let suggestedEmbedding: number[] | null;
   const addFinalizeTopicAnalysis = jest.fn();
   const topicCreate = jest.fn();
   const topicUpdate = jest.fn();
@@ -180,6 +181,24 @@ describe('MatchSourceTopicsJob', () => {
     topicUpdate.mockResolvedValue({});
     transaction.module.update.mockResolvedValue({ graphVersion: 2 });
     sourceTopicUpdate.mockResolvedValue({});
+    suggestedEmbedding = [0.5, 0.6];
+    transaction.$executeRaw.mockImplementation(
+      async (
+        _strings: TemplateStringsArray,
+        _topicId: string,
+        title: string,
+        description: string,
+      ) => {
+        if (
+          candidates[2].title !== title ||
+          candidates[2].description !== description
+        ) {
+          suggestedEmbedding = null;
+          return 1;
+        }
+        return 0;
+      },
+    );
     prismaService.$transaction.mockImplementation(async (operation) => {
       const result = await operation(transaction);
       committed = true;
@@ -315,6 +334,48 @@ describe('MatchSourceTopicsJob', () => {
         canonicalizationConfidence: 0.9,
       },
     });
+  });
+
+  it('clears the embedding when normalized suggested-topic text changes', async () => {
+    await job.process({ sourceId });
+
+    expect(transaction.$executeRaw).toHaveBeenCalledTimes(1);
+    const [strings, ...values] = transaction.$executeRaw.mock.calls[0] as [
+      TemplateStringsArray,
+      ...unknown[],
+    ];
+    expect(strings.join('?')).toContain('UPDATE "Topic"');
+    expect(strings.join('?')).toContain('SET "embedding" = NULL');
+    expect(strings.join('?')).toContain('"title" IS DISTINCT FROM ?');
+    expect(strings.join('?')).toContain('"description" IS DISTINCT FROM ?');
+    expect(values).toEqual([
+      'topic-sgd',
+      'Stochastic Gradient Descent',
+      'Gradient-based optimization using estimates from sampled examples or mini-batches.',
+    ]);
+    expect(suggestedEmbedding).toBeNull();
+  });
+
+  it('preserves the embedding when normalized suggested-topic text is unchanged', async () => {
+    parse.mockResolvedValue({
+      output_parsed: {
+        ...matchingResult,
+        canonicalTopics: matchingResult.canonicalTopics.map((topic) =>
+          topic.existingTopicId === 'topic-sgd'
+            ? {
+                ...topic,
+                title: ' SGD ',
+                description: ' A noisy optimization method. ',
+              }
+            : topic,
+        ),
+      },
+    });
+
+    await job.process({ sourceId });
+
+    expect(transaction.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(suggestedEmbedding).toEqual([0.5, 0.6]);
   });
 
   it('is idempotent when every source occurrence is already attached', async () => {

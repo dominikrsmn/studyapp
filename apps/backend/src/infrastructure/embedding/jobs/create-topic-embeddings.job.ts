@@ -56,7 +56,7 @@ export class CreateTopicEmbeddingsJob {
       );
       const embeddingRows = topics.map((topic, index) => {
         const vector = `[${vectors[index].join(',')}]`;
-        return Prisma.sql`(${topic.id}::text, ${vector}::vector)`;
+        return Prisma.sql`(${topic.id}::text, ${topic.title}::text, ${topic.description}::text, ${vector}::vector)`;
       });
 
       await this.prismaService.$executeRaw(
@@ -65,10 +65,12 @@ export class CreateTopicEmbeddingsJob {
           SET "embedding" = incoming."embedding"
           FROM (
             VALUES ${Prisma.join(embeddingRows)}
-          ) AS incoming("id", "embedding")
+          ) AS incoming("id", "title", "description", "embedding")
           WHERE topic."id" = incoming."id"
             AND topic."moduleId" = ${data.moduleId}
             AND topic."embedding" IS NULL
+            AND topic."title" = incoming."title"
+            AND topic."description" = incoming."description"
         `,
       );
     } catch (error) {
