@@ -7,6 +7,10 @@ export const graphBuildConfig = registerAs('graphBuild', () => ({
     model: 'gpt-5.6-luna',
     reasoningEffort: 'medium' as const,
   },
+  cycleResolution: {
+    model: 'gpt-5.6-luna',
+    reasoningEffort: 'medium' as const,
+  },
   queue: {
     name: 'learning-graph',
     concurrency: 1,
