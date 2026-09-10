@@ -42,7 +42,7 @@ export class GraphBuildProcessor extends WorkerHost {
           job.data as GetPrerequisitesJobData,
         );
       case jobs.refine_graph:
-        return this.refineGraphJob.process(job.data as RefineGraphJobData);
+        return this.refineGraphJob.process(job as Job<RefineGraphJobData>);
       case jobs.detect_cycles:
         return this.detectCyclesJob.process(job as Job<DetectCyclesJobData>);
       default:
