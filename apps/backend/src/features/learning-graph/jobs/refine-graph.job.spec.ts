@@ -34,7 +34,10 @@ describe('RefineGraphJob', () => {
     learningGraph: { findUnique: jest.fn(), update: jest.fn() },
     topic: { findMany: jest.fn(), update: jest.fn() },
   };
-  const prisma = { $transaction: jest.fn() };
+  const prisma = {
+    $transaction: jest.fn(),
+    learningGraph: { updateMany: jest.fn() },
+  };
   const job = {
     data,
     getChildrenValues: jest.fn(),
@@ -55,6 +58,7 @@ describe('RefineGraphJob', () => {
     );
     transaction.topic.update.mockResolvedValue({});
     transaction.learningGraph.update.mockResolvedValue({});
+    prisma.learningGraph.updateMany.mockResolvedValue({ count: 0 });
     job.getChildrenValues = jest
       .fn()
       .mockResolvedValue({ 'detect-cycles': proposal });
@@ -118,6 +122,19 @@ describe('RefineGraphJob', () => {
     expect(transaction.learningGraph.findUnique).not.toHaveBeenCalled();
     expect(transaction.topic.update).not.toHaveBeenCalled();
     expect(transaction.learningGraph.update).not.toHaveBeenCalled();
+    expect(prisma.learningGraph.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: data.graphId,
+        moduleId: data.moduleId,
+        version: data.graphVersion,
+        status: 'QUEUED',
+      },
+      data: {
+        status: 'FAILED',
+        finishedAt: expect.any(Date),
+        errorMessage: 'Graph build became stale before publication',
+      },
+    });
   });
 
   it('does not publish when the graph build is no longer eligible', async () => {

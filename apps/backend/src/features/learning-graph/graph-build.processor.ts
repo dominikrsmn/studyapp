@@ -1,6 +1,12 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
+import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { graphBuildConfig } from './graph-build.config';
+import {
+  failQueuedGraphBuild,
+  graphBuildErrorMessage,
+} from './graph-build.outcome';
 import type {
   GraphJobData,
   DispatchCandidatesJobData,
@@ -19,7 +25,10 @@ import { DetectCyclesJob } from './jobs/detect-cycles.job';
   concurrency: graphBuildConfig().queue.concurrency,
 })
 export class GraphBuildProcessor extends WorkerHost {
+  private readonly logger = new Logger(GraphBuildProcessor.name);
+
   constructor(
+    private readonly prismaService: PrismaService,
     private readonly dispatchCandidatesJob: DispatchCandidatesJob,
     private readonly getPrerequisitesJob: GetPrerequisitesJob,
     private readonly refineGraphJob: RefineGraphJob,
@@ -28,7 +37,33 @@ export class GraphBuildProcessor extends WorkerHost {
     super();
   }
 
-  process(
+  async process(
+    job: Job<GraphJobData>,
+  ): Promise<void | GetPrerequisitesJobResult | GraphProposal> {
+    try {
+      return await this.processJob(job);
+    } catch (error) {
+      if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
+        try {
+          await failQueuedGraphBuild(
+            this.prismaService,
+            job.data,
+            `Graph job "${job.name}" failed: ${graphBuildErrorMessage(error)}`,
+          );
+        } catch (persistenceError) {
+          this.logger.error(
+            `Failed to persist processing failure for graph "${job.data.graphId}": ${graphBuildErrorMessage(persistenceError)}`,
+            persistenceError instanceof Error
+              ? persistenceError.stack
+              : undefined,
+          );
+        }
+      }
+      throw error;
+    }
+  }
+
+  private processJob(
     job: Job<GraphJobData>,
   ): Promise<void | GetPrerequisitesJobResult | GraphProposal> {
     const { jobs } = graphBuildConfig().queue;

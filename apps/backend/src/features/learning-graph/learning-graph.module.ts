@@ -12,6 +12,7 @@ import { GetPrerequisitesJob } from './jobs/get-prerequisites.job';
 import { LearningGraphService } from './learning-graph.service';
 import { RefineGraphJob } from './jobs/refine-graph.job';
 import { DetectCyclesJob } from './jobs/detect-cycles.job';
+import { GraphBuildEventsListener } from './graph-build.events-listener';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DetectCyclesJob } from './jobs/detect-cycles.job';
   providers: [
     GraphBuildQueue,
     GraphBuildProcessor,
+    GraphBuildEventsListener,
     DispatchCandidatesJob,
     GetPrerequisitesJob,
     LearningGraphService,

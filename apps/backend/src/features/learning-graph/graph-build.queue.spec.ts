@@ -49,4 +49,44 @@ describe('GraphBuildQueue', () => {
       { ...data, topicEvidenceIds: ['evidence-2'] },
     ]);
   });
+
+  it('propagates embedding, prerequisite-selection, and cycle-resolution failures', async () => {
+    const flowProducer = { add: jest.fn() };
+    const prisma = {
+      $queryRaw: jest
+        .fn()
+        .mockResolvedValueOnce([{ id: 'topic-1' }])
+        .mockResolvedValueOnce([{ id: 'evidence-1' }]),
+    };
+    const queue = new GraphBuildQueue(
+      flowProducer as unknown as FlowProducer,
+      prisma as unknown as PrismaService,
+      new EmbeddingBatchingService({ ...embeddingConfig(), batchSize: 1 }),
+    );
+    const data = {
+      graphId: 'graph-id',
+      moduleId: 'module-id',
+      graphVersion: 7,
+    };
+
+    await queue.addEmbeddingFlow(data);
+    await queue.addGraphFlow(data, ['topic-1', 'topic-2']);
+
+    const embeddingFlow = flowProducer.add.mock.calls[0][0];
+    expect(
+      embeddingFlow.children.map(
+        ({ opts }: { opts: { failParentOnFailure?: boolean } }) =>
+          opts.failParentOnFailure,
+      ),
+    ).toEqual([true, true]);
+
+    const graphFlow = flowProducer.add.mock.calls[1][0];
+    expect(graphFlow.children[0].opts.failParentOnFailure).toBe(true);
+    expect(
+      graphFlow.children[0].children.map(
+        ({ opts }: { opts: { failParentOnFailure?: boolean } }) =>
+          opts.failParentOnFailure,
+      ),
+    ).toEqual([true, true]);
+  });
 });

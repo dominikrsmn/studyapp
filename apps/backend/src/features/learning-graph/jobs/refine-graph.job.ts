@@ -3,6 +3,7 @@ import type { Job } from 'bullmq';
 import { Prisma } from '../../../infrastructure/database/generated/client';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import type { GraphProposal, RefineGraphJobData } from '../graph-build.types';
+import { failQueuedGraphBuild } from '../graph-build.outcome';
 
 @Injectable()
 export class RefineGraphJob {
@@ -12,7 +13,14 @@ export class RefineGraphJob {
     const [proposal] = Object.values(
       await job.getChildrenValues<GraphProposal | null>(),
     );
-    if (!proposal) return;
+    if (!proposal) {
+      await failQueuedGraphBuild(
+        this.prismaService,
+        job.data,
+        'Graph build became stale before publication',
+      );
+      return;
+    }
 
     const prerequisites = new Map<string, Set<string>>(
       proposal.topicIds.map((topicId) => [topicId, new Set<string>()]),
@@ -44,53 +52,64 @@ export class RefineGraphJob {
     this.findOutliers(reducedPrerequisites); // ToDo: handle outliers
 
     const { graphId, moduleId, graphVersion } = job.data;
-    await this.prismaService.$transaction(async (transaction) => {
-      // Serialize publication with graph regeneration on the module row.
-      const modules = await transaction.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`SELECT "id" FROM "Module"
+    const published = await this.prismaService.$transaction(
+      async (transaction) => {
+        // Serialize publication with graph regeneration on the module row.
+        const modules = await transaction.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`SELECT "id" FROM "Module"
           WHERE "id" = ${moduleId} AND "graphVersion" = ${graphVersion}
           FOR UPDATE`,
-      );
-      if (modules.length === 0) return;
+        );
+        if (modules.length === 0) return false;
 
-      const graph = await transaction.learningGraph.findUnique({
-        where: {
-          id: graphId,
-          moduleId,
-          version: graphVersion,
-          status: 'QUEUED',
-        },
-        select: { id: true },
-      });
-      if (!graph) return;
+        const graph = await transaction.learningGraph.findUnique({
+          where: {
+            id: graphId,
+            moduleId,
+            version: graphVersion,
+            status: 'QUEUED',
+          },
+          select: { id: true },
+        });
+        if (!graph) return false;
 
-      for (const [topicId, topicPrerequisites] of reducedPrerequisites) {
-        await transaction.topic.update({
-          where: { id: topicId },
-          data: {
-            prerequisites: {
-              set: topicPrerequisites.map((id) => ({
-                id,
-              })),
+        for (const [topicId, topicPrerequisites] of reducedPrerequisites) {
+          await transaction.topic.update({
+            where: { id: topicId },
+            data: {
+              prerequisites: {
+                set: topicPrerequisites.map((id) => ({
+                  id,
+                })),
+              },
             },
+          });
+        }
+
+        await transaction.learningGraph.update({
+          where: {
+            id: graphId,
+            moduleId,
+            version: graphVersion,
+            status: 'QUEUED',
+          },
+          data: {
+            status: 'COMPLETED',
+            finishedAt: new Date(),
+            errorMessage: null,
           },
         });
-      }
+        return true;
+      },
+    );
 
-      await transaction.learningGraph.update({
-        where: {
-          id: graphId,
-          moduleId,
-          version: graphVersion,
-          status: 'QUEUED',
-        },
-        data: {
-          status: 'COMPLETED',
-          finishedAt: new Date(),
-          errorMessage: null,
-        },
-      });
-    });
+    if (!published) {
+      await failQueuedGraphBuild(
+        this.prismaService,
+        job.data,
+        'Graph build became stale before publication',
+      );
+    }
   }
 
   private findOutliers(prerequisites: Map<string, string[]>): string[] {

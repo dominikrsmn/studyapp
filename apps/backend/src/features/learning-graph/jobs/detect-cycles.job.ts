@@ -10,6 +10,7 @@ import type {
   GetPrerequisitesJobResult,
   GraphProposal,
 } from '../graph-build.types';
+import { failQueuedGraphBuild } from '../graph-build.outcome';
 
 @Injectable()
 export class DetectCyclesJob {
@@ -28,7 +29,14 @@ export class DetectCyclesJob {
       },
       select: { id: true },
     });
-    if (!graph) return;
+    if (!graph) {
+      await failQueuedGraphBuild(
+        this.prismaService,
+        job.data,
+        'Graph build became stale during cycle resolution',
+      );
+      return;
+    }
 
     const childResults = Object.values(
       await job.getChildrenValues<GetPrerequisitesJobResult>(),

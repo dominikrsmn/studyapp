@@ -9,6 +9,7 @@ import type {
   GetPrerequisitesJobData,
   GetPrerequisitesJobResult,
 } from '../graph-build.types';
+import { failQueuedGraphBuild } from '../graph-build.outcome';
 
 @Injectable()
 export class GetPrerequisitesJob {
@@ -29,7 +30,14 @@ export class GetPrerequisitesJob {
       },
       select: { id: true },
     });
-    if (!graph) return;
+    if (!graph) {
+      await failQueuedGraphBuild(
+        this.prismaService,
+        data,
+        'Graph build became stale during prerequisite selection',
+      );
+      return;
+    }
     if (data.candidateTopicIds.length === 0) {
       return { topicId: data.topicId, prerequisites: [] };
     }

@@ -13,9 +13,16 @@ describe('LearningGraphService', () => {
   const transaction = {
     $queryRaw: jest.fn(),
     module: { update: jest.fn() },
-    learningGraph: { findFirst: jest.fn(), create: jest.fn() },
+    learningGraph: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      updateMany: jest.fn(),
+    },
   };
-  const prisma = { $transaction: jest.fn() };
+  const prisma = {
+    $transaction: jest.fn(),
+    learningGraph: { updateMany: jest.fn() },
+  };
   const queue = { addEmbeddingFlow: jest.fn() };
   const service = new LearningGraphService(
     prisma as unknown as PrismaService,
@@ -38,6 +45,8 @@ describe('LearningGraphService', () => {
       id: data.graphId,
       status: 'QUEUED',
     });
+    transaction.learningGraph.updateMany.mockResolvedValue({ count: 0 });
+    prisma.learningGraph.updateMany.mockResolvedValue({ count: 1 });
     queue.addEmbeddingFlow.mockImplementation(async () => {
       expect(committed).toBe(true);
     });
@@ -53,6 +62,18 @@ describe('LearningGraphService', () => {
     expect(transaction.learningGraph.create).toHaveBeenCalledWith({
       data: { moduleId: data.moduleId, version: 7, status: 'QUEUED' },
       select: { id: true, status: true },
+    });
+    expect(transaction.learningGraph.updateMany).toHaveBeenCalledWith({
+      where: {
+        moduleId: data.moduleId,
+        version: { lt: 7 },
+        status: 'QUEUED',
+      },
+      data: {
+        status: 'FAILED',
+        finishedAt: expect.any(Date),
+        errorMessage: 'Superseded by graph version 7',
+      },
     });
     expect(queue.addEmbeddingFlow).toHaveBeenCalledWith(data);
   });
@@ -89,20 +110,38 @@ describe('LearningGraphService', () => {
     },
   );
 
-  it('can retry a failed enqueue without creating another graph', async () => {
-    queue.addEmbeddingFlow.mockRejectedValueOnce(
-      new Error('Queue unavailable'),
-    );
+  it('marks a queued build failed when initial enqueueing fails', async () => {
+    const enqueueError = new Error('Queue unavailable');
+    queue.addEmbeddingFlow.mockRejectedValueOnce(enqueueError);
+
     await expect(service.regenerate(data.moduleId, 7)).rejects.toThrow(
       'Queue unavailable',
     );
-    transaction.learningGraph.findFirst.mockResolvedValue({
-      id: data.graphId,
-      status: 'QUEUED',
+    expect(prisma.learningGraph.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: data.graphId,
+        moduleId: data.moduleId,
+        version: 7,
+        status: 'QUEUED',
+      },
+      data: {
+        status: 'FAILED',
+        finishedAt: expect.any(Date),
+        errorMessage: 'Failed to enqueue graph build: Queue unavailable',
+      },
     });
-    await expect(service.regenerate(data.moduleId, 7)).resolves.toEqual(data);
-    expect(transaction.learningGraph.create).toHaveBeenCalledTimes(1);
-    expect(queue.addEmbeddingFlow).toHaveBeenLastCalledWith(data);
+  });
+
+  it('rethrows the enqueue error when persisting its failure also fails', async () => {
+    const enqueueError = new Error('Queue unavailable');
+    queue.addEmbeddingFlow.mockRejectedValueOnce(enqueueError);
+    prisma.learningGraph.updateMany.mockRejectedValueOnce(
+      new Error('Database unavailable'),
+    );
+
+    await expect(service.regenerate(data.moduleId, 7)).rejects.toBe(
+      enqueueError,
+    );
   });
 
   it('does not enqueue when graph creation fails to commit', async () => {

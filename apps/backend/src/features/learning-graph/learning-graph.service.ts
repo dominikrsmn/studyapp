@@ -1,10 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { GraphBuildQueue } from './graph-build.queue';
 import type { GraphBuildJobData } from './graph-build.types';
+import {
+  failQueuedGraphBuild,
+  graphBuildErrorMessage,
+} from './graph-build.outcome';
 
 @Injectable()
 export class LearningGraphService {
+  private readonly logger = new Logger(LearningGraphService.name);
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly graphBuildQueue: GraphBuildQueue,
@@ -23,6 +29,19 @@ export class LearningGraphService {
           FOR UPDATE`;
       if (modules.length === 0) return null;
 
+      await transaction.learningGraph.updateMany({
+        where: {
+          moduleId,
+          version: { lt: graphVersion },
+          status: 'QUEUED',
+        },
+        data: {
+          status: 'FAILED',
+          finishedAt: new Date(),
+          errorMessage: `Superseded by graph version ${graphVersion}`,
+        },
+      });
+
       const existing = await transaction.learningGraph.findFirst({
         where: { moduleId, version: graphVersion },
         select: { id: true, status: true },
@@ -40,8 +59,27 @@ export class LearningGraphService {
     });
 
     if (!build) return null;
-    // The queue uses stable job IDs, so a failed enqueue can be retried.
-    if (build.queued) await this.graphBuildQueue.addEmbeddingFlow(build.data);
+    if (build.queued) {
+      try {
+        await this.graphBuildQueue.addEmbeddingFlow(build.data);
+      } catch (error) {
+        try {
+          await failQueuedGraphBuild(
+            this.prismaService,
+            build.data,
+            `Failed to enqueue graph build: ${graphBuildErrorMessage(error)}`,
+          );
+        } catch (persistenceError) {
+          this.logger.error(
+            `Failed to persist enqueue failure for graph "${build.data.graphId}": ${graphBuildErrorMessage(persistenceError)}`,
+            persistenceError instanceof Error
+              ? persistenceError.stack
+              : undefined,
+          );
+        }
+        throw error;
+      }
+    }
     return build.data;
   }
 }

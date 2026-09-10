@@ -3,6 +3,7 @@ import { Prisma } from '../../../infrastructure/database/generated/client';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
 import { GraphBuildQueue } from '../graph-build.queue';
 import type { DispatchCandidatesJobData } from '../graph-build.types';
+import { failQueuedGraphBuild } from '../graph-build.outcome';
 
 @Injectable()
 export class DispatchCandidatesJob {
@@ -46,7 +47,14 @@ export class DispatchCandidatesJob {
       { isolationLevel: 'RepeatableRead' },
     );
 
-    if (!topics) return;
+    if (!topics) {
+      await failQueuedGraphBuild(
+        this.prismaService,
+        data,
+        'Graph build became stale before candidate dispatch',
+      );
+      return;
+    }
 
     await this.graphBuildQueue.addGraphFlow(
       data,
