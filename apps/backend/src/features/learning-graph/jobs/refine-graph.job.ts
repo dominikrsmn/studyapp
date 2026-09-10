@@ -54,21 +54,22 @@ export class RefineGraphJob {
       if (modules.length === 0) return;
 
       const graph = await transaction.learningGraph.findUnique({
-        where: { id: graphId, moduleId, version: graphVersion },
+        where: {
+          id: graphId,
+          moduleId,
+          version: graphVersion,
+          status: 'QUEUED',
+        },
         select: { id: true },
       });
       if (!graph) return;
 
-      const topics = await transaction.topic.findMany({
-        where: { moduleId },
-        select: { id: true },
-      });
-      for (const topic of topics) {
+      for (const [topicId, topicPrerequisites] of reducedPrerequisites) {
         await transaction.topic.update({
-          where: { id: topic.id },
+          where: { id: topicId },
           data: {
             prerequisites: {
-              set: (reducedPrerequisites.get(topic.id) ?? []).map((id) => ({
+              set: topicPrerequisites.map((id) => ({
                 id,
               })),
             },
@@ -77,7 +78,12 @@ export class RefineGraphJob {
       }
 
       await transaction.learningGraph.update({
-        where: { id: graphId },
+        where: {
+          id: graphId,
+          moduleId,
+          version: graphVersion,
+          status: 'QUEUED',
+        },
         data: {
           status: 'COMPLETED',
           finishedAt: new Date(),
