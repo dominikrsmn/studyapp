@@ -4,7 +4,10 @@ import { invalidateSourceTopics } from './content-revision';
 describe('invalidateSourceTopics', () => {
   const transaction = {
     topic: { updateMany: jest.fn() },
-    module: { updateMany: jest.fn() },
+    module: { update: jest.fn().mockResolvedValue({ graphVersion: 2 }) },
+    source: {
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ moduleId: 'module-id' }),
+    },
   };
   beforeEach(() => jest.clearAllMocks());
 
@@ -22,9 +25,10 @@ describe('invalidateSourceTopics', () => {
         summaryRevision: null,
       },
     });
-    expect(transaction.module.updateMany).toHaveBeenCalledWith({
-      where: { sources: { some: { id: 'source-id' } } },
-      data: { contentRevision: { increment: 1 } },
+    expect(transaction.module.update).toHaveBeenCalledWith({
+      where: { id: 'module-id' },
+      data: { graphVersion: { increment: 1 } },
+      select: { graphVersion: true },
     });
   });
 
@@ -34,6 +38,6 @@ describe('invalidateSourceTopics', () => {
       transaction as unknown as Prisma.TransactionClient,
       'source-id',
     );
-    expect(transaction.module.updateMany).not.toHaveBeenCalled();
+    expect(transaction.module.update).not.toHaveBeenCalled();
   });
 });

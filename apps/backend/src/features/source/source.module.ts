@@ -1,3 +1,4 @@
+import { LearningGraphModule } from '../learning-graph/learning-graph.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { SourceService } from './source.service';
 import { SourcesController } from './source.controller';
@@ -12,6 +13,7 @@ import { SourceEventService } from './source-event.service';
 
 @Module({
   imports: [
+    forwardRef(() => LearningGraphModule),
     PrismaModule,
     FileStorageModule,
     forwardRef(() => IngestionModule),

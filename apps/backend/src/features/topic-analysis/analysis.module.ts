@@ -1,3 +1,4 @@
+import { LearningGraphModule } from '../learning-graph/learning-graph.module';
 import { forwardRef, Logger, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
@@ -18,6 +19,7 @@ import { FileStorageModule } from '../../infrastructure/filestorage/filestorage.
 
 @Module({
   imports: [
+    forwardRef(() => LearningGraphModule),
     ConfigModule.forFeature(analysisConfig),
     BullModule.registerQueue({
       name: analysisConfig().queue.name,

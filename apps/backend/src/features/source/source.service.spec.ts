@@ -1,3 +1,4 @@
+import type { LearningGraphService } from '../learning-graph/learning-graph.service';
 import { NotFoundException } from '@nestjs/common';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
@@ -16,12 +17,13 @@ jest.mock('../../infrastructure/database/prisma/prisma.service', () => ({
 describe('SourceService', () => {
   const moduleDelegate = {
     findFirst: jest.fn(),
-    updateMany: jest.fn(),
+    update: jest.fn(),
   };
   const topicDelegate = { updateMany: jest.fn() };
   const sourceDelegate = {
     create: jest.fn(),
     findUnique: jest.fn(),
+    findUniqueOrThrow: jest.fn(),
     findMany: jest.fn(),
     findFirst: jest.fn(),
     delete: jest.fn(),
@@ -43,6 +45,10 @@ describe('SourceService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     topicDelegate.updateMany.mockResolvedValue({ count: 0 });
+    sourceDelegate.findUniqueOrThrow.mockResolvedValue({
+      moduleId: 'module-id',
+    });
+    moduleDelegate.update.mockResolvedValue({ graphVersion: 2 });
     service = new SourceService(
       {
         module: moduleDelegate,
@@ -57,6 +63,7 @@ describe('SourceService', () => {
       fileStorageService as unknown as FileStorageService,
       ingestionQueue as unknown as IngestionQueue,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
+      { regenerate: jest.fn() } as unknown as LearningGraphService,
     );
 
     moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
@@ -90,7 +97,7 @@ describe('SourceService', () => {
     expect(topicDelegate.updateMany.mock.invocationCallOrder[0]).toBeLessThan(
       sourceDelegate.delete.mock.invocationCallOrder[0],
     );
-    expect(moduleDelegate.updateMany).toHaveBeenCalledTimes(1);
+    expect(moduleDelegate.update).toHaveBeenCalledTimes(1);
     expect(fileStorageService.deleteMany).toHaveBeenCalledWith(['file-key']);
   });
 
@@ -103,7 +110,7 @@ describe('SourceService', () => {
 
     await service.remove('user-id', 'module-id', 'source-id');
 
-    expect(moduleDelegate.updateMany).not.toHaveBeenCalled();
+    expect(moduleDelegate.update).not.toHaveBeenCalled();
     expect(sourceDelegate.delete).toHaveBeenCalledWith({
       where: { id: 'source-id' },
       select: expect.any(Object),

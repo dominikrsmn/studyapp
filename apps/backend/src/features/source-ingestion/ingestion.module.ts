@@ -1,3 +1,4 @@
+import { LearningGraphModule } from '../learning-graph/learning-graph.module';
 import { forwardRef, Logger, Module } from '@nestjs/common';
 import { FileStorageModule } from '../../infrastructure/filestorage/filestorage.module';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
@@ -18,6 +19,7 @@ import { AnalysisModule } from '../topic-analysis/analysis.module';
 
 @Module({
   imports: [
+    forwardRef(() => LearningGraphModule),
     ConfigModule.forFeature(ingestionConfig),
     BullModule.registerQueue({
       name: ingestionConfig().queue.name,

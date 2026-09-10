@@ -1,3 +1,4 @@
+import type { LearningGraphService } from '../learning-graph/learning-graph.service';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import {
   ProcessingState,
@@ -27,6 +28,7 @@ describe('SourceProcessingStageService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prismaService.module.update.mockResolvedValue({ graphVersion: 2 });
     sourceProcessingStage.findUnique.mockResolvedValue(null);
     sourceProcessingStage.upsert.mockResolvedValue({
       id: 'stage-id',
@@ -36,6 +38,7 @@ describe('SourceProcessingStageService', () => {
     service = new SourceProcessingStageService(
       prismaService as unknown as PrismaService,
       sourceEventService as unknown as SourceEventService,
+      { regenerate: jest.fn() } as unknown as LearningGraphService,
     );
   });
 

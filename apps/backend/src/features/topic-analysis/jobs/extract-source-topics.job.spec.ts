@@ -1,3 +1,4 @@
+import type { LearningGraphService } from '../../learning-graph/learning-graph.service';
 import { Logger } from '@nestjs/common';
 import { UnrecoverableError } from 'bullmq';
 import {
@@ -127,7 +128,10 @@ describe('ExtractSourceTopicsJob', () => {
     topicEvidence,
     topicEvidenceSpan,
     topic: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
-    module: { updateMany: jest.fn() },
+    module: { update: jest.fn().mockResolvedValue({ graphVersion: 2 }) },
+    source: {
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ moduleId: 'module-id' }),
+    },
   };
   const prismaService = {
     source: { findUnique },
@@ -196,6 +200,7 @@ describe('ExtractSourceTopicsJob', () => {
       { readDoclingDocument } as unknown as FileStorageService,
       { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
+      { regenerate: jest.fn() } as unknown as LearningGraphService,
       { addMatchSourceTopics } as unknown as AnalysisQueue,
       config,
     );
@@ -214,14 +219,14 @@ describe('ExtractSourceTopicsJob', () => {
     expect(
       transaction.topic.updateMany.mock.invocationCallOrder[0],
     ).toBeLessThan(sourceTopic.deleteMany.mock.invocationCallOrder[0]);
-    expect(transaction.module.updateMany).toHaveBeenCalledTimes(1);
+    expect(transaction.module.update).toHaveBeenCalledTimes(1);
   });
 
   it('does not invalidate module content before evidence is canonical', async () => {
     await job.process(data);
 
     expect(transaction.topic.updateMany).toHaveBeenCalledTimes(1);
-    expect(transaction.module.updateMany).not.toHaveBeenCalled();
+    expect(transaction.module.update).not.toHaveBeenCalled();
   });
 
   it('extracts, deterministically grounds, persists, and chains final spans', async () => {

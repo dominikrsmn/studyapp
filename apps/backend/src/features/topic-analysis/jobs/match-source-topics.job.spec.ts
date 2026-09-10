@@ -1,3 +1,4 @@
+import type { LearningGraphService } from '../../learning-graph/learning-graph.service';
 import { Logger } from '@nestjs/common';
 import {
   ProcessingState,
@@ -143,6 +144,7 @@ describe('MatchSourceTopicsJob', () => {
   const sourceTopicUpdate = jest.fn();
   const transaction = {
     module: { update: jest.fn() },
+    $executeRaw: jest.fn(),
     topic: { create: topicCreate, update: topicUpdate },
     sourceTopic: { update: sourceTopicUpdate },
   };
@@ -170,6 +172,7 @@ describe('MatchSourceTopicsJob', () => {
     parse.mockResolvedValue({ output_parsed: matchingResult });
     topicCreate.mockResolvedValue({ id: 'created-dijkstra' });
     topicUpdate.mockResolvedValue({});
+    transaction.module.update.mockResolvedValue({ graphVersion: 2 });
     sourceTopicUpdate.mockResolvedValue({});
     prismaService.$transaction.mockImplementation((operation) =>
       operation(transaction),
@@ -181,6 +184,7 @@ describe('MatchSourceTopicsJob', () => {
       prismaService as unknown as PrismaService,
       { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
+      { regenerate: jest.fn() } as unknown as LearningGraphService,
       { addFinalizeTopicAnalysis } as unknown as AnalysisQueue,
       config,
     );
