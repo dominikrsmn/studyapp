@@ -32,7 +32,7 @@ describe('RefineGraphJob', () => {
   const transaction = {
     $queryRaw: jest.fn(),
     learningGraph: { findUnique: jest.fn(), update: jest.fn() },
-    topic: { findMany: jest.fn(), update: jest.fn() },
+    topic: { findMany: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   };
   const prisma = {
     $transaction: jest.fn(),
@@ -79,23 +79,33 @@ describe('RefineGraphJob', () => {
       },
       select: { id: true },
     });
+    expect(transaction.topic.updateMany).toHaveBeenCalledWith({
+      where: { moduleId: data.moduleId, published: true },
+      data: { published: false },
+    });
     expect(transaction.topic.update.mock.calls).toEqual([
       [
         {
           where: { id: 'topic-a' },
-          data: { prerequisites: { set: [{ id: 'topic-b' }] } },
+          data: {
+            published: true,
+            prerequisites: { set: [{ id: 'topic-b' }] },
+          },
         },
       ],
       [
         {
           where: { id: 'topic-b' },
-          data: { prerequisites: { set: [{ id: 'topic-c' }] } },
+          data: {
+            published: true,
+            prerequisites: { set: [{ id: 'topic-c' }] },
+          },
         },
       ],
       [
         {
           where: { id: 'topic-c' },
-          data: { prerequisites: { set: [] } },
+          data: { published: true, prerequisites: { set: [] } },
         },
       ],
     ]);
@@ -114,12 +124,114 @@ describe('RefineGraphJob', () => {
     });
   });
 
+  it('publishes isolated topics alongside connected topics', async () => {
+    job.getChildrenValues = jest.fn().mockResolvedValue({
+      'detect-cycles': {
+        ...proposal,
+        topicIds: [...proposal.topicIds, 'isolated'],
+      },
+    });
+
+    await refineGraphJob.process(job);
+
+    expect(transaction.topic.update).toHaveBeenCalledWith({
+      where: { id: 'isolated' },
+      data: { published: true, prerequisites: { set: [] } },
+    });
+  });
+
+  it('replaces published membership with an empty successful graph', async () => {
+    job.getChildrenValues = jest.fn().mockResolvedValue({
+      'detect-cycles': { topicIds: [], dependencies: [] },
+    });
+
+    await refineGraphJob.process(job);
+
+    expect(transaction.topic.updateMany).toHaveBeenCalledWith({
+      where: { moduleId: data.moduleId, published: true },
+      data: { published: false },
+    });
+    expect(transaction.topic.update).not.toHaveBeenCalled();
+    expect(transaction.learningGraph.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'COMPLETED' }),
+      }),
+    );
+  });
+
+  it.each([false, true])(
+    'replaces membership and relationships only on a committed publication (failure: %s)',
+    async (failCompletion) => {
+      let stored = {
+        status: 'QUEUED',
+        topics: [
+          { id: 'old', published: true, prerequisiteIds: ['topic-c'] },
+          { id: 'topic-a', published: false, prerequisiteIds: [] as string[] },
+          { id: 'topic-b', published: false, prerequisiteIds: [] as string[] },
+          { id: 'topic-c', published: true, prerequisiteIds: [] as string[] },
+          { id: 'isolated', published: false, prerequisiteIds: [] as string[] },
+        ],
+      };
+      const previous = structuredClone(stored);
+      job.getChildrenValues = jest.fn().mockResolvedValue({
+        'detect-cycles': {
+          ...proposal,
+          topicIds: [...proposal.topicIds, 'isolated'],
+        },
+      });
+      prisma.$transaction.mockImplementationOnce(async (operation) => {
+        const pending = structuredClone(stored);
+        transaction.topic.updateMany.mockImplementation(
+          async ({ where, data }) => {
+            for (const topic of pending.topics) {
+              if (topic.published === where.published)
+                topic.published = data.published;
+            }
+          },
+        );
+        transaction.topic.update.mockImplementation(async ({ where, data }) => {
+          const topic = pending.topics.find((topic) => topic.id === where.id)!;
+          topic.published = data.published;
+          topic.prerequisiteIds = data.prerequisites.set.map(
+            ({ id }: { id: string }) => id,
+          );
+        });
+        transaction.learningGraph.update.mockImplementation(
+          async ({ data }) => {
+            if (failCompletion) throw new Error('Completion failed');
+            pending.status = data.status;
+          },
+        );
+        const result = await operation(transaction);
+        stored = pending;
+        return result;
+      });
+
+      if (failCompletion) {
+        await expect(refineGraphJob.process(job)).rejects.toThrow(
+          'Completion failed',
+        );
+        expect(stored).toEqual(previous);
+      } else {
+        await refineGraphJob.process(job);
+        expect(stored.status).toBe('COMPLETED');
+        expect(stored.topics.filter((topic) => topic.published)).toEqual([
+          { id: 'topic-a', published: true, prerequisiteIds: ['topic-b'] },
+          { id: 'topic-b', published: true, prerequisiteIds: ['topic-c'] },
+          { id: 'topic-c', published: true, prerequisiteIds: [] },
+          { id: 'isolated', published: true, prerequisiteIds: [] },
+        ]);
+      }
+    },
+  );
+
   it('does not publish or complete after the module version changes', async () => {
     transaction.$queryRaw.mockResolvedValue([]);
 
     await refineGraphJob.process(job);
 
     expect(transaction.learningGraph.findUnique).not.toHaveBeenCalled();
+    expect(transaction.topic.updateMany).not.toHaveBeenCalled();
     expect(transaction.topic.update).not.toHaveBeenCalled();
     expect(transaction.learningGraph.update).not.toHaveBeenCalled();
     expect(prisma.learningGraph.updateMany).toHaveBeenCalledWith({
@@ -142,6 +254,7 @@ describe('RefineGraphJob', () => {
 
     await refineGraphJob.process(job);
 
+    expect(transaction.topic.updateMany).not.toHaveBeenCalled();
     expect(transaction.topic.update).not.toHaveBeenCalled();
     expect(transaction.learningGraph.update).not.toHaveBeenCalled();
   });

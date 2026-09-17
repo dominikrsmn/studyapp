@@ -73,10 +73,16 @@ export class RefineGraphJob {
         });
         if (!graph) return false;
 
+        await transaction.topic.updateMany({
+          where: { moduleId, published: true },
+          data: { published: false },
+        });
+
         for (const [topicId, topicPrerequisites] of reducedPrerequisites) {
           await transaction.topic.update({
             where: { id: topicId },
             data: {
+              published: true,
               prerequisites: {
                 set: topicPrerequisites.map((id) => ({
                   id,

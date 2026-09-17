@@ -4,6 +4,8 @@ model Topic {
   description String     @db.Text
   state       TopicState @default(SUGGESTED)
 
+  published Boolean @default(false)
+
   summary String? @db.Text
 
   contentRevision Int  @default(1)

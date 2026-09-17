@@ -19,3 +19,5 @@ export * from './user/user.schema';
 export * from './util/date-only';
 
 export * from './source/source-jobs.schema';
+
+export * from './learning-graph/learning-graph.schema';

@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import type { PublishedLearningGraphDto } from '@study/contracts';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { GraphBuildQueue } from './graph-build.queue';
 import type { GraphBuildJobData } from './graph-build.types';
@@ -15,6 +16,57 @@ export class LearningGraphService {
     private readonly prismaService: PrismaService,
     private readonly graphBuildQueue: GraphBuildQueue,
   ) {}
+
+  async findPublished(
+    semesterId: string,
+    moduleId: string,
+  ): Promise<PublishedLearningGraphDto | null> {
+    return this.prismaService.$transaction(
+      async (transaction) => {
+        const module = await transaction.module.findFirst({
+          where: { id: moduleId, semesterId },
+          select: { id: true },
+        });
+        if (!module) {
+          throw new NotFoundException(
+            `Module with id "${moduleId}" was not found`,
+          );
+        }
+
+        const graph = await transaction.learningGraph.findFirst({
+          where: { moduleId, status: 'COMPLETED' },
+          orderBy: { version: 'desc' },
+          select: { id: true, version: true },
+        });
+        if (!graph) return null;
+
+        const topics = await transaction.topic.findMany({
+          where: { moduleId, published: true },
+          orderBy: { id: 'asc' },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            prerequisites: {
+              orderBy: { id: 'asc' },
+              select: { id: true },
+            },
+          },
+        });
+        return {
+          ...graph,
+          topics: topics.map(({ prerequisites, ...topic }) => ({
+            ...topic,
+            prerequisiteIds: prerequisites.map(({ id }) => id),
+          })),
+        };
+      },
+      {
+        // Keep graph metadata and membership on the same publication during reads.
+        isolationLevel: 'RepeatableRead',
+      },
+    );
+  }
 
   async regenerate(
     moduleId: string,

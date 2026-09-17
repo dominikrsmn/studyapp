@@ -1,3 +1,4 @@
+import { LearningGraphController } from './learning-graph.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
@@ -25,6 +26,7 @@ import { GraphBuildEventsListener } from './graph-build.events-listener';
       name: graphBuildConfig().flowProducer.name,
     }),
   ],
+  controllers: [LearningGraphController],
   providers: [
     GraphBuildQueue,
     GraphBuildProcessor,

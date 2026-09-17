@@ -155,3 +155,130 @@ describe('LearningGraphService', () => {
     expect(queue.addEmbeddingFlow).not.toHaveBeenCalled();
   });
 });
+
+describe('LearningGraphService published reads', () => {
+  const publishedTopic = {
+    id: 'published',
+    title: 'Published topic',
+    description: 'Kept after source deletion',
+    published: true,
+    prerequisites: [{ id: 'isolated' }],
+  };
+  const isolatedTopic = {
+    id: 'isolated',
+    title: 'Foundation',
+    description: 'A published foundation',
+    published: true,
+    prerequisites: [],
+  };
+  const topics = [
+    publishedTopic,
+    isolatedTopic,
+    {
+      id: 'new',
+      title: 'New analysis',
+      description: 'Not yet published',
+      published: false,
+      prerequisites: [],
+    },
+  ];
+  const transaction = {
+    module: { findFirst: jest.fn() },
+    learningGraph: { findFirst: jest.fn() },
+    topic: { findMany: jest.fn() },
+  };
+  const prisma = { $transaction: jest.fn() };
+  const service = new LearningGraphService(
+    prisma as unknown as PrismaService,
+    {} as GraphBuildQueue,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((operation) =>
+      operation(transaction),
+    );
+    transaction.module.findFirst.mockImplementation(async ({ where }) =>
+      where.semesterId === 'active-semester' && where.id === 'module-id'
+        ? { id: 'module-id' }
+        : null,
+    );
+    transaction.learningGraph.findFirst.mockResolvedValue({
+      id: 'published-build',
+      version: 7,
+    });
+    transaction.topic.findMany.mockImplementation(async ({ where }) =>
+      topics
+        .filter((topic) => topic.published === where.published)
+        .map(({ published, ...topic }) => topic),
+    );
+  });
+
+  it.each(['QUEUED', 'FAILED'])(
+    'returns exact published membership with a newer %s build',
+    async (status) => {
+      const builds = [
+        { id: 'new-build', version: 8, status },
+        { id: 'published-build', version: 7, status: 'COMPLETED' },
+      ];
+      transaction.learningGraph.findFirst.mockImplementation(
+        async ({ where, orderBy }) => {
+          const build = builds
+            .filter((build) => build.status === where.status)
+            .sort((a, b) =>
+              orderBy.version === 'desc'
+                ? b.version - a.version
+                : a.version - b.version,
+            )[0];
+          return build ? { id: build.id, version: build.version } : null;
+        },
+      );
+
+      await expect(
+        service.findPublished('active-semester', 'module-id'),
+      ).resolves.toEqual({
+        id: 'published-build',
+        version: 7,
+        topics: [
+          {
+            id: 'published',
+            title: 'Published topic',
+            description: 'Kept after source deletion',
+            prerequisiteIds: ['isolated'],
+          },
+          {
+            id: 'isolated',
+            title: 'Foundation',
+            description: 'A published foundation',
+            prerequisiteIds: [],
+          },
+        ],
+      });
+    },
+  );
+
+  it('rejects modules outside the active semester', async () => {
+    await expect(
+      service.findPublished('other-semester', 'module-id'),
+    ).rejects.toThrow('was not found');
+    expect(transaction.topic.findMany).not.toHaveBeenCalled();
+  });
+
+  it('returns null before the first successful publication', async () => {
+    transaction.learningGraph.findFirst.mockResolvedValue(null);
+    await expect(
+      service.findPublished('active-semester', 'module-id'),
+    ).resolves.toBeNull();
+  });
+
+  it('preserves the identity of an empty successful publication', async () => {
+    transaction.topic.findMany.mockResolvedValue([]);
+    await expect(
+      service.findPublished('active-semester', 'module-id'),
+    ).resolves.toEqual({
+      id: 'published-build',
+      version: 7,
+      topics: [],
+    });
+  });
+});
