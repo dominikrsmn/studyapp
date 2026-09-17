@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { Prisma } from '../../../infrastructure/database/generated/client';
 import { PrismaService } from '../../../infrastructure/database/prisma/prisma.service';
@@ -7,6 +7,7 @@ import { failQueuedGraphBuild } from '../graph-build.outcome';
 
 @Injectable()
 export class RefineGraphJob {
+  private readonly logger = new Logger(RefineGraphJob.name);
   constructor(private readonly prismaService: PrismaService) {}
 
   async process(job: Job<RefineGraphJobData>): Promise<void> {
@@ -52,14 +53,25 @@ export class RefineGraphJob {
     this.findOutliers(reducedPrerequisites); // ToDo: handle outliers
 
     const { graphId, moduleId, graphVersion } = job.data;
-    const published = await this.prismaService.$transaction(
-      async (transaction) => {
+    const dependencies = [...reducedPrerequisites].flatMap(([topicId, ids]) =>
+      ids.map((prerequisiteId) => ({ topicId, prerequisiteId })),
+    );
+    const requestedAt = performance.now();
+    let transactionStartedAt: number | undefined;
+    let lockAcquiredAt: number | undefined;
+    this.logger.log(
+      `Publishing graph "${graphId}" version ${graphVersion}: ${proposal.topicIds.length} topics, ${dependencies.length} prerequisite relationships`,
+    );
+    const published = await this.prismaService
+      .$transaction(async (transaction) => {
+        transactionStartedAt = performance.now();
         // Serialize publication with graph regeneration on the module row.
         const modules = await transaction.$queryRaw<Array<{ id: string }>>(
           Prisma.sql`SELECT "id" FROM "Module"
           WHERE "id" = ${moduleId} AND "graphVersion" = ${graphVersion}
           FOR UPDATE`,
         );
+        lockAcquiredAt = performance.now();
         if (modules.length === 0) return false;
 
         const graph = await transaction.learningGraph.findUnique({
@@ -78,19 +90,23 @@ export class RefineGraphJob {
           data: { published: false },
         });
 
-        for (const [topicId, topicPrerequisites] of reducedPrerequisites) {
-          await transaction.topic.update({
-            where: { id: topicId },
-            data: {
-              published: true,
-              prerequisites: {
-                set: topicPrerequisites.map((id) => ({
-                  id,
-                })),
-              },
-            },
-          });
-        }
+        await transaction.topic.updateMany({
+          where: { moduleId, id: { in: proposal.topicIds } },
+          data: { published: true },
+        });
+
+        // Prisma's self-relation orders prerequisites before requiredBy:
+        // A is the prerequisite, B is the topic that requires it.
+        await transaction.$executeRaw(Prisma.sql`
+          DELETE FROM "_TopicDependencies"
+          WHERE "B" IN (SELECT jsonb_array_elements_text(${JSON.stringify(proposal.topicIds)}::jsonb))
+        `);
+        await transaction.$executeRaw(Prisma.sql`
+          INSERT INTO "_TopicDependencies" ("A", "B")
+          SELECT "prerequisiteId", "topicId"
+          FROM jsonb_to_recordset(${JSON.stringify(dependencies)}::jsonb)
+            AS relationships("topicId" text, "prerequisiteId" text)
+        `);
 
         await transaction.learningGraph.update({
           where: {
@@ -106,7 +122,16 @@ export class RefineGraphJob {
           },
         });
         return true;
-      },
+      })
+      .catch((error: unknown) => {
+        const failedAt = performance.now();
+        this.logger.error(
+          `Publication failed for graph "${graphId}": transaction wait ${Math.round((transactionStartedAt ?? failedAt) - requestedAt)}ms, module lock ${Math.round((lockAcquiredAt ?? failedAt) - (transactionStartedAt ?? failedAt))}ms, total ${Math.round(failedAt - requestedAt)}ms`,
+        );
+        throw error;
+      });
+    this.logger.log(
+      `Publication ${published ? 'completed' : 'skipped'} for graph "${graphId}": transaction wait ${Math.round(transactionStartedAt! - requestedAt)}ms, module lock ${Math.round(lockAcquiredAt! - transactionStartedAt!)}ms, total ${Math.round(performance.now() - requestedAt)}ms`,
     );
 
     if (!published) {

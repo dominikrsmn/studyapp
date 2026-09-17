@@ -1,3 +1,5 @@
+import type { Queue } from 'bullmq';
+import type { GraphBuildJobData } from './graph-build.types';
 import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import type { GraphBuildQueue } from './graph-build.queue';
 import { LearningGraphService } from './learning-graph.service';
@@ -27,6 +29,7 @@ describe('LearningGraphService', () => {
   const service = new LearningGraphService(
     prisma as unknown as PrismaService,
     queue as unknown as GraphBuildQueue,
+    {} as Queue<GraphBuildJobData>,
   );
   const data = { graphId: 'graph-id', moduleId: 'module-id', graphVersion: 7 };
   let committed = false;
@@ -191,6 +194,7 @@ describe('LearningGraphService published reads', () => {
   const service = new LearningGraphService(
     prisma as unknown as PrismaService,
     {} as GraphBuildQueue,
+    {} as Queue<GraphBuildJobData>,
   );
 
   beforeEach(() => {
@@ -280,5 +284,178 @@ describe('LearningGraphService published reads', () => {
       version: 7,
       topics: [],
     });
+  });
+});
+
+describe('manual graph publication recovery', () => {
+  const graph = {
+    id: 'graph-id',
+    version: 4,
+    status: 'FAILED',
+    errorMessage: 'Timed out',
+  };
+  const job = {
+    getChildrenValues: jest.fn(),
+    isFailed: jest.fn(),
+    retry: jest.fn(),
+  };
+  const queue = { getJob: jest.fn() };
+  const buildQueue = { addEmbeddingFlow: jest.fn() };
+  const transaction = {
+    $queryRaw: jest.fn(),
+    learningGraph: { updateMany: jest.fn() },
+  };
+  const prisma = {
+    module: { findFirst: jest.fn() },
+    learningGraph: { findFirst: jest.fn(), updateMany: jest.fn() },
+    $transaction: jest.fn(),
+  };
+  const service = new LearningGraphService(
+    prisma as unknown as PrismaService,
+    buildQueue as unknown as GraphBuildQueue,
+    queue as unknown as Queue<GraphBuildJobData>,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.module.findFirst.mockResolvedValue({ graphVersion: 4 });
+    prisma.learningGraph.findFirst.mockResolvedValue(graph);
+    queue.getJob.mockResolvedValue(job);
+    job.isFailed.mockResolvedValue(true);
+    job.getChildrenValues.mockResolvedValue({
+      cycles: { topicIds: ['topic-id'], dependencies: [] },
+    });
+    transaction.$queryRaw.mockResolvedValue([{ id: 'module-id' }]);
+    transaction.learningGraph.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation((operation) =>
+      operation(transaction),
+    );
+  });
+
+  it('requeues only saved publication after restoring build eligibility', async () => {
+    job.retry.mockImplementation(async () => {
+      expect(transaction.learningGraph.updateMany).toHaveBeenCalledWith({
+        where: { id: graph.id, status: 'FAILED' },
+        data: { status: 'QUEUED', finishedAt: null, errorMessage: null },
+      });
+    });
+    await service.retryPublication('semester-id', 'module-id');
+    expect(queue.getJob).toHaveBeenCalledWith('refine-graph/graph-id/4');
+    expect(job.retry).toHaveBeenCalledWith('failed');
+    expect(buildQueue.addEmbeddingFlow).not.toHaveBeenCalled();
+  });
+
+  it('rejects changed inputs without re-running AI work', async () => {
+    prisma.module.findFirst.mockResolvedValue({ graphVersion: 5 });
+    await expect(
+      service.retryPublication('semester-id', 'module-id'),
+    ).rejects.toThrow('unchanged source material');
+    expect(queue.getJob).not.toHaveBeenCalled();
+    expect(buildQueue.addEmbeddingFlow).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing results without starting a replacement build', async () => {
+    job.getChildrenValues.mockResolvedValue({});
+    await expect(
+      service.retryPublication('semester-id', 'module-id'),
+    ).rejects.toThrow('No saved publication');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(buildQueue.addEmbeddingFlow).not.toHaveBeenCalled();
+  });
+
+  it('rechecks the revision before making a saved proposal eligible', async () => {
+    transaction.$queryRaw.mockResolvedValue([]);
+    await expect(
+      service.retryPublication('semester-id', 'module-id'),
+    ).rejects.toThrow('Source material changed');
+    expect(job.retry).not.toHaveBeenCalled();
+  });
+
+  it('records failure if requeueing fails', async () => {
+    job.retry.mockRejectedValue(new Error('Queue unavailable'));
+    await expect(
+      service.retryPublication('semester-id', 'module-id'),
+    ).rejects.toThrow('Queue unavailable');
+    expect(prisma.learningGraph.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'FAILED',
+          errorMessage: 'Could not retry publication: Queue unavailable',
+        }),
+      }),
+    );
+  });
+
+  it('enforces module access before reading saved jobs', async () => {
+    prisma.module.findFirst.mockResolvedValue(null);
+    await expect(
+      service.retryPublication('other-semester', 'module-id'),
+    ).rejects.toThrow('Module was not found');
+    expect(queue.getJob).not.toHaveBeenCalled();
+  });
+});
+
+describe('manual graph build requests', () => {
+  const transaction = {
+    $queryRaw: jest.fn(),
+    module: { update: jest.fn() },
+    learningGraph: { findFirst: jest.fn() },
+  };
+  const prisma = { $transaction: jest.fn() };
+  const service = new LearningGraphService(
+    prisma as unknown as PrismaService,
+    {} as GraphBuildQueue,
+    {} as Queue<GraphBuildJobData>,
+  );
+  let regenerate: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.$transaction.mockImplementation((operation) =>
+      operation(transaction),
+    );
+    transaction.$queryRaw.mockResolvedValue([{ graphVersion: 4 }]);
+    transaction.module.update.mockResolvedValue({ graphVersion: 5 });
+    regenerate = jest
+      .spyOn(service, 'regenerate')
+      .mockResolvedValue({
+        graphId: 'graph',
+        moduleId: 'module',
+        graphVersion: 4,
+      });
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each([null, { status: 'QUEUED' }])(
+    'reuses the current revision for an absent or queued build (%j)',
+    async (existing) => {
+      transaction.learningGraph.findFirst.mockResolvedValue(existing);
+      await service.requestBuild('semester', 'module');
+      expect(regenerate).toHaveBeenCalledWith('module', 4);
+      expect(transaction.module.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['FAILED', 'COMPLETED'])(
+    'explicit regeneration starts a new revision after %s',
+    async (status) => {
+      transaction.learningGraph.findFirst.mockResolvedValue({ status });
+      await service.requestBuild('semester', 'module');
+      expect(transaction.module.update).toHaveBeenCalledWith({
+        where: { id: 'module' },
+        data: { graphVersion: { increment: 1 } },
+        select: { graphVersion: true },
+      });
+      expect(regenerate).toHaveBeenCalledWith('module', 5);
+    },
+  );
+
+  it('rejects inaccessible modules before enqueuing work', async () => {
+    transaction.$queryRaw.mockResolvedValue([]);
+    await expect(
+      service.requestBuild('other-semester', 'module'),
+    ).rejects.toThrow('Module was not found');
+    expect(regenerate).not.toHaveBeenCalled();
   });
 });

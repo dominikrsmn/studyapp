@@ -40,9 +40,20 @@ export class GraphBuildProcessor extends WorkerHost {
   async process(
     job: Job<GraphJobData>,
   ): Promise<void | GetPrerequisitesJobResult | GraphProposal> {
+    const startedAt = performance.now();
+    this.logger.log(
+      `Processing ${job.name} job: ${job.id}, attempt ${job.attemptsMade + 1}`,
+    );
     try {
-      return await this.processJob(job);
+      const result = await this.processJob(job);
+      this.logger.log(
+        `Completed ${job.name} job: ${job.id} in ${Math.round(performance.now() - startedAt)}ms`,
+      );
+      return result;
     } catch (error) {
+      this.logger.error(
+        `Failed ${job.name} job: ${job.id} after ${Math.round(performance.now() - startedAt)}ms: ${graphBuildErrorMessage(error)}`,
+      );
       if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
         try {
           await failQueuedGraphBuild(

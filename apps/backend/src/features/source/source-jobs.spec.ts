@@ -1,4 +1,3 @@
-import type { LearningGraphService } from '../learning-graph/learning-graph.service';
 import { Decimal } from '@prisma/client/runtime/client';
 import { SourceService } from './source.service';
 import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
@@ -27,7 +26,6 @@ describe('Source job overview', () => {
     {} as never,
     {} as never,
     {} as never,
-    { regenerate: jest.fn() } as unknown as LearningGraphService,
   );
   beforeEach(() => {
     jest.clearAllMocks();
@@ -90,7 +88,3 @@ describe('Source job overview', () => {
     expect(result.jobs[1]).toMatchObject({ costUsd: null, shared: true });
   });
 });
-
-jest.mock('../learning-graph/learning-graph.service', () => ({
-  LearningGraphService: class LearningGraphService {},
-}));

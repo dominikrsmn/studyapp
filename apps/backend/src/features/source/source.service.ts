@@ -1,4 +1,3 @@
-import { LearningGraphService } from '../learning-graph/learning-graph.service';
 import { Decimal } from '@prisma/client/runtime/client';
 import { invalidateSourceTopics } from '../topic/content-revision';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
@@ -35,7 +34,6 @@ export class SourceService {
     private readonly fileStorageService: FileStorageService,
     private readonly sourceIngestionQueue: IngestionQueue,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
-    private readonly learningGraphService: LearningGraphService,
   ) {}
 
   async getJobs(
@@ -167,20 +165,16 @@ export class SourceService {
     if (!source) {
       throw new NotFoundException(`Source with id "${id}" was not found`);
     }
-    const { deletedSource, graphBuild } = await this.prisma.$transaction(
+    const deletedSource = await this.prisma.$transaction(
       async (transaction) => {
-        const graphBuild = await invalidateSourceTopics(transaction, id);
+        await invalidateSourceTopics(transaction, id);
         const deletedSource = await transaction.source.delete({
           where: { id },
           select: sourceSelect,
         });
-        return { deletedSource, graphBuild };
+        return deletedSource;
       },
       { isolationLevel: 'Serializable' },
-    );
-    await this.learningGraphService.regenerate(
-      moduleId,
-      graphBuild.graphVersion,
     );
     if (source.storageKey) {
       await this.fileStorageService.deleteMany([source.storageKey]);

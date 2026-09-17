@@ -95,7 +95,13 @@ export class GraphBuildQueue {
       name: jobs.refine_graph,
       queueName,
       data,
-      opts: { jobId: `${jobs.refine_graph}/${buildId}` },
+      opts: {
+        jobId: `${jobs.refine_graph}/${buildId}`,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: false,
+        removeOnFail: false,
+      },
       children: [
         {
           name: jobs.detect_cycles,

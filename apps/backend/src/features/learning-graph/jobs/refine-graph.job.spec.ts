@@ -31,6 +31,7 @@ describe('RefineGraphJob', () => {
   };
   const transaction = {
     $queryRaw: jest.fn(),
+    $executeRaw: jest.fn(),
     learningGraph: { findUnique: jest.fn(), update: jest.fn() },
     topic: { findMany: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   };
@@ -83,31 +84,18 @@ describe('RefineGraphJob', () => {
       where: { moduleId: data.moduleId, published: true },
       data: { published: false },
     });
-    expect(transaction.topic.update.mock.calls).toEqual([
-      [
-        {
-          where: { id: 'topic-a' },
-          data: {
-            published: true,
-            prerequisites: { set: [{ id: 'topic-b' }] },
-          },
-        },
-      ],
-      [
-        {
-          where: { id: 'topic-b' },
-          data: {
-            published: true,
-            prerequisites: { set: [{ id: 'topic-c' }] },
-          },
-        },
-      ],
-      [
-        {
-          where: { id: 'topic-c' },
-          data: { published: true, prerequisites: { set: [] } },
-        },
-      ],
+    expect(transaction.topic.updateMany).toHaveBeenCalledWith({
+      where: { moduleId: data.moduleId, id: { in: proposal.topicIds } },
+      data: { published: true },
+    });
+    expect(transaction.$executeRaw.mock.calls[0][0].values).toEqual([
+      JSON.stringify(proposal.topicIds),
+    ]);
+    expect(transaction.$executeRaw.mock.calls[1][0].values).toEqual([
+      JSON.stringify([
+        { topicId: 'topic-a', prerequisiteId: 'topic-b' },
+        { topicId: 'topic-b', prerequisiteId: 'topic-c' },
+      ]),
     ]);
     expect(transaction.learningGraph.update).toHaveBeenCalledWith({
       where: {
@@ -124,6 +112,31 @@ describe('RefineGraphJob', () => {
     });
   });
 
+  it('publishes 120 topics within the unchanged transaction budget', async () => {
+    const topicIds = Array.from(
+      { length: 120 },
+      (_, index) => `topic-${index}`,
+    );
+    job.getChildrenValues = jest.fn().mockResolvedValue({
+      'detect-cycles': { topicIds, dependencies: [] },
+    });
+    let elapsed = 0;
+    const query = async () => {
+      elapsed += 50;
+      if (elapsed > 5000) {
+        throw new Error('A query cannot be executed on an expired transaction');
+      }
+      return {};
+    };
+    transaction.topic.update.mockImplementation(query);
+    transaction.$executeRaw.mockImplementation(query);
+    transaction.topic.updateMany.mockImplementation(query);
+    transaction.learningGraph.update.mockImplementation(query);
+
+    await expect(refineGraphJob.process(job)).resolves.toBeUndefined();
+    expect(transaction.learningGraph.update).toHaveBeenCalled();
+  });
+
   it('publishes isolated topics alongside connected topics', async () => {
     job.getChildrenValues = jest.fn().mockResolvedValue({
       'detect-cycles': {
@@ -134,9 +147,12 @@ describe('RefineGraphJob', () => {
 
     await refineGraphJob.process(job);
 
-    expect(transaction.topic.update).toHaveBeenCalledWith({
-      where: { id: 'isolated' },
-      data: { published: true, prerequisites: { set: [] } },
+    expect(transaction.topic.updateMany).toHaveBeenCalledWith({
+      where: {
+        moduleId: data.moduleId,
+        id: { in: [...proposal.topicIds, 'isolated'] },
+      },
+      data: { published: true },
     });
   });
 
@@ -184,18 +200,36 @@ describe('RefineGraphJob', () => {
         transaction.topic.updateMany.mockImplementation(
           async ({ where, data }) => {
             for (const topic of pending.topics) {
-              if (topic.published === where.published)
+              if (
+                where.id
+                  ? where.id.in.includes(topic.id)
+                  : topic.published === where.published
+              )
                 topic.published = data.published;
             }
           },
         );
-        transaction.topic.update.mockImplementation(async ({ where, data }) => {
-          const topic = pending.topics.find((topic) => topic.id === where.id)!;
-          topic.published = data.published;
-          topic.prerequisiteIds = data.prerequisites.set.map(
-            ({ id }: { id: string }) => id,
-          );
-        });
+        transaction.$executeRaw.mockImplementation(
+          async ({ strings, values }) => {
+            if (strings.join('').includes('DELETE')) {
+              const topicIds: string[] = JSON.parse(values[0]);
+              for (const topic of pending.topics) {
+                if (topicIds.includes(topic.id)) topic.prerequisiteIds = [];
+              }
+            } else {
+              const dependencies: {
+                topicId: string;
+                prerequisiteId: string;
+              }[] = JSON.parse(values[0]);
+              for (const { topicId, prerequisiteId } of dependencies) {
+                pending.topics
+                  .find((topic) => topic.id === topicId)!
+                  .prerequisiteIds.push(prerequisiteId);
+              }
+            }
+            return 1;
+          },
+        );
         transaction.learningGraph.update.mockImplementation(
           async ({ data }) => {
             if (failCompletion) throw new Error('Completion failed');
@@ -274,7 +308,7 @@ describe('RefineGraphJob', () => {
   });
 
   it('does not complete the build when prerequisite replacement fails', async () => {
-    transaction.topic.update.mockRejectedValueOnce(
+    transaction.$executeRaw.mockRejectedValueOnce(
       new Error('Prerequisite write failed'),
     );
 

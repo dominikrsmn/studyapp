@@ -1,3 +1,41 @@
+<div class="mb-4 flex flex-wrap items-center gap-3">
+  <button
+    z-button
+    type="button"
+    [zDisabled]="loading() || submitting() || building()"
+    (click)="startBuild()"
+  >
+    {{ building() ? 'Building learning path…' : 'Regenerate learning path' }}
+  </button>
+  @if (build()?.status === 'FAILED' && build()?.current) {
+    <button
+      z-button
+      zType="outline"
+      type="button"
+      [zDisabled]="submitting()"
+      (click)="startBuild(true)"
+    >
+      Retry saved publication
+    </button>
+  }
+  <p class="text-sm text-muted-foreground">
+    Regeneration starts a new build with AI requests. Retrying saved publication
+    reuses the previous result.
+  </p>
+</div>
+@if (buildError(); as message) {
+  <p role="alert" class="mb-4 text-sm text-destructive">{{ message }}</p>
+}
+@if (build()?.status === 'FAILED' && build()?.current) {
+  <p role="status" class="mb-4 text-sm text-muted-foreground">
+    The last learning path build failed. You can retry saved publication or
+    regenerate.
+  </p>
+} @else if (build() && !build()?.current) {
+  <p role="status" class="mb-4 text-sm text-muted-foreground">
+    Source material changed. Regenerate to build an updated learning path.
+  </p>
+}
 <section
   aria-label="Learning graph"
   class="min-h-96 overflow-auto rounded-xl border border-border bg-background"

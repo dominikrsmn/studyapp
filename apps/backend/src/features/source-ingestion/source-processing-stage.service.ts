@@ -1,4 +1,3 @@
-import { LearningGraphService } from '../learning-graph/learning-graph.service';
 import { Injectable } from '@nestjs/common';
 import {
   type SourceStateChangedEvent,
@@ -32,7 +31,6 @@ export class SourceProcessingStageService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly sourceEventService: SourceEventService,
-    private readonly learningGraphService: LearningGraphService,
   ) {}
 
   async initialize(sourceId: string): Promise<SourceProcessingStage[]> {
@@ -82,35 +80,26 @@ export class SourceProcessingStageService {
         },
       });
 
-      let graphVersion: number | undefined;
       if (
         stage === SourceProcessingStageType.TOPIC_ANALYSIS &&
         (previous?.state === ProcessingState.COMPLETED) !==
           (state === ProcessingState.COMPLETED)
       ) {
-        const module = await client.module.update({
+        await client.module.update({
           where: { id: processingStage.source.moduleId },
           data: { graphVersion: { increment: 1 } },
           select: { graphVersion: true },
         });
-        graphVersion = module.graphVersion;
       }
-      return { processingStage, graphVersion };
+      return processingStage;
     };
-    const { processingStage, graphVersion } = options.transaction
+    const processingStage = options.transaction
       ? await persist(options.transaction)
       : stage === SourceProcessingStageType.TOPIC_ANALYSIS
         ? await this.prismaService.$transaction(persist, {
             isolationLevel: 'Serializable',
           })
         : await persist(this.prismaService);
-
-    if (graphVersion !== undefined) {
-      await this.learningGraphService.regenerate(
-        processingStage.source.moduleId,
-        graphVersion,
-      );
-    }
 
     const event: SourceStateChangedEvent = sourceStateChangedEventSchema.parse({
       sourceId,

@@ -29,14 +29,79 @@ describe('OverviewTabComponent', () => {
       },
     ],
   };
-  const api = { findPublished: vi.fn() };
+  const api = {
+    findPublished: vi.fn(),
+    findLatest: vi.fn(),
+    regenerate: vi.fn(),
+    retryPublication: vi.fn(),
+  };
 
   beforeEach(async () => {
     api.findPublished.mockReset().mockReturnValue(of(graph));
+    api.findLatest.mockReset().mockReturnValue(of(null));
+    api.regenerate.mockReset().mockReturnValue(of({}));
+    api.retryPublication.mockReset().mockReturnValue(of({}));
     await TestBed.configureTestingModule({
       imports: [OverviewTabComponent],
       providers: [{ provide: LearningGraphApiService, useValue: api }],
     }).compileComponents();
+  });
+
+  it('starts a new build only when regeneration is requested', () => {
+    const fixture = TestBed.createComponent(OverviewTabComponent);
+    fixture.componentRef.setInput('moduleId', 'module-id');
+    fixture.detectChanges();
+    expect(api.regenerate).not.toHaveBeenCalled();
+    const button = fixture.nativeElement.querySelector(
+      'button',
+    ) as HTMLButtonElement;
+    button.click();
+    expect(api.regenerate).toHaveBeenCalledWith('module-id');
+    expect(api.retryPublication).not.toHaveBeenCalled();
+  });
+
+  it('retries saved publication without requesting regeneration', () => {
+    api.findLatest.mockReturnValue(
+      of({
+        id: 'graph-id',
+        version: 7,
+        status: 'FAILED',
+        current: true,
+        errorMessage: 'Timeout',
+      }),
+    );
+    const fixture = TestBed.createComponent(OverviewTabComponent);
+    fixture.componentRef.setInput('moduleId', 'module-id');
+    fixture.detectChanges();
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ) as HTMLButtonElement[];
+    buttons
+      .find((button) => button.textContent?.includes('Retry saved'))!
+      .click();
+    expect(api.retryPublication).toHaveBeenCalledWith('module-id');
+    expect(api.regenerate).not.toHaveBeenCalled();
+  });
+
+  it('keeps the published graph visible while a new build is queued', () => {
+    api.findLatest.mockReturnValue(
+      of({
+        id: 'next-graph',
+        version: 8,
+        status: 'QUEUED',
+        current: true,
+        errorMessage: null,
+      }),
+    );
+    const fixture = TestBed.createComponent(OverviewTabComponent);
+    fixture.componentRef.setInput('moduleId', 'module-id');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('article')).toHaveLength(3);
+    expect(
+      (fixture.nativeElement.querySelector('button') as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    fixture.destroy();
   });
 
   it('shows static cards, directed prerequisites, and a separate isolated-topic row', () => {
@@ -78,7 +143,7 @@ describe('OverviewTabComponent', () => {
     expect(element.querySelectorAll('path[role="img"]')).toHaveLength(1);
     expect(
       element.querySelector(
-        'button, a, input, [data-slot="accordion-trigger"]',
+        'article button, article a, article input, [data-slot="accordion-trigger"]',
       ),
     ).toBeNull();
     cards[0].click();

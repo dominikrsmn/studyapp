@@ -1,4 +1,3 @@
-import { LearningGraphService } from '../../learning-graph/learning-graph.service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { zodTextFormat } from 'openai/helpers/zod';
@@ -78,7 +77,6 @@ export class MatchSourceTopicsJob {
     private readonly prismaService: PrismaService,
     private readonly openAiService: OpenAiService,
     private readonly sourceProcessingStageService: SourceProcessingStageService,
-    private readonly learningGraphService: LearningGraphService,
     private readonly analysisQueue: AnalysisQueue,
     @Inject(analysisConfig.KEY)
     private readonly config: ConfigType<typeof analysisConfig>,
@@ -250,9 +248,9 @@ export class MatchSourceTopicsJob {
     );
     const assignmentsByKey = groupAssignmentsByCanonicalKey(result.assignments);
 
-    const module = await this.prismaService.$transaction(
+    await this.prismaService.$transaction(
       async (transaction) => {
-        const module = await transaction.module.update({
+        await transaction.module.update({
           where: { id: moduleId },
           data: { graphVersion: { increment: 1 } },
           select: { graphVersion: true },
@@ -333,11 +331,9 @@ export class MatchSourceTopicsJob {
             },
           });
         }
-        return module;
       },
       { isolationLevel: 'Serializable' },
     );
-    await this.learningGraphService.regenerate(moduleId, module.graphVersion);
   }
 }
 

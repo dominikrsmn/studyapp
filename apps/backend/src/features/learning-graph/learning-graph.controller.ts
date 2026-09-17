@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import type { PublishedLearningGraphDto } from '@study/contracts';
 import {
   ActiveSemesterId,
@@ -10,6 +10,30 @@ import { LearningGraphService } from './learning-graph.service';
 @RequireActiveSemester()
 export class LearningGraphController {
   constructor(private readonly learningGraphService: LearningGraphService) {}
+
+  @Get('build')
+  findLatest(
+    @ActiveSemesterId() semesterId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+  ) {
+    return this.learningGraphService.findLatest(semesterId, moduleId);
+  }
+
+  @Post('regenerate')
+  regenerate(
+    @ActiveSemesterId() semesterId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+  ) {
+    return this.learningGraphService.requestBuild(semesterId, moduleId);
+  }
+
+  @Post('retry-publication')
+  retryPublication(
+    @ActiveSemesterId() semesterId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+  ) {
+    return this.learningGraphService.retryPublication(semesterId, moduleId);
+  }
 
   @Get()
   findPublished(

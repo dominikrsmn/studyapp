@@ -1,4 +1,3 @@
-import type { LearningGraphService } from '../../learning-graph/learning-graph.service';
 import { Logger } from '@nestjs/common';
 import {
   ProcessingState,
@@ -138,8 +137,6 @@ describe('MatchSourceTopicsJob', () => {
   const findMany = jest.fn();
   const parse = jest.fn();
   const transition = jest.fn();
-  const regenerate = jest.fn();
-  let committed = false;
   let suggestedEmbedding: number[] | null;
   const addFinalizeTopicAnalysis = jest.fn();
   const topicCreate = jest.fn();
@@ -161,10 +158,6 @@ describe('MatchSourceTopicsJob', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    committed = false;
-    regenerate.mockImplementation(async () => {
-      expect(committed).toBe(true);
-    });
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
     findUnique.mockResolvedValue({
       name: 'Algorithms notes',
@@ -201,7 +194,6 @@ describe('MatchSourceTopicsJob', () => {
     );
     prismaService.$transaction.mockImplementation(async (operation) => {
       const result = await operation(transaction);
-      committed = true;
       return result;
     });
     transition.mockResolvedValue({});
@@ -211,19 +203,17 @@ describe('MatchSourceTopicsJob', () => {
       prismaService as unknown as PrismaService,
       { parseResponse: parse } as unknown as OpenAiService,
       { transition } as unknown as SourceProcessingStageService,
-      { regenerate } as unknown as LearningGraphService,
       { addFinalizeTopicAnalysis } as unknown as AnalysisQueue,
       config,
     );
   });
 
-  it('does not regenerate when the transaction fails to commit', async () => {
+  it('propagates failure when the transaction fails to commit', async () => {
     prismaService.$transaction.mockImplementationOnce(async (operation) => {
       await operation(transaction);
       throw new Error('Commit failed');
     });
     await expect(job.process({ sourceId })).rejects.toThrow('Commit failed');
-    expect(regenerate).not.toHaveBeenCalled();
   });
 
   afterEach(() => {
@@ -240,7 +230,6 @@ describe('MatchSourceTopicsJob', () => {
       data: { graphVersion: { increment: 1 } },
       select: { graphVersion: true },
     });
-    expect(regenerate).toHaveBeenCalledWith('module-id', 2);
 
     const request = parse.mock.calls[0][0];
     expect(request).toMatchObject({
@@ -532,7 +521,3 @@ function candidateTopic(
     ],
   };
 }
-
-jest.mock('../../learning-graph/learning-graph.service', () => ({
-  LearningGraphService: class LearningGraphService {},
-}));

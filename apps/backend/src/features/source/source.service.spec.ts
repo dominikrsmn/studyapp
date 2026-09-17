@@ -1,4 +1,3 @@
-import type { LearningGraphService } from '../learning-graph/learning-graph.service';
 import { NotFoundException } from '@nestjs/common';
 import { FileStorageService } from '../../infrastructure/filestorage/filestorage.service';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
@@ -41,24 +40,17 @@ describe('SourceService', () => {
   };
 
   let service: SourceService;
-  let committed = false;
-  const regenerate = jest.fn();
   const runTransaction = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
-    committed = false;
     runTransaction.mockImplementation(async (operation) => {
       const result = await operation({
         source: sourceDelegate,
         topic: topicDelegate,
         module: moduleDelegate,
       });
-      committed = true;
       return result;
-    });
-    regenerate.mockImplementation(async () => {
-      expect(committed).toBe(true);
     });
     topicDelegate.updateMany.mockResolvedValue({ count: 0 });
     sourceDelegate.findUniqueOrThrow.mockResolvedValue({
@@ -74,7 +66,6 @@ describe('SourceService', () => {
       fileStorageService as unknown as FileStorageService,
       ingestionQueue as unknown as IngestionQueue,
       sourceProcessingStageService as unknown as SourceProcessingStageService,
-      { regenerate } as unknown as LearningGraphService,
     );
 
     moduleDelegate.findFirst.mockResolvedValue({ id: 'module-id' });
@@ -97,7 +88,7 @@ describe('SourceService', () => {
     );
   });
 
-  it('does not regenerate when source deletion fails to commit', async () => {
+  it('propagates failure when source deletion fails to commit', async () => {
     sourceDelegate.findFirst.mockResolvedValue(sourceRecord([]));
     runTransaction.mockImplementationOnce(async (operation) => {
       await operation({
@@ -110,7 +101,6 @@ describe('SourceService', () => {
     await expect(
       service.remove('user-id', 'module-id', 'source-id'),
     ).rejects.toThrow('Commit failed');
-    expect(regenerate).not.toHaveBeenCalled();
   });
 
   it('revises surviving topics and their module before cascading source deletion', async () => {
@@ -125,7 +115,6 @@ describe('SourceService', () => {
       sourceDelegate.delete.mock.invocationCallOrder[0],
     );
     expect(moduleDelegate.update).toHaveBeenCalledTimes(1);
-    expect(regenerate).toHaveBeenCalledWith('module-id', 2);
     expect(fileStorageService.deleteMany).toHaveBeenCalledWith(['file-key']);
   });
 
@@ -139,7 +128,6 @@ describe('SourceService', () => {
     await service.remove('user-id', 'module-id', 'source-id');
 
     expect(moduleDelegate.update).toHaveBeenCalledTimes(1);
-    expect(regenerate).toHaveBeenCalledWith('module-id', 2);
     expect(sourceDelegate.delete).toHaveBeenCalledWith({
       where: { id: 'source-id' },
       select: expect.any(Object),
@@ -308,7 +296,3 @@ function sourceRecord(
     processingStages,
   };
 }
-
-jest.mock('../learning-graph/learning-graph.service', () => ({
-  LearningGraphService: class LearningGraphService {},
-}));
