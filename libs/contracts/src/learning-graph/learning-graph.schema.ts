@@ -7,6 +7,7 @@ export const graphBuildStatusSchema = z.object({
   status: processingStateSchema,
   errorMessage: z.string().nullable(),
   current: z.boolean(),
+  retryableStage: z.enum(['GROUPING', 'PUBLICATION']).nullable(),
 });
 export type GraphBuildStatusDto = z.infer<typeof graphBuildStatusSchema>;
 

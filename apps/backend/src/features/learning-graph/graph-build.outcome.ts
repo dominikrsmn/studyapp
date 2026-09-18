@@ -6,7 +6,7 @@ export function graphBuildErrorMessage(error: unknown): string {
 }
 
 export async function failQueuedGraphBuild(
-  prismaService: PrismaService,
+  prismaService: Pick<PrismaService, 'learningGraph'>,
   data: GraphBuildJobData,
   errorMessage: string,
 ): Promise<void> {

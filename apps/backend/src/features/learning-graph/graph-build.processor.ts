@@ -15,6 +15,7 @@ import type {
   GetPrerequisitesJobData,
   GetPrerequisitesJobResult,
   GraphProposal,
+  RecoverGraphJobData,
   RefineGraphJobData,
   DetectCyclesJobData,
 } from './graph-build.types';
@@ -22,6 +23,7 @@ import { DispatchCandidatesJob } from './jobs/dispatch-candidates.job';
 import { GetPrerequisitesJob } from './jobs/get-prerequisites.job';
 import { RefineGraphJob } from './jobs/refine-graph.job';
 import { DetectCyclesJob } from './jobs/detect-cycles.job';
+import { RecoverGraphJob } from './jobs/recover-graph.job';
 
 @Processor(graphBuildConfig().queue.name, {
   concurrency: graphBuildConfig().queue.concurrency,
@@ -37,6 +39,7 @@ export class GraphBuildProcessor extends WorkerHost {
     private readonly detectCyclesJob: DetectCyclesJob,
     private readonly groupTopicsJob: GroupTopicsJob,
     private readonly publishGraphJob: PublishGraphJob,
+    private readonly recoverGraphJob: RecoverGraphJob,
   ) {
     super();
   }
@@ -44,6 +47,11 @@ export class GraphBuildProcessor extends WorkerHost {
   async process(
     job: Job<GraphJobData>,
   ): Promise<void | GetPrerequisitesJobResult | GraphProposal> {
+    if (job.data.recoveryRequested) {
+      const data = { ...job.data, recoveryRequested: false };
+      await job.updateData(data);
+      job.data = data;
+    }
     const startedAt = performance.now();
     this.logger.log(
       `Processing ${job.name} job: ${job.id}, attempt ${job.attemptsMade + 1}`,
@@ -95,6 +103,8 @@ export class GraphBuildProcessor extends WorkerHost {
         return this.groupTopicsJob.process(job);
       case jobs.publish_graph:
         return this.publishGraphJob.process(job);
+      case jobs.recover_graph:
+        return this.recoverGraphJob.process(job as Job<RecoverGraphJobData>);
       case jobs.refine_graph:
         return this.refineGraphJob.process(job as Job<RefineGraphJobData>);
       case jobs.detect_cycles:

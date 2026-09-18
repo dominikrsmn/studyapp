@@ -2,6 +2,7 @@ export interface GraphBuildJobData {
   graphId: string;
   moduleId: string;
   graphVersion: number;
+  recoveryRequested?: boolean;
 }
 
 export type DispatchCandidatesJobData = GraphBuildJobData;
@@ -57,3 +58,13 @@ export interface GroupedGraphProposal extends GraphProposal {
 
 export type GroupTopicsJobData = GraphBuildJobData;
 export type PublishGraphJobData = GraphBuildJobData;
+
+export type RecoverGraphJobData =
+  | (GraphBuildJobData & {
+      stage: 'GROUPING';
+      proposal: GraphProposal;
+    })
+  | (GraphBuildJobData & {
+      stage: 'PUBLICATION';
+      proposal: GroupedGraphProposal;
+    });

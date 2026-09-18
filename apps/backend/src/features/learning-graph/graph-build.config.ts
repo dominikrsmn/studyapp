@@ -28,6 +28,7 @@ export const graphBuildConfig = registerAs('graphBuild', () => ({
       refine_graph: 'refine-graph',
       group_topics: 'group-topics',
       publish_graph: 'publish-graph',
+      recover_graph: 'recover-graph',
       detect_cycles: 'detect-cycles',
     },
   },

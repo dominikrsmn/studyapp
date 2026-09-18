@@ -16,6 +16,7 @@ import { LearningGraphService } from './learning-graph.service';
 import { RefineGraphJob } from './jobs/refine-graph.job';
 import { DetectCyclesJob } from './jobs/detect-cycles.job';
 import { GraphBuildEventsListener } from './graph-build.events-listener';
+import { RecoverGraphJob } from './jobs/recover-graph.job';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { GraphBuildEventsListener } from './graph-build.events-listener';
     RefineGraphJob,
     GroupTopicsJob,
     PublishGraphJob,
+    RecoverGraphJob,
     DetectCyclesJob,
   ],
   exports: [GraphBuildQueue, LearningGraphService],

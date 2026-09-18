@@ -109,4 +109,33 @@ describe('GraphBuildQueue', () => {
       ),
     ).toEqual([true, true]);
   });
+
+  it('retains recovery input in one restartable job', async () => {
+    const flowProducer = { add: jest.fn() };
+    const queue = new GraphBuildQueue(
+      flowProducer as unknown as FlowProducer,
+      {} as PrismaService,
+      new EmbeddingBatchingService({ ...embeddingConfig(), batchSize: 1 }),
+    );
+    const data = {
+      graphId: 'graph-id',
+      moduleId: 'module-id',
+      graphVersion: 7,
+      stage: 'GROUPING' as const,
+      proposal: { topicIds: ['topic-id'], dependencies: [] },
+    };
+
+    await queue.addRecovery(data);
+
+    expect(flowProducer.add).toHaveBeenCalledWith({
+      name: 'recover-graph',
+      queueName: 'learning-graph',
+      data,
+      opts: {
+        jobId: 'recover-graph/graph-id/7',
+        removeOnComplete: false,
+        removeOnFail: false,
+      },
+    });
+  });
 });

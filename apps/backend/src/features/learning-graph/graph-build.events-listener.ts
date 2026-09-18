@@ -39,11 +39,28 @@ export class GraphBuildEventsListener extends QueueEventsHost {
     if (!(await job.isFailed())) return;
 
     try {
-      await failQueuedGraphBuild(
-        this.prismaService,
-        job.data,
-        `Graph job failed: ${failedReason}`,
-      );
+      await this.prismaService.$transaction(async (transaction) => {
+        const modules = await transaction.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "Module"
+          WHERE "id" = ${job.data.moduleId}
+            AND "graphVersion" = ${job.data.graphVersion}
+          FOR UPDATE`;
+        if (!modules.length) return;
+
+        const currentJob = await this.graphBuildQueue.getJob(jobId);
+        if (
+          !currentJob ||
+          !(await currentJob.isFailed()) ||
+          currentJob.data.recoveryRequested
+        ) {
+          return;
+        }
+        await failQueuedGraphBuild(
+          transaction,
+          currentJob.data,
+          `Graph job failed: ${failedReason}`,
+        );
+      });
     } catch (error) {
       this.logger.error(
         `Failed to persist propagated failure for graph "${job.data.graphId}": ${graphBuildErrorMessage(error)}`,

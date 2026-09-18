@@ -13,6 +13,7 @@ import { graphBuildConfig } from './graph-build.config';
 import type {
   GraphBuildJobData,
   GetPrerequisitesJobData,
+  RecoverGraphJobData,
 } from './graph-build.types';
 
 @Injectable()
@@ -151,6 +152,20 @@ export class GraphBuildQueue {
           ],
         },
       ],
+    });
+  }
+
+  async addRecovery(data: RecoverGraphJobData): Promise<void> {
+    const { name: queueName, jobs } = graphBuildConfig().queue;
+    await this.flowProducer.add({
+      name: jobs.recover_graph,
+      queueName,
+      data,
+      opts: {
+        jobId: `${jobs.recover_graph}/${data.graphId}/${data.graphVersion}`,
+        removeOnComplete: false,
+        removeOnFail: false,
+      },
     });
   }
 }

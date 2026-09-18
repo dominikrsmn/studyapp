@@ -17,16 +17,23 @@ export class PublishGraphJob {
     const [proposal] = Object.values(
       await job.getChildrenValues<GroupedGraphProposal | null>(),
     );
+    await this.processProposal(job.data, proposal);
+  }
+
+  async processProposal(
+    data: PublishGraphJobData,
+    proposal: GroupedGraphProposal | null | undefined,
+  ): Promise<void> {
     if (!proposal) {
       await failQueuedGraphBuild(
         this.prismaService,
-        job.data,
+        data,
         'Graph build became stale before publication',
       );
       return;
     }
 
-    const { graphId, moduleId, graphVersion } = job.data;
+    const { graphId, moduleId, graphVersion } = data;
     const dependencies = proposal.dependencies.map(
       ({ topicId, dependsOnTopicId }) => ({
         topicId,
@@ -130,7 +137,7 @@ export class PublishGraphJob {
     if (!published) {
       await failQueuedGraphBuild(
         this.prismaService,
-        job.data,
+        data,
         'Graph build became stale before publication',
       );
     }

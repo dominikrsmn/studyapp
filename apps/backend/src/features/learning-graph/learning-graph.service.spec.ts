@@ -159,6 +159,123 @@ describe('LearningGraphService', () => {
   });
 });
 
+describe('LearningGraphService recovery status', () => {
+  const graph = {
+    id: 'graph-id',
+    version: 4,
+    status: 'FAILED',
+    errorMessage: 'Build failed',
+  };
+  const prisma = {
+    module: { findFirst: jest.fn() },
+    learningGraph: { findFirst: jest.fn() },
+  };
+  const queue = { getJob: jest.fn() };
+  const service = new LearningGraphService(
+    prisma as unknown as PrismaService,
+    {} as GraphBuildQueue,
+    queue as unknown as Queue<GraphBuildJobData>,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.module.findFirst.mockResolvedValue({ graphVersion: 4 });
+    prisma.learningGraph.findFirst.mockResolvedValue(graph);
+    queue.getJob.mockResolvedValue(null);
+  });
+
+  it('offers publication recovery only when grouped output exists', async () => {
+    const publicationJob = {
+      isFailed: jest.fn(async () => true),
+      getChildrenValues: jest.fn(async () => ({
+        grouping: {
+          topicIds: ['topic-id'],
+          dependencies: [],
+          units: [],
+          ordering: [],
+        },
+      })),
+    };
+    queue.getJob.mockImplementation(async (id: string) =>
+      id === 'publish-graph/graph-id/4' ? publicationJob : null,
+    );
+
+    await expect(
+      service.findLatest('semester-id', 'module-id'),
+    ).resolves.toEqual({
+      ...graph,
+      current: true,
+      retryableStage: 'PUBLICATION',
+    });
+  });
+
+  it('offers grouping recovery only when refined output exists', async () => {
+    const groupingJob = {
+      isFailed: jest.fn(async () => true),
+      getChildrenValues: jest.fn(async () => ({
+        refinement: { topicIds: ['topic-id'], dependencies: [] },
+      })),
+    };
+    queue.getJob.mockImplementation(async (id: string) =>
+      id === 'group-topics/graph-id/4' ? groupingJob : null,
+    );
+
+    await expect(
+      service.findLatest('semester-id', 'module-id'),
+    ).resolves.toEqual({
+      ...graph,
+      current: true,
+      retryableStage: 'GROUPING',
+    });
+  });
+
+  it('reports the retained stage from a failed recovery job', async () => {
+    queue.getJob.mockImplementation(async (id: string) =>
+      id === 'recover-graph/graph-id/4'
+        ? {
+            data: {
+              ...graph,
+              graphId: graph.id,
+              moduleId: 'module-id',
+              graphVersion: graph.version,
+              stage: 'PUBLICATION',
+              proposal: {
+                topicIds: ['topic-id'],
+                dependencies: [],
+                units: [],
+                ordering: [],
+              },
+            },
+            isFailed: jest.fn(async () => true),
+          }
+        : null,
+    );
+
+    await expect(
+      service.findLatest('semester-id', 'module-id'),
+    ).resolves.toEqual(
+      expect.objectContaining({ retryableStage: 'PUBLICATION' }),
+    );
+  });
+
+  it('offers no recovery for missing results or changed sources', async () => {
+    await expect(
+      service.findLatest('semester-id', 'module-id'),
+    ).resolves.toEqual(expect.objectContaining({ retryableStage: null }));
+    expect(queue.getJob).toHaveBeenCalled();
+
+    jest.clearAllMocks();
+    prisma.module.findFirst.mockResolvedValue({ graphVersion: 5 });
+    prisma.learningGraph.findFirst.mockResolvedValue(graph);
+    await expect(
+      service.findLatest('semester-id', 'module-id'),
+    ).resolves.toEqual(
+      expect.objectContaining({ current: false, retryableStage: null }),
+    );
+    expect(queue.getJob).not.toHaveBeenCalled();
+  });
+});
+
 describe('LearningGraphService published reads', () => {
   const publishedTopic = {
     id: 'published',
@@ -333,6 +450,7 @@ describe('manual graph publication recovery', () => {
     getChildrenValues: jest.fn(),
     isFailed: jest.fn(),
     retry: jest.fn(),
+    updateData: jest.fn(),
   };
   const queue = { getJob: jest.fn() };
   const buildQueue = { addEmbeddingFlow: jest.fn() };
@@ -385,6 +503,34 @@ describe('manual graph publication recovery', () => {
     expect(buildQueue.addEmbeddingFlow).not.toHaveBeenCalled();
   });
 
+  it('retries publication retained by a failed recovery without grouping', async () => {
+    const recoveryJob = {
+      data: {
+        graphId: graph.id,
+        moduleId: 'module-id',
+        graphVersion: graph.version,
+        stage: 'PUBLICATION',
+        proposal: {
+          topicIds: ['topic-id'],
+          dependencies: [],
+          units: [],
+          ordering: [],
+        },
+      },
+      isFailed: jest.fn(async () => true),
+      retry: jest.fn(),
+      updateData: jest.fn(),
+    };
+    queue.getJob.mockImplementation(async (id: string) =>
+      id === 'recover-graph/graph-id/4' ? recoveryJob : null,
+    );
+
+    await service.retryPublication('semester-id', 'module-id');
+
+    expect(recoveryJob.retry).toHaveBeenCalledWith('failed');
+    expect(buildQueue.addEmbeddingFlow).not.toHaveBeenCalled();
+  });
+
   it('rejects changed inputs without re-running AI work', async () => {
     prisma.module.findFirst.mockResolvedValue({ graphVersion: 5 });
     await expect(
@@ -432,6 +578,161 @@ describe('manual graph publication recovery', () => {
       service.retryPublication('other-semester', 'module-id'),
     ).rejects.toThrow('Module was not found');
     expect(queue.getJob).not.toHaveBeenCalled();
+  });
+});
+
+describe('manual graph grouping recovery', () => {
+  const graph = {
+    id: 'graph-id',
+    version: 4,
+    status: 'FAILED',
+    errorMessage: 'Grouping failed',
+  };
+  const refinedProposal = {
+    topicIds: ['topic-id'],
+    dependencies: [],
+  };
+  const groupingJob = {
+    getChildrenValues: jest.fn(),
+    isFailed: jest.fn(),
+    updateData: jest.fn(),
+  };
+  const publicationJob = { updateData: jest.fn(), data: {} };
+  const queue = { getJob: jest.fn() };
+  const buildQueue = { addRecovery: jest.fn() };
+  const transaction = {
+    $queryRaw: jest.fn(),
+    learningGraph: { updateMany: jest.fn() },
+  };
+  const prisma = {
+    module: { findFirst: jest.fn() },
+    learningGraph: { findFirst: jest.fn(), updateMany: jest.fn() },
+    $transaction: jest.fn(),
+  };
+  const service = new LearningGraphService(
+    prisma as unknown as PrismaService,
+    buildQueue as unknown as GraphBuildQueue,
+    queue as unknown as Queue<GraphBuildJobData>,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.module.findFirst.mockResolvedValue({ graphVersion: 4 });
+    prisma.learningGraph.findFirst.mockResolvedValue(graph);
+    queue.getJob.mockImplementation(async (id: string) => {
+      if (id === 'group-topics/graph-id/4') return groupingJob;
+      if (id === 'publish-graph/graph-id/4') return publicationJob;
+      return null;
+    });
+    groupingJob.isFailed.mockResolvedValue(true);
+    groupingJob.getChildrenValues.mockResolvedValue({
+      refinement: refinedProposal,
+    });
+    transaction.$queryRaw.mockResolvedValue([{ id: 'module-id' }]);
+    transaction.learningGraph.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation((operation) =>
+      operation(transaction),
+    );
+  });
+
+  it('requeues grouping from the retained refined proposal', async () => {
+    await service.retryGrouping('semester-id', 'module-id');
+
+    expect(buildQueue.addRecovery).toHaveBeenCalledWith({
+      graphId: graph.id,
+      moduleId: 'module-id',
+      graphVersion: graph.version,
+      stage: 'GROUPING',
+      proposal: refinedProposal,
+    });
+    expect(groupingJob.updateData).toHaveBeenCalledWith({
+      recoveryRequested: true,
+    });
+    expect(publicationJob.updateData).toHaveBeenCalledWith({
+      recoveryRequested: true,
+    });
+  });
+
+  it('rejects grouping recovery without retained refinement', async () => {
+    groupingJob.getChildrenValues.mockResolvedValue({});
+
+    await expect(
+      service.retryGrouping('semester-id', 'module-id'),
+    ).rejects.toThrow('No saved grouping input');
+    expect(buildQueue.addRecovery).not.toHaveBeenCalled();
+  });
+
+  it('records failure if enqueueing grouping recovery fails', async () => {
+    buildQueue.addRecovery.mockRejectedValue(new Error('Queue unavailable'));
+
+    await expect(
+      service.retryGrouping('semester-id', 'module-id'),
+    ).rejects.toThrow('Queue unavailable');
+    expect(prisma.learningGraph.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'FAILED',
+          errorMessage: 'Could not retry grouping: Queue unavailable',
+        }),
+      }),
+    );
+  });
+
+  it('retries the same failed grouping recovery without creating competing work', async () => {
+    const recoveryJob = {
+      data: {
+        graphId: graph.id,
+        moduleId: 'module-id',
+        graphVersion: graph.version,
+        stage: 'GROUPING',
+        proposal: refinedProposal,
+      },
+      isFailed: jest.fn(async () => true),
+      retry: jest.fn(),
+      updateData: jest.fn(),
+    };
+    queue.getJob.mockImplementation(async (id: string) =>
+      id === 'recover-graph/graph-id/4' ? recoveryJob : null,
+    );
+
+    await service.retryGrouping('semester-id', 'module-id');
+
+    expect(recoveryJob.retry).toHaveBeenCalledWith('failed');
+    expect(buildQueue.addRecovery).not.toHaveBeenCalled();
+  });
+
+  it('does not restart grouping after recovery reached publication', async () => {
+    queue.getJob.mockImplementation(async (id: string) =>
+      id === 'recover-graph/graph-id/4'
+        ? {
+            data: { stage: 'PUBLICATION' },
+            isFailed: jest.fn(async () => true),
+          }
+        : groupingJob,
+    );
+
+    await expect(
+      service.retryGrouping('semester-id', 'module-id'),
+    ).rejects.toThrow('Retry the saved publication');
+    expect(buildQueue.addRecovery).not.toHaveBeenCalled();
+  });
+
+  it('rechecks source version before enqueueing recovery', async () => {
+    transaction.$queryRaw.mockResolvedValue([]);
+
+    await expect(
+      service.retryGrouping('semester-id', 'module-id'),
+    ).rejects.toThrow('Source material changed');
+    expect(buildQueue.addRecovery).not.toHaveBeenCalled();
+  });
+
+  it('guards repeated grouping recovery requests', async () => {
+    transaction.learningGraph.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.retryGrouping('semester-id', 'module-id'),
+    ).rejects.toThrow('already being retried');
+    expect(buildQueue.addRecovery).not.toHaveBeenCalled();
   });
 });
 

@@ -13,7 +13,14 @@ describe('GraphBuildEventsListener', () => {
     graphVersion: 7,
   };
   const queue = { getJob: jest.fn() };
-  const prisma = { learningGraph: { updateMany: jest.fn() } };
+  const transaction = {
+    $queryRaw: jest.fn(),
+    learningGraph: { updateMany: jest.fn() },
+  };
+  const prisma = {
+    $transaction: jest.fn(),
+    learningGraph: transaction.learningGraph,
+  };
   const listener = new GraphBuildEventsListener(
     queue as unknown as Queue,
     prisma as unknown as PrismaService,
@@ -22,11 +29,15 @@ describe('GraphBuildEventsListener', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     queue.getJob.mockResolvedValue({ data, isFailed: jest.fn(() => true) });
-    prisma.learningGraph.updateMany.mockResolvedValue({ count: 1 });
+    transaction.$queryRaw.mockResolvedValue([{ id: data.moduleId }]);
+    transaction.learningGraph.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation((operation) =>
+      operation(transaction),
+    );
   });
 
   it('ignores failure events for jobs that still have a retry remaining', async () => {
-    queue.getJob.mockResolvedValueOnce({
+    queue.getJob.mockResolvedValue({
       data,
       isFailed: jest.fn(() => false),
     });
@@ -58,6 +69,40 @@ describe('GraphBuildEventsListener', () => {
         errorMessage: 'Graph job failed: child embedding-job failed',
       },
     });
+  });
+
+  it('ignores delayed failure events after recovery has been requested', async () => {
+    queue.getJob.mockResolvedValue({
+      data: { ...data, recoveryRequested: true },
+      isFailed: jest.fn(() => true),
+    });
+
+    await listener.onFailed({
+      jobId: 'original-grouping-job',
+      failedReason: 'old grouping failure',
+    });
+
+    expect(prisma.learningGraph.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rechecks the recovery marker while serialized with build recovery', async () => {
+    queue.getJob
+      .mockResolvedValueOnce({
+        data,
+        isFailed: jest.fn(() => true),
+      })
+      .mockResolvedValueOnce({
+        data: { ...data, recoveryRequested: true },
+        isFailed: jest.fn(() => true),
+      });
+
+    await listener.onFailed({
+      jobId: 'original-grouping-job',
+      failedReason: 'old grouping failure',
+    });
+
+    expect(transaction.$queryRaw).toHaveBeenCalled();
+    expect(prisma.learningGraph.updateMany).not.toHaveBeenCalled();
   });
 
   it('uses a queued-only update so late failure events cannot overwrite completion', async () => {

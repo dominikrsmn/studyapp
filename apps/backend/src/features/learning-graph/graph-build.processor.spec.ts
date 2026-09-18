@@ -7,6 +7,7 @@ import type { GetPrerequisitesJob } from './jobs/get-prerequisites.job';
 import type { RefineGraphJob } from './jobs/refine-graph.job';
 import type { DetectCyclesJob } from './jobs/detect-cycles.job';
 import type { GraphBuildJobData } from './graph-build.types';
+import type { RecoverGraphJob } from './jobs/recover-graph.job';
 import { graphBuildConfig } from './graph-build.config';
 import { GraphBuildProcessor } from './graph-build.processor';
 
@@ -33,6 +34,7 @@ describe('GraphBuildProcessor', () => {
     { process: jest.fn() } as unknown as DetectCyclesJob,
     { process: jest.fn() } as unknown as GroupTopicsJob,
     { process: jest.fn() } as unknown as PublishGraphJob,
+    { process: jest.fn() } as unknown as RecoverGraphJob,
   );
 
   beforeEach(() => {
@@ -46,7 +48,7 @@ describe('GraphBuildProcessor', () => {
       data,
       attemptsMade,
       opts: { attempts },
-    } as Job<GraphBuildJobData>;
+    } as unknown as Job<GraphBuildJobData>;
   }
 
   it('marks the queued build failed when a graph job exhausts its attempts', async () => {
@@ -82,6 +84,26 @@ describe('GraphBuildProcessor', () => {
       'Candidate dispatch failed',
     );
     expect(prisma.learningGraph.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('makes a restarted job authoritative for new failure events', async () => {
+    dispatchCandidatesJob.process.mockResolvedValueOnce(undefined);
+    const restarted = {
+      ...job(0, 1),
+      data: { ...data, recoveryRequested: true },
+      updateData: jest.fn(),
+    } as unknown as Job<GraphBuildJobData>;
+
+    await processor.process(restarted);
+
+    expect(restarted.updateData).toHaveBeenCalledWith({
+      ...data,
+      recoveryRequested: false,
+    });
+    expect(dispatchCandidatesJob.process).toHaveBeenCalledWith({
+      ...data,
+      recoveryRequested: false,
+    });
   });
 
   it('preserves the processing error if persisting failure status fails', async () => {

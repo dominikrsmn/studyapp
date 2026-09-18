@@ -14,8 +14,10 @@ import { PrismaService } from '../../infrastructure/database/prisma/prisma.servi
 import { GraphBuildQueue } from './graph-build.queue';
 import type {
   GraphBuildJobData,
+  GraphProposal,
   GroupedGraphProposal,
   LearningUnitProposal,
+  RecoverGraphJobData,
   UnitOrdering,
 } from './graph-build.types';
 import { graphBuildConfig } from './graph-build.config';
@@ -23,6 +25,8 @@ import {
   failQueuedGraphBuild,
   graphBuildErrorMessage,
 } from './graph-build.outcome';
+
+type LatestGraphBuild = Omit<GraphBuildStatusDto, 'retryableStage'>;
 
 @Injectable()
 export class LearningGraphService {
@@ -39,6 +43,18 @@ export class LearningGraphService {
     semesterId: string,
     moduleId: string,
   ): Promise<GraphBuildStatusDto | null> {
+    const graph = await this.findLatestGraph(semesterId, moduleId);
+    if (!graph) return null;
+    return {
+      ...graph,
+      retryableStage: await this.findRetryableStage(graph),
+    };
+  }
+
+  private async findLatestGraph(
+    semesterId: string,
+    moduleId: string,
+  ): Promise<LatestGraphBuild | null> {
     const module = await this.prismaService.module.findFirst({
       where: { id: moduleId, semesterId },
       select: { graphVersion: true },
@@ -52,6 +68,37 @@ export class LearningGraphService {
     return graph
       ? { ...graph, current: graph.version === module.graphVersion }
       : null;
+  }
+
+  private async findRetryableStage(
+    graph: LatestGraphBuild,
+  ): Promise<'GROUPING' | 'PUBLICATION' | null> {
+    if (!graph.current || graph.status !== 'FAILED') return null;
+    const buildId = `${graph.id}/${graph.version}`;
+    const recoveryJob = await this.queue.getJob(`recover-graph/${buildId}`);
+    if (recoveryJob && (await recoveryJob.isFailed())) {
+      const recovery = recoveryJob.data as RecoverGraphJobData;
+      return recovery.stage === 'GROUPING' || recovery.stage === 'PUBLICATION'
+        ? recovery.stage
+        : null;
+    }
+
+    const publicationJob = await this.queue.getJob(`publish-graph/${buildId}`);
+    if (publicationJob && (await publicationJob.isFailed())) {
+      const [proposal] = Object.values(
+        await publicationJob.getChildrenValues<GroupedGraphProposal | null>(),
+      );
+      if (proposal) return 'PUBLICATION';
+    }
+
+    const groupingJob = await this.queue.getJob(`group-topics/${buildId}`);
+    if (groupingJob && (await groupingJob.isFailed())) {
+      const [proposal] = Object.values(
+        await groupingJob.getChildrenValues<GraphProposal | null>(),
+      );
+      if (proposal) return 'GROUPING';
+    }
+    return null;
   }
 
   async requestBuild(
@@ -88,41 +135,37 @@ export class LearningGraphService {
   }
 
   async retryPublication(semesterId: string, moduleId: string): Promise<void> {
-    const graph = await this.findLatest(semesterId, moduleId);
+    const graph = await this.findLatestGraph(semesterId, moduleId);
     if (!graph || !graph.current || graph.status !== 'FAILED') {
       throw new ConflictException(
         'Only a failed build with unchanged source material can be retried',
       );
     }
-    const job = await this.queue.getJob(
-      `publish-graph/${graph.id}/${graph.version}`,
-    );
-    const proposals = job
+    const buildId = `${graph.id}/${graph.version}`;
+    const publicationJob = await this.queue.getJob(`publish-graph/${buildId}`);
+    const [savedPublication] = publicationJob
       ? Object.values(
-          await job.getChildrenValues<GroupedGraphProposal | null>(),
+          await publicationJob.getChildrenValues<GroupedGraphProposal | null>(),
         )
       : [];
-    if (!job || !(await job.isFailed()) || !proposals[0]) {
+    const recoveryJob = await this.queue.getJob(`recover-graph/${buildId}`);
+    const recovery = recoveryJob?.data as RecoverGraphJobData | undefined;
+    const job =
+      publicationJob && (await publicationJob.isFailed()) && savedPublication
+        ? publicationJob
+        : recoveryJob &&
+            (await recoveryJob.isFailed()) &&
+            recovery?.stage === 'PUBLICATION'
+          ? recoveryJob
+          : null;
+    if (!job) {
       throw new ConflictException(
         'No saved publication is available. Regenerate the learning path to start a new build.',
       );
     }
     const data = { graphId: graph.id, moduleId, graphVersion: graph.version };
-    await this.prismaService.$transaction(async (transaction) => {
-      const modules = await transaction.$queryRaw<Array<{ id: string }>>`
-        SELECT "id" FROM "Module"
-        WHERE "id" = ${moduleId} AND "graphVersion" = ${graph.version} FOR UPDATE`;
-      if (!modules.length)
-        throw new ConflictException(
-          'Source material changed; start a new build',
-        );
-      const result = await transaction.learningGraph.updateMany({
-        where: { id: graph.id, status: 'FAILED' },
-        data: { status: 'QUEUED', finishedAt: null, errorMessage: null },
-      });
-      if (!result.count)
-        throw new ConflictException('This build is already being retried');
-    });
+    await job.updateData({ ...job.data, recoveryRequested: true });
+    await this.restoreFailedBuild(data);
     try {
       await job.retry('failed');
       this.logger.log(
@@ -136,6 +179,101 @@ export class LearningGraphService {
       );
       throw error;
     }
+  }
+
+  async retryGrouping(semesterId: string, moduleId: string): Promise<void> {
+    const graph = await this.findLatestGraph(semesterId, moduleId);
+    if (!graph || !graph.current || graph.status !== 'FAILED') {
+      throw new ConflictException(
+        'Only a failed build with unchanged source material can be retried',
+      );
+    }
+    const buildId = `${graph.id}/${graph.version}`;
+    const recoveryJob = await this.queue.getJob(`recover-graph/${buildId}`);
+    const recovery = recoveryJob?.data as RecoverGraphJobData | undefined;
+    let retry: () => Promise<void>;
+    let retriesExistingRecovery = false;
+    if (recoveryJob && (await recoveryJob.isFailed())) {
+      if (recovery?.stage !== 'GROUPING') {
+        throw new ConflictException(
+          'No saved grouping input is available. Retry the saved publication or start a new build.',
+        );
+      }
+      retry = () => recoveryJob.retry('failed');
+      retriesExistingRecovery = true;
+      await recoveryJob.updateData({
+        ...recoveryJob.data,
+        recoveryRequested: true,
+      });
+    } else {
+      const groupingJob = await this.queue.getJob(`group-topics/${buildId}`);
+      const [savedRefinement] = groupingJob
+        ? Object.values(
+            await groupingJob.getChildrenValues<GraphProposal | null>(),
+          )
+        : [];
+      if (!groupingJob || !(await groupingJob.isFailed()) || !savedRefinement) {
+        throw new ConflictException(
+          'No saved grouping input is available. Regenerate the learning path to start a new build.',
+        );
+      }
+      await groupingJob.updateData({
+        ...groupingJob.data,
+        recoveryRequested: true,
+      });
+      const publicationJob = await this.queue.getJob(
+        `publish-graph/${buildId}`,
+      );
+      if (publicationJob) {
+        await publicationJob.updateData({
+          ...publicationJob.data,
+          recoveryRequested: true,
+        });
+      }
+      retry = () =>
+        this.graphBuildQueue.addRecovery({
+          graphId: graph.id,
+          moduleId,
+          graphVersion: graph.version,
+          stage: 'GROUPING',
+          proposal: savedRefinement,
+        });
+    }
+
+    const data = { graphId: graph.id, moduleId, graphVersion: graph.version };
+    await this.restoreFailedBuild(data);
+    try {
+      await retry();
+      this.logger.log(
+        `Retrying grouping for graph "${graph.id}" from saved refinement${retriesExistingRecovery ? ' job' : ''}`,
+      );
+    } catch (error) {
+      await failQueuedGraphBuild(
+        this.prismaService,
+        data,
+        `Could not retry grouping: ${graphBuildErrorMessage(error)}`,
+      );
+      throw error;
+    }
+  }
+
+  private async restoreFailedBuild(data: GraphBuildJobData): Promise<void> {
+    const { graphId, moduleId, graphVersion } = data;
+    await this.prismaService.$transaction(async (transaction) => {
+      const modules = await transaction.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "Module"
+        WHERE "id" = ${moduleId} AND "graphVersion" = ${graphVersion} FOR UPDATE`;
+      if (!modules.length)
+        throw new ConflictException(
+          'Source material changed; start a new build',
+        );
+      const result = await transaction.learningGraph.updateMany({
+        where: { id: graphId, status: 'FAILED' },
+        data: { status: 'QUEUED', finishedAt: null, errorMessage: null },
+      });
+      if (!result.count)
+        throw new ConflictException('This build is already being retried');
+    });
   }
 
   async findPublished(

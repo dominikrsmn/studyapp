@@ -26,20 +26,27 @@ export class GroupTopicsJob {
     const [proposal] = Object.values(
       await job.getChildrenValues<GraphProposal | null>(),
     );
+    return this.processProposal(job.data, proposal);
+  }
+
+  async processProposal(
+    data: GroupTopicsJobData,
+    proposal: GraphProposal | null | undefined,
+  ): Promise<GroupedGraphProposal | void> {
     const graph = await this.prismaService.learningGraph.findUnique({
       where: {
-        id: job.data.graphId,
-        moduleId: job.data.moduleId,
-        version: job.data.graphVersion,
+        id: data.graphId,
+        moduleId: data.moduleId,
+        version: data.graphVersion,
         status: 'QUEUED',
-        module: { graphVersion: job.data.graphVersion },
+        module: { graphVersion: data.graphVersion },
       },
       select: { id: true },
     });
     if (!proposal || !graph) {
       await failQueuedGraphBuild(
         this.prismaService,
-        job.data,
+        data,
         'Graph build became stale before grouping',
       );
       return;
@@ -48,7 +55,7 @@ export class GroupTopicsJob {
       return { ...proposal, units: [], ordering: [] };
 
     const topics = await this.prismaService.topic.findMany({
-      where: { moduleId: job.data.moduleId, id: { in: proposal.topicIds } },
+      where: { moduleId: data.moduleId, id: { in: proposal.topicIds } },
       orderBy: { id: 'asc' },
       select: { id: true, title: true, description: true },
     });

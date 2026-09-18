@@ -35,6 +35,14 @@ export class LearningGraphController {
     return this.learningGraphService.retryPublication(semesterId, moduleId);
   }
 
+  @Post('retry-grouping')
+  retryGrouping(
+    @ActiveSemesterId() semesterId: string,
+    @Param('moduleId', ParseUUIDPipe) moduleId: string,
+  ) {
+    return this.learningGraphService.retryGrouping(semesterId, moduleId);
+  }
+
   @Get()
   findPublished(
     @ActiveSemesterId() semesterId: string,
