@@ -96,14 +96,14 @@ export class RefineGraphJob {
         });
 
         // Prisma's self-relation orders prerequisites before requiredBy:
-        // A is the prerequisite, B is the topic that requires it.
+        // A is the topic that requires the prerequisite in B.
         await transaction.$executeRaw(Prisma.sql`
           DELETE FROM "_TopicDependencies"
-          WHERE "B" IN (SELECT jsonb_array_elements_text(${JSON.stringify(proposal.topicIds)}::jsonb))
+          WHERE "A" IN (SELECT jsonb_array_elements_text(${JSON.stringify(proposal.topicIds)}::jsonb))
         `);
         await transaction.$executeRaw(Prisma.sql`
           INSERT INTO "_TopicDependencies" ("A", "B")
-          SELECT "prerequisiteId", "topicId"
+          SELECT "topicId", "prerequisiteId"
           FROM jsonb_to_recordset(${JSON.stringify(dependencies)}::jsonb)
             AS relationships("topicId" text, "prerequisiteId" text)
         `);
