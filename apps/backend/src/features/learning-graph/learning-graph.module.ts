@@ -1,3 +1,5 @@
+import { GroupTopicsJob } from './jobs/group-topics.job';
+import { PublishGraphJob } from './jobs/publish-graph.job';
 import { LearningGraphController } from './learning-graph.controller';
 import { PrismaModule } from '../../infrastructure/database/prisma/prisma.module';
 import { Module } from '@nestjs/common';
@@ -35,6 +37,8 @@ import { GraphBuildEventsListener } from './graph-build.events-listener';
     GetPrerequisitesJob,
     LearningGraphService,
     RefineGraphJob,
+    GroupTopicsJob,
+    PublishGraphJob,
     DetectCyclesJob,
   ],
   exports: [GraphBuildQueue, LearningGraphService],

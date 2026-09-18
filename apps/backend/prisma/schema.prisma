@@ -6,3 +6,28 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model LearningUnit {
+  id           String @id
+  moduleId     String
+  title        String
+  summary      String @db.Text
+  topicIds     String[]
+  entryTopicId  String
+  exitTopicIds String[]
+
+  outgoing LearningUnitOrdering[] @relation("UnitOrderingSource")
+  incoming LearningUnitOrdering[] @relation("UnitOrderingDestination")
+
+  @@index([moduleId])
+}
+
+model LearningUnitOrdering {
+  sourceUnitId      String
+  destinationUnitId String
+  source           LearningUnit @relation("UnitOrderingSource", fields: [sourceUnitId], references: [id], onDelete: Cascade)
+  destination      LearningUnit @relation("UnitOrderingDestination", fields: [destinationUnitId], references: [id], onDelete: Cascade)
+
+  @@id([sourceUnitId, destinationUnitId])
+  @@index([destinationUnitId])
+}

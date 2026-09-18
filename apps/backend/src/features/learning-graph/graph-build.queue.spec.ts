@@ -81,9 +81,29 @@ describe('GraphBuildQueue', () => {
     ).toEqual([true, true]);
 
     const graphFlow = flowProducer.add.mock.calls[1][0];
-    expect(graphFlow.children[0].opts.failParentOnFailure).toBe(true);
+    expect(graphFlow.name).toBe('publish-graph');
+    expect(graphFlow.opts).toEqual(
+      expect.objectContaining({
+        attempts: 3,
+        removeOnComplete: false,
+        removeOnFail: false,
+      }),
+    );
+    const grouping = graphFlow.children[0];
+    const refinement = grouping.children[0];
+    const cycles = refinement.children[0];
+    expect([grouping.name, refinement.name, cycles.name]).toEqual([
+      'group-topics',
+      'refine-graph',
+      'detect-cycles',
+    ]);
     expect(
-      graphFlow.children[0].children.map(
+      [grouping, refinement, cycles].every(
+        (job) => job.opts.failParentOnFailure,
+      ),
+    ).toBe(true);
+    expect(
+      cycles.children.map(
         ({ opts }: { opts: { failParentOnFailure?: boolean } }) =>
           opts.failParentOnFailure,
       ),

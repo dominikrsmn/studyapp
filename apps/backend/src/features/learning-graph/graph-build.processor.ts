@@ -1,3 +1,5 @@
+import { GroupTopicsJob } from './jobs/group-topics.job';
+import { PublishGraphJob } from './jobs/publish-graph.job';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
@@ -33,6 +35,8 @@ export class GraphBuildProcessor extends WorkerHost {
     private readonly getPrerequisitesJob: GetPrerequisitesJob,
     private readonly refineGraphJob: RefineGraphJob,
     private readonly detectCyclesJob: DetectCyclesJob,
+    private readonly groupTopicsJob: GroupTopicsJob,
+    private readonly publishGraphJob: PublishGraphJob,
   ) {
     super();
   }
@@ -87,6 +91,10 @@ export class GraphBuildProcessor extends WorkerHost {
         return this.getPrerequisitesJob.process(
           job.data as GetPrerequisitesJobData,
         );
+      case jobs.group_topics:
+        return this.groupTopicsJob.process(job);
+      case jobs.publish_graph:
+        return this.publishGraphJob.process(job);
       case jobs.refine_graph:
         return this.refineGraphJob.process(job as Job<RefineGraphJobData>);
       case jobs.detect_cycles:

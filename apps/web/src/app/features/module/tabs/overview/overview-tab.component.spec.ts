@@ -8,6 +8,8 @@ describe('OverviewTabComponent', () => {
   const graph: PublishedLearningGraphDto = {
     id: 'graph-id',
     version: 7,
+    units: [],
+    ordering: [],
     topics: [
       {
         id: 'dependent',

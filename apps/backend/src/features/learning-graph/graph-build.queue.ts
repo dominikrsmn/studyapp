@@ -92,11 +92,11 @@ export class GraphBuildQueue {
     const buildId = `${data.graphId}/${data.graphVersion}`;
 
     await this.flowProducer.add({
-      name: jobs.refine_graph,
+      name: jobs.publish_graph,
       queueName,
       data,
       opts: {
-        jobId: `${jobs.refine_graph}/${buildId}`,
+        jobId: `${jobs.publish_graph}/${buildId}`,
         attempts: 3,
         backoff: { type: 'exponential', delay: 1000 },
         removeOnComplete: false,
@@ -104,26 +104,51 @@ export class GraphBuildQueue {
       },
       children: [
         {
-          name: jobs.detect_cycles,
+          name: jobs.group_topics,
           queueName,
           data,
           opts: {
-            jobId: `${jobs.detect_cycles}/${buildId}`,
+            jobId: `${jobs.group_topics}/${buildId}`,
             failParentOnFailure: true,
+            removeOnComplete: false,
           },
-          children: topicIds.map((topicId) => ({
-            name: jobs.get_prerequisites,
-            queueName,
-            data: {
-              ...data,
-              topicId,
-              candidateTopicIds: topicIds.filter((id) => id !== topicId),
-            } satisfies GetPrerequisitesJobData,
-            opts: {
-              jobId: `${jobs.get_prerequisites}/${buildId}/${topicId}`,
-              failParentOnFailure: true,
+          children: [
+            {
+              name: jobs.refine_graph,
+              queueName,
+              data,
+              opts: {
+                jobId: `${jobs.refine_graph}/${buildId}`,
+                failParentOnFailure: true,
+              },
+              children: [
+                {
+                  name: jobs.detect_cycles,
+                  queueName,
+                  data,
+                  opts: {
+                    jobId: `${jobs.detect_cycles}/${buildId}`,
+                    failParentOnFailure: true,
+                  },
+                  children: topicIds.map((topicId) => ({
+                    name: jobs.get_prerequisites,
+                    queueName,
+                    data: {
+                      ...data,
+                      topicId,
+                      candidateTopicIds: topicIds.filter(
+                        (id) => id !== topicId,
+                      ),
+                    } satisfies GetPrerequisitesJobData,
+                    opts: {
+                      jobId: `${jobs.get_prerequisites}/${buildId}/${topicId}`,
+                      failParentOnFailure: true,
+                    },
+                  })),
+                },
+              ],
             },
-          })),
+          ],
         },
       ],
     });

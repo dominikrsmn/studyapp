@@ -189,6 +189,7 @@ describe('LearningGraphService published reads', () => {
     module: { findFirst: jest.fn() },
     learningGraph: { findFirst: jest.fn() },
     topic: { findMany: jest.fn() },
+    $queryRaw: jest.fn(),
   };
   const prisma = { $transaction: jest.fn() };
   const service = new LearningGraphService(
@@ -202,6 +203,7 @@ describe('LearningGraphService published reads', () => {
     prisma.$transaction.mockImplementation((operation) =>
       operation(transaction),
     );
+    transaction.$queryRaw.mockResolvedValue([]);
     transaction.module.findFirst.mockImplementation(async ({ where }) =>
       where.semesterId === 'active-semester' && where.id === 'module-id'
         ? { id: 'module-id' }
@@ -243,6 +245,8 @@ describe('LearningGraphService published reads', () => {
       ).resolves.toEqual({
         id: 'published-build',
         version: 7,
+        units: [],
+        ordering: [],
         topics: [
           {
             id: 'published',
@@ -260,6 +264,35 @@ describe('LearningGraphService published reads', () => {
       });
     },
   );
+
+  it('reads units and ordering within the same publication snapshot', async () => {
+    const units = [
+      {
+        id: 'isolated',
+        title: 'Foundation',
+        summary: 'Scope',
+        topicIds: ['isolated', 'published'],
+        entryTopicId: 'isolated',
+        exitTopicIds: ['published'],
+      },
+    ];
+    const ordering = [
+      { sourceUnitId: 'isolated', destinationUnitId: 'next-unit' },
+    ];
+    transaction.$queryRaw
+      .mockResolvedValueOnce(units)
+      .mockResolvedValueOnce(ordering);
+    const result = await service.findPublished('active-semester', 'module-id');
+    expect(result).toEqual(
+      expect.objectContaining({ id: 'published-build', units, ordering }),
+    );
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: 'RepeatableRead',
+    });
+    expect(
+      transaction.$queryRaw.mock.calls.map(([, moduleId]) => moduleId),
+    ).toEqual(['module-id', 'module-id']);
+  });
 
   it('rejects modules outside the active semester', async () => {
     await expect(
@@ -282,6 +315,8 @@ describe('LearningGraphService published reads', () => {
     ).resolves.toEqual({
       id: 'published-build',
       version: 7,
+      units: [],
+      ordering: [],
       topics: [],
     });
   });
@@ -323,7 +358,12 @@ describe('manual graph publication recovery', () => {
     queue.getJob.mockResolvedValue(job);
     job.isFailed.mockResolvedValue(true);
     job.getChildrenValues.mockResolvedValue({
-      cycles: { topicIds: ['topic-id'], dependencies: [] },
+      grouping: {
+        topicIds: ['topic-id'],
+        dependencies: [],
+        units: [],
+        ordering: [],
+      },
     });
     transaction.$queryRaw.mockResolvedValue([{ id: 'module-id' }]);
     transaction.learningGraph.updateMany.mockResolvedValue({ count: 1 });
@@ -340,7 +380,7 @@ describe('manual graph publication recovery', () => {
       });
     });
     await service.retryPublication('semester-id', 'module-id');
-    expect(queue.getJob).toHaveBeenCalledWith('refine-graph/graph-id/4');
+    expect(queue.getJob).toHaveBeenCalledWith('publish-graph/graph-id/4');
     expect(job.retry).toHaveBeenCalledWith('failed');
     expect(buildQueue.addEmbeddingFlow).not.toHaveBeenCalled();
   });
@@ -416,13 +456,11 @@ describe('manual graph build requests', () => {
     );
     transaction.$queryRaw.mockResolvedValue([{ graphVersion: 4 }]);
     transaction.module.update.mockResolvedValue({ graphVersion: 5 });
-    regenerate = jest
-      .spyOn(service, 'regenerate')
-      .mockResolvedValue({
-        graphId: 'graph',
-        moduleId: 'module',
-        graphVersion: 4,
-      });
+    regenerate = jest.spyOn(service, 'regenerate').mockResolvedValue({
+      graphId: 'graph',
+      moduleId: 'module',
+      graphVersion: 4,
+    });
   });
 
   afterEach(() => jest.restoreAllMocks());

@@ -1,3 +1,5 @@
+import type { GroupTopicsJob } from './jobs/group-topics.job';
+import type { PublishGraphJob } from './jobs/publish-graph.job';
 import type { Job } from 'bullmq';
 import type { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import type { DispatchCandidatesJob } from './jobs/dispatch-candidates.job';
@@ -29,6 +31,8 @@ describe('GraphBuildProcessor', () => {
     { process: jest.fn() } as unknown as GetPrerequisitesJob,
     { process: jest.fn() } as unknown as RefineGraphJob,
     { process: jest.fn() } as unknown as DetectCyclesJob,
+    { process: jest.fn() } as unknown as GroupTopicsJob,
+    { process: jest.fn() } as unknown as PublishGraphJob,
   );
 
   beforeEach(() => {

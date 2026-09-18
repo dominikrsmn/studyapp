@@ -12,7 +12,12 @@ import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service';
 import { GraphBuildQueue } from './graph-build.queue';
-import type { GraphBuildJobData, GraphProposal } from './graph-build.types';
+import type {
+  GraphBuildJobData,
+  GroupedGraphProposal,
+  LearningUnitProposal,
+  UnitOrdering,
+} from './graph-build.types';
 import { graphBuildConfig } from './graph-build.config';
 import {
   failQueuedGraphBuild,
@@ -90,10 +95,12 @@ export class LearningGraphService {
       );
     }
     const job = await this.queue.getJob(
-      `refine-graph/${graph.id}/${graph.version}`,
+      `publish-graph/${graph.id}/${graph.version}`,
     );
     const proposals = job
-      ? Object.values(await job.getChildrenValues<GraphProposal | null>())
+      ? Object.values(
+          await job.getChildrenValues<GroupedGraphProposal | null>(),
+        )
       : [];
     if (!job || !(await job.isFailed()) || !proposals[0]) {
       throw new ConflictException(
@@ -167,8 +174,19 @@ export class LearningGraphService {
             },
           },
         });
+        const units = await transaction.$queryRaw<LearningUnitProposal[]>`
+          SELECT "id", "title", "summary", "topicIds", "entryTopicId", "exitTopicIds"
+          FROM "LearningUnit" WHERE "moduleId" = ${moduleId} ORDER BY "id"`;
+        const ordering = await transaction.$queryRaw<UnitOrdering[]>`
+          SELECT ordering."sourceUnitId", ordering."destinationUnitId"
+          FROM "LearningUnitOrdering" AS ordering
+          JOIN "LearningUnit" AS source ON source."id" = ordering."sourceUnitId"
+          WHERE source."moduleId" = ${moduleId}
+          ORDER BY ordering."sourceUnitId", ordering."destinationUnitId"`;
         return {
           ...graph,
+          units,
+          ordering,
           topics: topics.map(({ prerequisites, ...topic }) => ({
             ...topic,
             prerequisiteIds: prerequisites.map(({ id }) => id),
